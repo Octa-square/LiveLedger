@@ -2052,7 +2052,7 @@ struct DisplaySettingsView: View {
     @AppStorage("app_contrast") private var contrast: Double = 1.0
     @AppStorage("app_bg_opacity") private var bgOpacity: Double = 0.80
     @AppStorage("app_font_size") private var fontSize: String = "Medium"
-    @AppStorage("app_text_weight") private var textWeight: String = "Semi-Bold"
+    @AppStorage("app_font_type") private var fontType: String = "System"
     
     private var theme: AppTheme { themeManager.currentTheme }
     

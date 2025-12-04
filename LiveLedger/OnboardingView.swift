@@ -20,7 +20,6 @@ struct OnboardingView: View {
         ("bag.fill.badge.plus", .green, "Products & Orders", .tutorialProducts),
         ("list.clipboard.fill", .blue, "Track Everything", .tutorialOrders),
         ("apps.iphone", .pink, "Multi-Platform", .tutorialPlatforms),
-        ("chart.bar.fill", .purple, "Analytics", .tutorialAnalytics),
         ("square.and.arrow.up.fill", .orange, "Export & Print", .tutorialExport)
     ]
     
