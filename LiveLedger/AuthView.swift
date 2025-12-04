@@ -294,7 +294,6 @@ struct AuthView: View {
                             FeatureRow(icon: "square.grid.2x2.fill", text: "Multi-platform", color: .pink)
                             FeatureRow(icon: "timer", text: "Live session timer", color: .cyan)
                             FeatureRow(icon: "wifi", text: "Network analyzer", color: .blue)
-                            FeatureRow(icon: "bell.badge.fill", text: "Stock alerts", color: .red)
                         }
                         
                         // Right Column
@@ -303,7 +302,6 @@ struct AuthView: View {
                             FeatureRow(icon: "printer.fill", text: "Print & export", color: .orange)
                             FeatureRow(icon: "speaker.wave.2.fill", text: "Sound alerts", color: .purple)
                             FeatureRow(icon: "arrow.left.arrow.right", text: "Comparisons", color: .teal)
-                            FeatureRow(icon: "photo.fill", text: "Image editing", color: .indigo)
                         }
                     }
                     .padding(.horizontal, 8)
@@ -334,13 +332,13 @@ struct AuthView: View {
                                         .foregroundColor(.white.opacity(0.8))
                                     
                                     if showPassword {
-                                        TextField("Password", text: $password)
+                                        TextField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
                                             .font(.system(size: 14))
                                             .foregroundColor(.white)
                                             .tint(.white)
                                             .focused($focusedField, equals: .password)
                                     } else {
-                                        SecureField("Password", text: $password)
+                                        SecureField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
                                             .font(.system(size: 14))
                                             .foregroundColor(.white)
                                             .tint(.white)
@@ -392,13 +390,13 @@ struct AuthView: View {
                                     .foregroundColor(.white.opacity(0.8))
                                 
                                 if showConfirmPassword {
-                                    TextField("Confirm", text: $confirmPassword)
+                                    TextField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
                                         .tint(.white)
                                         .focused($focusedField, equals: .confirmPassword)
                                 } else {
-                                    SecureField("Confirm", text: $confirmPassword)
+                                    SecureField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
                                         .tint(.white)
@@ -601,7 +599,7 @@ struct AuthInputField: View {
             Image(systemName: icon)
                 .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.8))
-            TextField(placeholder, text: $text)
+            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.75)))
                 .font(.system(size: 14))
                 .foregroundColor(.white)
                 .keyboardType(keyboard)
