@@ -966,87 +966,125 @@ struct EditProductSheet: View {
     }
 }
 
-// MARK: - Product Image Picker - Direct Action Sheet
+// MARK: - Product Image Picker - Clean Inline Design
 struct ProductImagePicker: View {
     let onImageSelected: (UIImage) -> Void
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedImage: UIImage?
-    @State private var showSourcePicker = true // Show immediately
     @State private var showCamera = false
     @State private var showPhotoLibrary = false
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: 24) {
+                Spacer()
+                
                 if let image = selectedImage {
                     // Preview the selected/cropped image
-                    VStack(spacing: 16) {
-                        Text("Preview")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.gray)
-                        
+                    VStack(spacing: 20) {
                         Image(uiImage: image)
                             .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 200, maxHeight: 200)
-                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .scaledToFill()
+                            .frame(width: 180, height: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.gray.opacity(0.3), lineWidth: 2)
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
-                            .shadow(radius: 4)
+                            .shadow(color: .black.opacity(0.3), radius: 8)
                         
-                        Text("Image cropped to square for product display")
-                            .font(.system(size: 11))
+                        Text("Preview")
+                            .font(.system(size: 13, weight: .medium))
                             .foregroundColor(.gray)
                         
                         HStack(spacing: 16) {
                             Button {
                                 selectedImage = nil
-                                showSourcePicker = true
                             } label: {
-                                HStack {
+                                HStack(spacing: 6) {
                                     Image(systemName: "arrow.counterclockwise")
                                     Text("Re-select")
                                 }
                                 .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.blue)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(8)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
+                                .background(Color.white.opacity(0.15))
+                                .cornerRadius(10)
                             }
                             
                             Button {
                                 onImageSelected(image)
                                 dismiss()
                             } label: {
-                                HStack {
+                                HStack(spacing: 6) {
                                     Image(systemName: "checkmark")
                                     Text("Use Image")
                                 }
-                                .font(.system(size: 14, weight: .bold))
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 12)
                                 .background(Color.green)
-                                .cornerRadius(8)
+                                .cornerRadius(10)
                             }
                         }
                     }
-                    .padding()
                 } else {
-                    // Waiting state while picker is open
-                    VStack(spacing: 16) {
-                        Image(systemName: "photo.on.rectangle.angled")
-                            .font(.system(size: 50))
-                            .foregroundColor(.gray.opacity(0.5))
-                        Text("Select an image source")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
+                    // Source selection buttons
+                    VStack(spacing: 20) {
+                        Image(systemName: "photo.badge.plus")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray.opacity(0.4))
+                        
+                        Text("Choose Image Source")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(.white.opacity(0.9))
+                        
+                        VStack(spacing: 12) {
+                            Button {
+                                showCamera = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 18))
+                                    Text("Take Photo")
+                                        .font(.system(size: 15, weight: .medium))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                            
+                            Button {
+                                showPhotoLibrary = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "photo.on.rectangle")
+                                        .font(.system(size: 18))
+                                    Text("Photo Library")
+                                        .font(.system(size: 15, weight: .medium))
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundColor(.gray)
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 16)
+                                .background(Color.white.opacity(0.1))
+                                .cornerRadius(12)
+                            }
+                        }
+                        .padding(.horizontal, 40)
                     }
-                    .padding()
                 }
                 
                 Spacer()
@@ -1055,38 +1093,17 @@ struct ProductImagePicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            // Direct action sheet on appear
-            .confirmationDialog("Choose Image Source", isPresented: $showSourcePicker, titleVisibility: .visible) {
-                Button {
-                    showCamera = true
-                } label: {
-                    Label("Camera", systemImage: "camera")
-                }
-                
-                Button {
-                    showPhotoLibrary = true
-                } label: {
-                    Label("Photo Library", systemImage: "photo.on.rectangle")
-                }
-                
-                Button("Cancel", role: .cancel) {
-                    if selectedImage == nil {
+                    Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundColor(.white)
                 }
-            } message: {
-                Text("Select a photo from your library or take a new one")
             }
-            // Camera picker
             .sheet(isPresented: $showCamera) {
                 DirectImagePicker(sourceType: .camera) { image in
                     selectedImage = image
                 }
             }
-            // Photo library picker
             .sheet(isPresented: $showPhotoLibrary) {
                 DirectImagePicker(sourceType: .photoLibrary) { image in
                     selectedImage = image
