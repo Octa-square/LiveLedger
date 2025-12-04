@@ -316,7 +316,7 @@ class SalesViewModel: ObservableObject {
     }
     
     // MARK: - Order Management
-    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1) {
+    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1, paymentStatus: PaymentStatus = .unset) {
         // Timer is now manually controlled - no auto-start
         
         let order = Order(
@@ -329,7 +329,8 @@ class SalesViewModel: ObservableObject {
             platform: platform,
             quantity: quantity,
             pricePerUnit: product.finalPrice,
-            wasDiscounted: product.hasDiscount
+            wasDiscounted: product.hasDiscount,
+            paymentStatus: paymentStatus
         )
         orders.insert(order, at: 0)
         decrementStock(for: product.id, by: quantity)
@@ -401,14 +402,17 @@ class SalesViewModel: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         
-        for order in filteredOrders {
+        for (index, order) in filteredOrders.enumerated() {
             // Convert "SN-1" to just "1" for export
             let buyerDisplay = order.buyerName.hasPrefix("SN-") 
                 ? String(order.buyerName.dropFirst(3))
                 : order.buyerName
             
+            // Use short order ID: ORD-XXX (sequential number)
+            let shortOrderId = "ORD-\(index + 1)"
+            
             let row = [
-                order.id.uuidString,
+                shortOrderId,
                 order.productName.replacingOccurrences(of: ",", with: ";"),
                 buyerDisplay.replacingOccurrences(of: ",", with: ";"),
                 order.phoneNumber.replacingOccurrences(of: ",", with: ";"),

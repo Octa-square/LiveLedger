@@ -18,6 +18,7 @@ struct QuickAddView: View {
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
     @State private var showBuyerPopup: Bool = false
+    @State private var selectedPaymentStatus: PaymentStatus? = nil
     @State private var showMaxProductsAlert: Bool = false
     @State private var showCreateCatalogAlert: Bool = false
     @State private var showRenameCatalogAlert: Bool = false
@@ -130,6 +131,43 @@ struct QuickAddView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
                     
+                    // Payment Status - Paid/Unpaid toggle buttons
+                    HStack(spacing: 8) {
+                        // Paid button
+                        Button {
+                            selectedPaymentStatus = selectedPaymentStatus == .paid ? nil : .paid
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: selectedPaymentStatus == .paid ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 14))
+                                Text("Paid")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .foregroundColor(selectedPaymentStatus == .paid ? .white : .green)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedPaymentStatus == .paid ? Color.green : Color.green.opacity(0.15))
+                            .cornerRadius(6)
+                        }
+                        
+                        // Unpaid button
+                        Button {
+                            selectedPaymentStatus = selectedPaymentStatus == .pending ? nil : .pending
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: selectedPaymentStatus == .pending ? "checkmark.circle.fill" : "circle")
+                                    .font(.system(size: 14))
+                                Text("Unpaid")
+                                    .font(.system(size: 12, weight: .medium))
+                            }
+                            .foregroundColor(selectedPaymentStatus == .pending ? .white : .orange)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedPaymentStatus == .pending ? Color.orange : Color.orange.opacity(0.15))
+                            .cornerRadius(6)
+                        }
+                    }
+                    
                     // Quantity & Amount row
                     HStack(spacing: 12) {
                         Button {
@@ -166,6 +204,7 @@ struct QuickAddView: View {
                             selectedProductForOrder = nil
                             buyerName = ""
                             orderQuantity = 1
+                            selectedPaymentStatus = nil
                         } label: {
                             Text("Cancel")
                                 .font(.system(size: 13, weight: .medium))
@@ -188,7 +227,8 @@ struct QuickAddView: View {
                                 phoneNumber: "",
                                 address: "",
                                 platform: platform,
-                                quantity: orderQuantity
+                                quantity: orderQuantity,
+                                paymentStatus: selectedPaymentStatus ?? .unset
                             )
                             authManager.incrementOrderCount()
                             
@@ -199,6 +239,7 @@ struct QuickAddView: View {
                             selectedProductForOrder = nil
                             buyerName = ""
                             orderQuantity = 1
+                            selectedPaymentStatus = nil
                         } label: {
                             Text("Add")
                                 .font(.system(size: 13, weight: .bold))
