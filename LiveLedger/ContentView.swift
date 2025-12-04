@@ -201,25 +201,32 @@ struct ContentView: View {
 }
 
 #Preview {
-    // Create a mock authenticated user to avoid StoreKit initialization issues
-    let mockAuthManager = AuthManager()
-    mockAuthManager.currentUser = AppUser(
-        id: "preview-user",
-        email: "preview@example.com",
-        name: "Preview User",
-        phone: "",
-        companyName: "My Shop",
-        currency: "USD ($)",
-        isPro: true, // Set to Pro to avoid subscription checks
-        ordersUsed: 5,
-        exportsUsed: 2,
-        referralCode: "PREVIEW123",
-        createdAt: Date()
-    )
-    mockAuthManager.isAuthenticated = true
+    ContentViewPreview()
+}
+
+struct ContentViewPreview: View {
+    @StateObject private var authManager = AuthManager()
     
-    MainContentView(
-        authManager: mockAuthManager,
-        localization: LocalizationManager.shared
-    )
+    var body: some View {
+        MainContentView(
+            authManager: authManager,
+            localization: LocalizationManager.shared
+        )
+        .onAppear {
+            authManager.currentUser = AppUser(
+                id: "preview-user",
+                email: "preview@example.com",
+                name: "Preview User",
+                phone: "",
+                companyName: "My Shop",
+                currency: "USD ($)",
+                isPro: true,
+                ordersUsed: 5,
+                exportsUsed: 2,
+                referralCode: "PREVIEW123",
+                createdAt: Date()
+            )
+            authManager.isAuthenticated = true
+        }
+    }
 }
