@@ -202,6 +202,51 @@ enum LocalizedKey: String {
     case letsGo = "lets_go"
     case next = "next"
     case skip = "skip"
+    
+    // Additional UI strings
+    case account = "account"
+    case myProducts = "my_products"
+    case totalOrders = "total_orders"
+    case topSeller = "top_seller"
+    case stockLeft = "stock_left"
+    case analytics = "analytics"
+    case menu = "menu"
+    case buyerName = "buyer_name"
+    case selectPlatform = "select_platform"
+    case allPlatforms = "all_platforms"
+    case filterByPlatform = "filter_by_platform"
+    case timePeriod = "time_period"
+    case custom = "custom"
+    case grandTotal = "grand_total"
+    case receipt = "receipt"
+    case thankYou = "thank_you"
+    case phone = "phone"
+    case address = "address"
+    case status = "status"
+    case items = "items"
+    case salesReport = "sales_report"
+    case individualReceipts = "individual_receipts"
+    case allOrders = "all_orders"
+    case printType = "print_type"
+    case exportOrders = "export_orders"
+    case clearData = "clear_data"
+    case selectToClear = "select_to_clear"
+    case clearSelected = "clear_selected"
+    case customPlatforms = "custom_platforms"
+    case manageSubscription = "manage_subscription"
+    case cancelSubscription = "cancel_subscription"
+    case confirmPassword = "confirm_password"
+    case phoneNumber = "phone_number"
+    case holdToAdd = "hold_to_add"
+    case namePriceStock = "name_price_stock"
+    case tapSell = "tap_sell"
+    case holdEdit = "hold_edit"
+    case noData = "no_data"
+    case change = "change"
+    case periodComparison = "period_comparison"
+    case period1 = "period_1"
+    case period2 = "period_2"
+    case avgOrderValue = "avg_order_value"
 }
 
 // MARK: - Localization Manager
@@ -320,7 +365,50 @@ class LocalizationManager: ObservableObject {
             .chatOnWhatsApp: "Chat with us on WhatsApp",
             .emailSupport: "Email Support",
             .sendUsEmail: "Send us an email",
-            .supportResponseTime: "We typically respond within 24 hours"
+            .supportResponseTime: "We typically respond within 24 hours",
+            .account: "Account",
+            .myProducts: "My Products",
+            .totalOrders: "Total Orders",
+            .topSeller: "Top Seller",
+            .stockLeft: "Stock Left",
+            .analytics: "Analytics",
+            .menu: "Menu",
+            .buyerName: "Buyer Name",
+            .selectPlatform: "Select Platform",
+            .allPlatforms: "All Platforms",
+            .filterByPlatform: "Filter by Platform",
+            .timePeriod: "Time Period",
+            .custom: "Custom",
+            .grandTotal: "Grand Total",
+            .receipt: "Receipt",
+            .thankYou: "Thank you for your purchase!",
+            .phone: "Phone",
+            .address: "Address",
+            .status: "Status",
+            .items: "Items",
+            .salesReport: "Sales Report",
+            .individualReceipts: "Individual Receipts",
+            .allOrders: "All Orders",
+            .printType: "Print Type",
+            .exportOrders: "Export Orders",
+            .clearData: "Clear Data",
+            .selectToClear: "Select what to clear",
+            .clearSelected: "Clear Selected",
+            .customPlatforms: "Custom Platforms",
+            .manageSubscription: "Manage Subscription",
+            .cancelSubscription: "Cancel Subscription",
+            .confirmPassword: "Confirm Password",
+            .phoneNumber: "Phone Number",
+            .holdToAdd: "Hold to add",
+            .namePriceStock: "name, price & stock",
+            .tapSell: "Tap sell",
+            .holdEdit: "Hold edit",
+            .noData: "No data",
+            .change: "Change",
+            .periodComparison: "Period Comparison",
+            .period1: "Period 1",
+            .period2: "Period 2",
+            .avgOrderValue: "Avg Order"
         ],
         .french: [
             .appName: "LiveLedger",
@@ -411,7 +499,50 @@ class LocalizationManager: ObservableObject {
             .chatOnWhatsApp: "Discutez avec nous sur WhatsApp",
             .emailSupport: "Support par Email",
             .sendUsEmail: "Envoyez-nous un email",
-            .supportResponseTime: "Nous répondons généralement sous 24 heures"
+            .supportResponseTime: "Nous répondons généralement sous 24 heures",
+            .account: "Compte",
+            .myProducts: "Mes Produits",
+            .totalOrders: "Total Commandes",
+            .topSeller: "Meilleure Vente",
+            .stockLeft: "Stock Restant",
+            .analytics: "Analytique",
+            .menu: "Menu",
+            .buyerName: "Nom de l'Acheteur",
+            .selectPlatform: "Sélectionner Plateforme",
+            .allPlatforms: "Toutes les Plateformes",
+            .filterByPlatform: "Filtrer par Plateforme",
+            .timePeriod: "Période",
+            .custom: "Personnalisé",
+            .grandTotal: "Total Général",
+            .receipt: "Reçu",
+            .thankYou: "Merci pour votre achat!",
+            .phone: "Téléphone",
+            .address: "Adresse",
+            .status: "Statut",
+            .items: "Articles",
+            .salesReport: "Rapport de Ventes",
+            .individualReceipts: "Reçus Individuels",
+            .allOrders: "Toutes les Commandes",
+            .printType: "Type d'Impression",
+            .exportOrders: "Exporter Commandes",
+            .clearData: "Effacer Données",
+            .selectToClear: "Sélectionnez quoi effacer",
+            .clearSelected: "Effacer Sélection",
+            .customPlatforms: "Plateformes Personnalisées",
+            .manageSubscription: "Gérer l'Abonnement",
+            .cancelSubscription: "Annuler l'Abonnement",
+            .confirmPassword: "Confirmer Mot de Passe",
+            .phoneNumber: "Numéro de Téléphone",
+            .holdToAdd: "Maintenir pour ajouter",
+            .namePriceStock: "nom, prix et stock",
+            .tapSell: "Appuyer vendre",
+            .holdEdit: "Maintenir éditer",
+            .noData: "Aucune donnée",
+            .change: "Changement",
+            .periodComparison: "Comparaison de Périodes",
+            .period1: "Période 1",
+            .period2: "Période 2",
+            .avgOrderValue: "Commande Moy."
         ],
         .spanish: [
             .appName: "LiveLedger",

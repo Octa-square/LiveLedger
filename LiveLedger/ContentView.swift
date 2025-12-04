@@ -17,6 +17,11 @@ struct MainContentView: View {
     @State private var showLimitAlert = false
     @State private var limitAlertMessage = ""
     
+    // Display settings from AppStorage
+    @AppStorage("app_brightness") private var appBrightness: Double = 1.0
+    @AppStorage("app_contrast") private var appContrast: Double = 1.0
+    @AppStorage("app_bg_opacity") private var appBgOpacity: Double = 0.80
+    
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
@@ -30,9 +35,9 @@ struct MainContentView: View {
                     .clipped()
                     .ignoresSafeArea()
                 
-                // Semi-transparent overlay for readability
+                // Semi-transparent overlay for readability (uses user's bg opacity setting)
                 LinearGradient(
-                    colors: theme.gradientColors.map { $0.opacity(theme.backgroundOverlayOpacity) },
+                    colors: theme.gradientColors.map { $0.opacity(appBgOpacity) },
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -81,6 +86,9 @@ struct MainContentView: View {
             }
         }
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
+        // Apply user display settings
+        .brightness(appBrightness - 1.0) // -0.5 to +0.5 range (1.0 is neutral)
+        .contrast(appContrast) // 0.5 to 2.0 range (1.0 is neutral)
         // Auto-save listener
         .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { notification in
             viewModel.saveData()
