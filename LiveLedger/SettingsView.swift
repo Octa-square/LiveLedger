@@ -547,6 +547,8 @@ struct SettingsView: View {
     @State private var selectedCurrency = "USD"
     @State private var profileImage: UIImage? = nil
     
+    private var theme: AppTheme { themeManager.currentTheme }
+    
     var body: some View {
         NavigationStack {
             List {
@@ -1409,54 +1411,6 @@ struct LanguagePickerView: View {
             }
         }
         .presentationDetents([.medium, .large])
-    }
-}
-
-// MARK: - Edit Profile View
-struct EditProfileView: View {
-    @Environment(\.dismiss) var dismiss
-    @Binding var companyName: String
-    @Binding var userName: String
-    let onSave: () -> Void
-    
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    TextField("Company Name", text: $companyName)
-                        .textContentType(.organizationName)
-                } header: {
-                    Text("Company")
-                } footer: {
-                    Text("This appears at the top of your dashboard")
-                }
-                
-                Section {
-                    TextField("Your Name", text: $userName)
-                        .textContentType(.name)
-                } header: {
-                    Text("Your Name")
-                }
-            }
-            .navigationTitle("Edit Profile")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        onSave()
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
-                    .disabled(companyName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 }
 

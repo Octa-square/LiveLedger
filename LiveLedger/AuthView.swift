@@ -13,6 +13,7 @@ struct AppUser: Codable {
     var id: String
     var email: String
     var name: String
+    var phone: String
     var companyName: String
     var currency: String
     var isPro: Bool
@@ -101,12 +102,13 @@ class AuthManager: ObservableObject {
         }
     }
     
-    func signUp(email: String, name: String, password: String, companyName: String, currency: String, referralCode: String) {
+    func signUp(email: String, name: String, phone: String = "", password: String, companyName: String, currency: String, referralCode: String) {
         // In a real app, password would be hashed and sent to a server
         let user = AppUser(
             id: UUID().uuidString,
             email: email,
             name: name,
+            phone: phone,
             companyName: companyName,
             currency: currency,
             isPro: false,
@@ -147,6 +149,22 @@ class AuthManager: ObservableObject {
     
     func updateUserName(_ name: String) {
         currentUser?.name = name
+        saveUser()
+    }
+    
+    func updateEmail(_ email: String) {
+        currentUser?.email = email
+        saveUser()
+    }
+    
+    func updatePhone(_ phone: String) {
+        currentUser?.phone = phone
+        saveUser()
+    }
+    
+    func updatePassword(_ password: String) {
+        // In a real app, this would hash the password and update on server
+        // For local storage, we just acknowledge the update
         saveUser()
     }
     
@@ -641,29 +659,6 @@ struct CompactField: View {
         .padding(.vertical, 10)
         .background(Color.white.opacity(0.15))
         .cornerRadius(8)
-    }
-}
-
-// MARK: - Legacy Support
-struct FeatureRow: View {
-    let icon: String
-    let color: Color
-    let text: String
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(color)
-                .frame(width: 32, height: 32)
-                .background(color.opacity(0.2))
-                .cornerRadius(8)
-            
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.white)
-        }
-        .padding(.horizontal)
     }
 }
 

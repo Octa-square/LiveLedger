@@ -463,7 +463,7 @@ struct AnalyticsDashboardView: View {
                     let startAngle = calculateStartAngle(for: index)
                     let endAngle = startAngle + Angle(degrees: item.percentage * 3.6)
                     
-                    PieSlice(startAngle: startAngle, endAngle: endAngle)
+                    DashboardPieSlice(startAngle: startAngle, endAngle: endAngle)
                         .fill(item.platform.swiftUIColor)
                         .scaleEffect(hoveredPlatform == item.platform.id ? 1.05 : 1.0)
                         .onTapGesture {
@@ -1084,7 +1084,7 @@ struct AnalyticsCard<Content: View>: View {
     }
 }
 
-struct PieSlice: Shape {
+struct DashboardPieSlice: Shape {
     let startAngle: Angle
     let endAngle: Angle
     
