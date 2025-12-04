@@ -436,7 +436,7 @@ struct ClearOptionsView: View {
                     // Clear Products
                     ClearOptionRow(
                         title: "My Products",
-                        subtitle: "\(viewModel.products.count) product(s) in current catalog",
+                        subtitle: "Clear all product data (12 catalog slots preserved)",
                         icon: "cube.box",
                         color: .blue,
                         isSelected: $clearProducts,
@@ -525,10 +525,10 @@ struct ClearOptionsView: View {
             viewModel.platforms.removeAll { $0.isCustom }
         }
         if clearProducts {
-            // Reset to 4 empty products
+            // Reset to 12 empty product slots (catalog structure preserved)
             if let id = viewModel.selectedCatalogId ?? viewModel.catalogs.first?.id,
                let index = viewModel.catalogs.firstIndex(where: { $0.id == id }) {
-                viewModel.catalogs[index].products = [Product(), Product(), Product(), Product()]
+                viewModel.catalogs[index].products = (0..<12).map { _ in Product() }
             }
         }
         if clearOrders {

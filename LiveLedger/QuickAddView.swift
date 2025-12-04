@@ -68,8 +68,8 @@ struct QuickAddView: View {
                     Spacer()
                     
                     Text("Tap sell • Hold edit")
-                        .font(.system(size: 10))
-                        .foregroundColor(theme.textMuted)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(theme.textSecondary)
                     
                     Button {
                         let added = viewModel.addNewProduct()
@@ -391,21 +391,21 @@ struct FastProductCard: View {
                     if product.isEmpty {
                         // Empty product state - clean placeholder with ⊕ icon
                         VStack(spacing: 3) {
-                            Image(systemName: "plus.circle")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.5))
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 22, weight: .medium))
+                                .foregroundColor(theme.textSecondary.opacity(0.7))
                             
                             Text("Hold to add")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(theme.textMuted.opacity(0.5))
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(theme.textSecondary.opacity(0.75))
                             
                             Text("name, price")
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.45))
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(theme.textSecondary.opacity(0.65))
                             
                             Text("& stock")
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.45))
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundColor(theme.textSecondary.opacity(0.65))
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
                     } else if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
