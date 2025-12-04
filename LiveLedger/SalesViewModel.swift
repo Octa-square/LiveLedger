@@ -490,6 +490,11 @@ class SalesViewModel: ObservableObject {
         sessionEnded = false
         lastTimerUpdateDate = nil
         saveTimerState()
+        
+        // Reset interval reminders for new session
+        Task { @MainActor in
+            SoundManager.shared.resetTriggeredIntervals()
+        }
     }
     
     /// Check if timer is in paused state
@@ -510,7 +515,13 @@ class SalesViewModel: ObservableObject {
         timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                self?.sessionElapsedTime += 1
+                guard let self = self else { return }
+                self.sessionElapsedTime += 1
+                
+                // Check for interval reminder milestones
+                Task { @MainActor in
+                    SoundManager.shared.checkIntervalMilestone(elapsedSeconds: self.sessionElapsedTime)
+                }
             }
     }
     

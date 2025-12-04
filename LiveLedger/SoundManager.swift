@@ -60,6 +60,32 @@ enum OrderAddedSound: String, CaseIterable, Codable {
     }
 }
 
+// MARK: - Timer Interval Reminder
+enum TimerInterval: Int, CaseIterable, Codable, Identifiable {
+    case thirtyMinutes = 30
+    case oneHour = 60
+    case threeHours = 180
+    case fiveHours = 300
+    case sevenHours = 420
+    case tenHours = 600
+    
+    var id: Int { rawValue }
+    
+    var displayName: String {
+        switch self {
+        case .thirtyMinutes: return "30 minutes"
+        case .oneHour: return "1 hour"
+        case .threeHours: return "3 hours"
+        case .fiveHours: return "5 hours"
+        case .sevenHours: return "7 hours"
+        case .tenHours: return "10 hours"
+        }
+    }
+    
+    var minutes: Int { rawValue }
+    var seconds: TimeInterval { TimeInterval(rawValue * 60) }
+}
+
 // MARK: - Sound Manager
 @MainActor
 class SoundManager: ObservableObject {
@@ -82,6 +108,15 @@ class SoundManager: ObservableObject {
         didSet { saveSettings() }
     }
     
+    // Timer Interval Reminder Settings
+    @Published var intervalRemindersEnabled: Bool {
+        didSet { saveSettings() }
+    }
+    @Published var enabledIntervals: Set<TimerInterval> {
+        didSet { saveSettings() }
+    }
+    @Published var triggeredIntervals: Set<Int> = [] // Track which intervals already beeped this session
+    
     private let settingsKey = "liveledger_sound_settings"
     
     private init() {
@@ -93,6 +128,8 @@ class SoundManager: ObservableObject {
             self.timerVolume = settings.timerVolume
             self.orderVolume = settings.orderVolume
             self.soundsEnabled = settings.soundsEnabled
+            self.intervalRemindersEnabled = settings.intervalRemindersEnabled ?? true
+            self.enabledIntervals = Set(settings.enabledIntervals ?? TimerInterval.allCases)
         } else {
             // Defaults
             self.timerStartSound = .chime
@@ -100,18 +137,53 @@ class SoundManager: ObservableObject {
             self.timerVolume = 0.7
             self.orderVolume = 0.5
             self.soundsEnabled = true
+            self.intervalRemindersEnabled = true
+            self.enabledIntervals = Set(TimerInterval.allCases) // All intervals enabled by default
         }
     }
     
     // MARK: - Play Sounds
     func playTimerStartSound() {
         guard soundsEnabled else { return }
+        // Reset triggered intervals when timer starts
+        triggeredIntervals.removeAll()
         playSystemSound(timerStartSound.systemSoundID)
     }
     
     func playOrderAddedSound() {
         guard soundsEnabled else { return }
         playSystemSound(orderAddedSound.systemSoundID)
+    }
+    
+    func playIntervalReminderSound() {
+        guard soundsEnabled && intervalRemindersEnabled else { return }
+        // Play a distinct reminder sound (double beep)
+        playSystemSound(1052) // SIM Toolkit sound - distinct
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            AudioServicesPlaySystemSound(1052)
+        }
+    }
+    
+    // Check if timer elapsed time has hit an interval milestone
+    func checkIntervalMilestone(elapsedSeconds: TimeInterval) {
+        guard soundsEnabled && intervalRemindersEnabled else { return }
+        
+        for interval in enabledIntervals {
+            let intervalSeconds = interval.seconds
+            // Check if we just crossed this interval (within 1 second window)
+            if elapsedSeconds >= intervalSeconds && elapsedSeconds < intervalSeconds + 1 {
+                // Only trigger if not already triggered this session
+                if !triggeredIntervals.contains(interval.rawValue) {
+                    triggeredIntervals.insert(interval.rawValue)
+                    playIntervalReminderSound()
+                }
+            }
+        }
+    }
+    
+    // Reset triggered intervals (call when timer resets)
+    func resetTriggeredIntervals() {
+        triggeredIntervals.removeAll()
     }
     
     func previewTimerSound(_ sound: TimerStartSound) {
@@ -133,7 +205,9 @@ class SoundManager: ObservableObject {
             orderAddedSound: orderAddedSound,
             timerVolume: timerVolume,
             orderVolume: orderVolume,
-            soundsEnabled: soundsEnabled
+            soundsEnabled: soundsEnabled,
+            intervalRemindersEnabled: intervalRemindersEnabled,
+            enabledIntervals: Array(enabledIntervals)
         )
         if let data = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(data, forKey: settingsKey)
@@ -147,6 +221,8 @@ class SoundManager: ObservableObject {
         let timerVolume: Float
         let orderVolume: Float
         let soundsEnabled: Bool
+        let intervalRemindersEnabled: Bool?
+        let enabledIntervals: [TimerInterval]?
     }
 }
 
@@ -238,6 +314,59 @@ struct SoundSettingsView: View {
                     }
                 } footer: {
                     Text("Plays when you start the sales timer")
+                }
+                
+                // Timer Interval Reminders
+                Section {
+                    // Master toggle for interval reminders
+                    Toggle(isOn: $soundManager.intervalRemindersEnabled) {
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .foregroundColor(.purple)
+                            Text("Enable Reminders")
+                        }
+                    }
+                    
+                    if soundManager.intervalRemindersEnabled {
+                        // Interval selection
+                        ForEach(TimerInterval.allCases) { interval in
+                            Button {
+                                if soundManager.enabledIntervals.contains(interval) {
+                                    soundManager.enabledIntervals.remove(interval)
+                                } else {
+                                    soundManager.enabledIntervals.insert(interval)
+                                }
+                            } label: {
+                                HStack {
+                                    Image(systemName: soundManager.enabledIntervals.contains(interval) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(soundManager.enabledIntervals.contains(interval) ? .purple : .gray)
+                                    
+                                    Text(interval.displayName)
+                                        .foregroundColor(.primary)
+                                    
+                                    Spacer()
+                                }
+                            }
+                        }
+                        
+                        // Preview Button
+                        Button {
+                            soundManager.playIntervalReminderSound()
+                        } label: {
+                            HStack {
+                                Image(systemName: "play.circle.fill")
+                                Text("Preview Reminder Sound")
+                            }
+                            .foregroundColor(.purple)
+                        }
+                    }
+                } header: {
+                    HStack {
+                        Image(systemName: "clock.badge.checkmark")
+                        Text("Timer Interval Reminders")
+                    }
+                } footer: {
+                    Text("Beep at selected intervals to remind you how long you've been live")
                 }
                 
                 // Order Added Sound
