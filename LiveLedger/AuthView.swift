@@ -335,13 +335,13 @@ struct AuthView: View {
                                         TextField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
                                             .font(.system(size: 14))
                                             .foregroundColor(.white)
-                                            .tint(.white)
+                                            .tint(.cyan)
                                             .focused($focusedField, equals: .password)
                                     } else {
                                         SecureField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
                                             .font(.system(size: 14))
                                             .foregroundColor(.white)
-                                            .tint(.white)
+                                            .tint(.cyan)
                                             .focused($focusedField, equals: .password)
                                     }
                                     
@@ -393,13 +393,13 @@ struct AuthView: View {
                                     TextField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
-                                        .tint(.white)
+                                        .tint(.cyan)
                                         .focused($focusedField, equals: .confirmPassword)
                                 } else {
                                     SecureField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
-                                        .tint(.white)
+                                        .tint(.cyan)
                                         .focused($focusedField, equals: .confirmPassword)
                                 }
                                 
@@ -604,7 +604,7 @@ struct AuthInputField: View {
                 .foregroundColor(.white)
                 .keyboardType(keyboard)
                 .autocapitalization(.none)
-                .tint(.white)
+                .tint(.cyan)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 12)
