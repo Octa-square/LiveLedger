@@ -2182,18 +2182,18 @@ struct DisplaySettingsView: View {
                     Text("Font Size")
                 }
                 
-                // Text Weight
+                // Font Type
                 Section {
-                    Picker("Text Style", selection: $textWeight) {
-                        Text("Regular").tag("Regular")
-                        Text("Semi-Bold").tag("Semi-Bold")
-                        Text("Bold").tag("Bold")
+                    Picker("Font Type", selection: $fontType) {
+                        Text("System").tag("System")
+                        Text("Rounded").tag("Rounded")
+                        Text("Monospaced").tag("Monospaced")
                     }
                     .pickerStyle(.segmented)
                 } header: {
-                    Text("Text Style")
+                    Text("Font Type")
                 } footer: {
-                    Text("Bolder text improves readability on transparent backgrounds")
+                    Text("Choose your preferred font style")
                 }
                 
                 // Reset Button
@@ -2204,7 +2204,7 @@ struct DisplaySettingsView: View {
                             contrast = 1.0
                             bgOpacity = 0.80
                             fontSize = "Medium"
-                            textWeight = "Semi-Bold"
+                            fontType = "System"
                         }
                     } label: {
                         HStack {
