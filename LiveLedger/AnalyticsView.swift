@@ -205,7 +205,9 @@ struct AnalyticsView: View {
                 .foregroundColor(theme.textPrimary)
             
             GeometryReader { geo in
-                let chipWidth: CGFloat = (geo.size.width - 30) / 4
+                // Calculate chip width: total width minus spacing (3 gaps of 6px each)
+                let totalSpacing: CGFloat = 6 * 3 // 18px for gaps between 4 chips
+                let chipWidth: CGFloat = (geo.size.width - totalSpacing) / 4
                 
                 ScrollView(.horizontal, showsIndicators: !customPlatforms.isEmpty) {
                     HStack(spacing: 6) {
@@ -249,6 +251,7 @@ struct AnalyticsView: View {
                             }
                         }
                     }
+                    .frame(minWidth: geo.size.width) // Ensure chips fill and center
                 }
                 .scrollDisabled(customPlatforms.isEmpty)
             }

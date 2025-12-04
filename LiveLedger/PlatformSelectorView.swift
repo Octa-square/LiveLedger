@@ -38,9 +38,10 @@ struct PlatformSelectorView: View {
     
     // MARK: - Extracted Views
     private var platformHeader: some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 0) {
+            // Platform label - aligned with "All" box
             Text(localization.localized(.platform))
-                .font(.system(size: 15, weight: .bold))
+                .font(.system(size: 14, weight: .bold))
                 .foregroundColor(theme.textPrimary)
             
             Spacer()
@@ -50,19 +51,19 @@ struct PlatformSelectorView: View {
             
             Spacer()
             
-            // Add platform button
+            // Add platform button - aligned with "Facebook" box
             Button {
                 showingAddPlatform = true
             } label: {
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                     Text("Add")
                         .font(.system(size: 10, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 5)
+                .padding(.vertical, 4)
                 .background(
                     Capsule()
                         .fill(
@@ -74,6 +75,7 @@ struct PlatformSelectorView: View {
             .accessibilityLabel("Add new platform")
             .accessibilityHint("Opens form to add a custom selling platform")
         }
+        .padding(.bottom, 2) // Space before chips
     }
     
     private var sessionTimerView: some View {
@@ -158,7 +160,9 @@ struct PlatformSelectorView: View {
     
     private var platformChips: some View {
         GeometryReader { geo in
-            let chipWidth: CGFloat = (geo.size.width - 30) / 4  // 4 chips, equal size
+            // Calculate chip width: total width minus spacing (3 gaps of 6px each)
+            let totalSpacing: CGFloat = 6 * 3 // 18px for gaps between 4 chips
+            let chipWidth: CGFloat = (geo.size.width - totalSpacing) / 4
             
             ScrollView(.horizontal, showsIndicators: !customPlatforms.isEmpty) {
                 HStack(spacing: 6) {
@@ -195,6 +199,7 @@ struct PlatformSelectorView: View {
                         )
                     }
                 }
+                .frame(minWidth: geo.size.width) // Ensure chips fill and center
             }
             .scrollDisabled(customPlatforms.isEmpty)
         }
@@ -202,11 +207,12 @@ struct PlatformSelectorView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             platformHeader
             platformChips
         }
-        .padding(10)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(theme.cardBackground)
