@@ -42,12 +42,12 @@ struct OrdersListView: View {
                 if isPro {
                     // Platform Filter
                     HStack(spacing: 4) {
-                        Image(systemName: "iphone")
-                            .font(.system(size: 11))
+                        Image(systemName: "line.3.horizontal.decrease.circle")
+                            .font(.system(size: 10))
                             .foregroundColor(.blue)
                         Menu {
                             Button { viewModel.filterPlatform = nil } label: {
-                                Text("All Platforms").font(.system(size: 12))
+                                Text("All Platforms").font(.system(size: 10))
                             }
                             Divider()
                             ForEach(viewModel.platforms) { platform in
@@ -55,56 +55,60 @@ struct OrdersListView: View {
                                     viewModel.filterPlatform = platform
                                 } label: {
                                     Label(platform.name, systemImage: platform.icon)
-                                        .font(.system(size: 12))
+                                        .font(.system(size: 10))
                                 }
                             }
                         } label: {
                             HStack(spacing: 3) {
+                                Text("Platform:")
+                                    .foregroundColor(theme.textMuted)
                                 if let p = viewModel.filterPlatform {
-                                    Circle().fill(p.swiftUIColor).frame(width: 6, height: 6)
+                                    Circle().fill(p.swiftUIColor).frame(width: 5, height: 5)
                                     Text(p.name)
                                 } else {
                                     Text("All")
                                 }
-                                Image(systemName: "chevron.down").font(.system(size: 7))
+                                Image(systemName: "chevron.down").font(.system(size: 6))
                             }
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(theme.textPrimary)
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
                     .background(theme.cardBackground)
                     .cornerRadius(6)
                     
-                    // Discount Filter
+                    // Price Filter
                     HStack(spacing: 4) {
-                        Image(systemName: "dollarsign.circle.fill")
-                            .font(.system(size: 11))
+                        Image(systemName: "tag")
+                            .font(.system(size: 10))
                             .foregroundColor(.green)
                         Menu {
                             Button { viewModel.filterDiscount = .all } label: {
-                                Text("All Prices").font(.system(size: 12))
+                                Text("All Prices").font(.system(size: 10))
                             }
                             Divider()
                             Button { viewModel.filterDiscount = .withDiscount } label: {
-                                Text("Discounted").font(.system(size: 12))
+                                Text("Discounted").font(.system(size: 10))
                             }
                             Button { viewModel.filterDiscount = .withoutDiscount } label: {
-                                Text("Full Price").font(.system(size: 12))
+                                Text("Full Price").font(.system(size: 10))
                             }
                         } label: {
                             HStack(spacing: 3) {
+                                Text("Price:")
+                                    .foregroundColor(theme.textMuted)
                                 Text(viewModel.filterDiscount == .all ? "All" : 
                                      viewModel.filterDiscount == .withDiscount ? "Disc" : "Full")
-                                Image(systemName: "chevron.down").font(.system(size: 7))
+                                Image(systemName: "chevron.down").font(.system(size: 6))
                             }
-                            .font(.system(size: 11, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(theme.textPrimary)
                         }
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
                     .background(theme.cardBackground)
                     .cornerRadius(6)
                 }
