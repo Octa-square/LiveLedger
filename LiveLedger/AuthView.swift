@@ -251,42 +251,51 @@ struct AuthView: View {
                 
                 // Vertically centered content
                 VStack(spacing: 0) {
-                    Spacer()
+                    Spacer().frame(height: 8)
                     
-                    // Logo Section (Larger)
-                    VStack(spacing: 8) {
-                        LiveLedgerLogo(size: 80) // Increased from 60
+                    // Logo Section (Compact)
+                    VStack(spacing: 4) {
+                        LiveLedgerLogo(size: 70)
                         
                         Text("LiveLedger")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
-                        Text("Your Complete Live Sales Solution")
-                            .font(.system(size: 13))
+                        Text("Track Live Sales Like a Pro")
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundColor(.white.opacity(0.9))
                     }
                     
-                    Spacer().frame(height: 16)
+                    Spacer().frame(height: 10)
                     
-                    // Features (5 features in 2 rows)
-                    VStack(spacing: 8) {
-                        HStack(spacing: 20) {
-                            FeaturePill(icon: "bolt.fill", text: "Instant Orders", color: .yellow)
-                            FeaturePill(icon: "printer.fill", text: "Print Receipts", color: .cyan)
-                            FeaturePill(icon: "chart.bar.fill", text: "Analytics", color: .green)
+                    // Expanded Features Grid (10 features in 2 columns)
+                    HStack(alignment: .top, spacing: 12) {
+                        // Left Column
+                        VStack(alignment: .leading, spacing: 4) {
+                            FeatureRow(icon: "bolt.fill", text: "Real-time tracking", color: .yellow)
+                            FeatureRow(icon: "square.grid.2x2.fill", text: "Multi-platform", color: .pink)
+                            FeatureRow(icon: "timer", text: "Live session timer", color: .cyan)
+                            FeatureRow(icon: "wifi", text: "Network analyzer", color: .blue)
+                            FeatureRow(icon: "bell.badge.fill", text: "Stock alerts", color: .red)
                         }
-                        HStack(spacing: 20) {
-                            FeaturePill(icon: "square.grid.2x2.fill", text: "Multi-Platform", color: .pink)
-                            FeaturePill(icon: "square.and.arrow.up.fill", text: "Export Data", color: .orange)
+                        
+                        // Right Column
+                        VStack(alignment: .leading, spacing: 4) {
+                            FeatureRow(icon: "chart.bar.fill", text: "Analytics", color: .green)
+                            FeatureRow(icon: "printer.fill", text: "Print & export", color: .orange)
+                            FeatureRow(icon: "speaker.wave.2.fill", text: "Sound alerts", color: .purple)
+                            FeatureRow(icon: "arrow.left.arrow.right", text: "Comparisons", color: .teal)
+                            FeatureRow(icon: "photo.fill", text: "Image editing", color: .indigo)
                         }
                     }
+                    .padding(.horizontal, 8)
                     
-                    Spacer().frame(height: 16)
+                    Spacer().frame(height: 10)
                     
-                    // Sign Up Form
-                    VStack(spacing: 10) {
+                    // Sign Up Form (Compact spacing)
+                    VStack(spacing: 8) {
                         // Row 1: Name & Email
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             AuthInputField(placeholder: "Full Name", text: $name, icon: "person.fill")
                                 .focused($focusedField, equals: .name)
                             AuthInputField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboard: .emailAddress)
@@ -298,7 +307,7 @@ struct AuthView: View {
                             .focused($focusedField, equals: .phone)
                         
                         // Row 3: Password & Confirm (aligned, same size)
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             // Password field
                             ZStack(alignment: .topTrailing) {
                                 HStack(spacing: 6) {
@@ -326,10 +335,10 @@ struct AuthView: View {
                                             .foregroundColor(.white.opacity(0.7))
                                     }
                                 }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 12)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 10)
                                 .background(Color.white.opacity(0.2))
-                                .cornerRadius(10)
+                                .cornerRadius(8)
                                 .onChange(of: focusedField) { _, newValue in
                                     if newValue == .password {
                                         showPasswordTooltip = true
@@ -391,28 +400,28 @@ struct AuthView: View {
                                     }
                                 }
                             }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 12)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 10)
                             .background(Color.white.opacity(0.2))
-                            .cornerRadius(10)
+                            .cornerRadius(8)
                         }
                         
                         // Row 4: Company & Referral
-                        HStack(spacing: 8) {
+                        HStack(spacing: 6) {
                             AuthInputField(placeholder: "Company (optional)", text: $companyName, icon: "building.2.fill")
                                 .focused($focusedField, equals: .company)
                             AuthInputField(placeholder: "Referral (optional)", text: $referralCode, icon: "gift.fill")
                                 .focused($focusedField, equals: .referral)
                         }
                         
-                        // Currency Picker
+                        // Currency Picker (Compact)
                         HStack {
                             Image(systemName: "dollarsign.circle.fill")
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.8))
                             
                             Text("Currency:")
-                                .font(.system(size: 13))
+                                .font(.system(size: 12))
                                 .foregroundColor(.white.opacity(0.8))
                             
                             Picker("", selection: $selectedCurrency) {
@@ -425,51 +434,51 @@ struct AuthView: View {
                             
                             Spacer()
                         }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 10)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
                         .background(Color.white.opacity(0.2))
-                        .cornerRadius(10)
+                        .cornerRadius(8)
                         
-                        // Terms with clickable links
+                        // Terms with clickable links (Compact)
                         HStack(spacing: 4) {
                             Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 18))
+                                .font(.system(size: 16))
                                 .foregroundColor(agreedToTerms ? .green : .white.opacity(0.8))
                                 .onTapGesture { agreedToTerms.toggle() }
                             
                             Text("I agree to ")
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.9))
                             
                             Button {
-                                if let url = URL(string: "https://example.com/terms") {
+                                if let url = URL(string: "https://liveledger.app/terms") {
                                     UIApplication.shared.open(url)
                                 }
                             } label: {
                                 Text("Terms")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.white)
                                     .underline()
                             }
                             
                             Text(" & ")
-                                .font(.system(size: 12))
+                                .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.9))
                             
                             Button {
-                                if let url = URL(string: "https://example.com/privacy") {
+                                if let url = URL(string: "https://liveledger.app/privacy") {
                                     UIApplication.shared.open(url)
                                 }
                             } label: {
                                 Text("Privacy")
-                                    .font(.system(size: 12, weight: .semibold))
+                                    .font(.system(size: 11, weight: .semibold))
                                     .foregroundColor(.white)
                                     .underline()
                             }
                         }
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 4)
                         
-                        // Sign Up Button
+                        // Sign Up Button (Compact)
                         Button {
                             if isFormValid {
                                 authManager.signUp(
@@ -483,17 +492,17 @@ struct AuthView: View {
                             }
                         } label: {
                             Text("Create Free Account")
-                                .font(.system(size: 16, weight: .bold))
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
+                                .padding(.vertical, 12)
                                 .background(isFormValid ? Color.white : Color.white.opacity(0.5))
-                                .cornerRadius(12)
+                                .cornerRadius(10)
                         }
                         .disabled(!isFormValid)
                         
                         Text("First 20 orders FREE • No credit card required")
-                            .font(.system(size: 11))
+                            .font(.system(size: 10))
                             .foregroundColor(.white.opacity(0.7))
                     }
                     .padding(.horizontal, 20)
@@ -538,6 +547,26 @@ struct FeaturePill: View {
         .padding(.vertical, 5)
         .background(Color.white.opacity(0.15))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - Feature Row (For 2-column layout)
+struct FeatureRow: View {
+    let icon: String
+    let text: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundColor(color)
+                .frame(width: 14)
+            Text(text)
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(.white.opacity(0.95))
+                .lineLimit(1)
+        }
     }
 }
 

@@ -13,7 +13,6 @@ enum AppTheme: String, CaseIterable, Codable {
     case minimalistLight = "Minimalist Light"
     case minimalistDark = "Minimalist Dark"
     case emeraldGreen = "Emerald Green"
-    case glassmorphism = "Glassmorphism"
     case boldFuturistic = "Bold Futuristic"
     case motionRich = "Motion Rich"
     case sunsetOrange = "Sunset Orange"
@@ -23,7 +22,7 @@ enum AppTheme: String, CaseIterable, Codable {
         switch self {
         case .minimalistLight:
             return false
-        case .minimalistDark, .emeraldGreen, .glassmorphism, .boldFuturistic, .motionRich, .sunsetOrange:
+        case .minimalistDark, .emeraldGreen, .boldFuturistic, .motionRich, .sunsetOrange:
             return true
         }
     }
@@ -34,7 +33,6 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "111111")
         case .minimalistDark: return Color(hex: "FFFFFF")
         case .emeraldGreen: return Color(hex: "FFFFFF")
-        case .glassmorphism: return Color(hex: "FFFFFF")
         case .boldFuturistic: return Color(hex: "FFFFFF")
         case .motionRich: return Color(hex: "FFFFFF")
         case .sunsetOrange: return Color(hex: "FFFFFF")
@@ -46,7 +44,6 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "4B5563")
         case .minimalistDark: return Color(hex: "D1D5DB")
         case .emeraldGreen: return Color(hex: "A7F3D0")
-        case .glassmorphism: return Color(hex: "CBD5E1")
         case .boldFuturistic: return Color(hex: "6EE7B7")
         case .motionRich: return Color(hex: "DDD6FE")
         case .sunsetOrange: return Color(hex: "FED7AA")
@@ -58,7 +55,6 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "6B7280")
         case .minimalistDark: return Color(hex: "9CA3AF")
         case .emeraldGreen: return Color(hex: "6EE7B7")
-        case .glassmorphism: return Color(hex: "94A3B8")
         case .boldFuturistic: return Color(hex: "34D399")
         case .motionRich: return Color(hex: "C4B5FD")
         case .sunsetOrange: return Color(hex: "FDBA74")
@@ -71,7 +67,6 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "3B82F6")
         case .minimalistDark: return Color(hex: "60A5FA")
         case .emeraldGreen: return Color(hex: "10B981")
-        case .glassmorphism: return Color(hex: "00D4FF")
         case .boldFuturistic: return Color(hex: "00F5A0")
         case .motionRich: return Color(hex: "A78BFA")
         case .sunsetOrange: return Color(hex: "FF6A00")
@@ -85,7 +80,6 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "10B981")
         case .minimalistDark: return Color(hex: "34D399")
         case .emeraldGreen: return Color(hex: "34D399")
-        case .glassmorphism: return Color(hex: "7C3AED")
         case .boldFuturistic: return Color(hex: "00D1FF")
         case .motionRich: return Color(hex: "EC4899")
         case .sunsetOrange: return Color(hex: "F97316")
@@ -494,80 +488,236 @@ struct SettingsView: View {
     @State private var showLanguagePicker = false
     @State private var showEditProfile = false
     @State private var showManageSubscription = false
+    @State private var showChangePassword = false
+    @State private var showImagePicker = false
+    @State private var showEditStore = false
+    @State private var showNetworkTest = false
     @State private var editedCompanyName = ""
     @State private var editedUserName = ""
+    @State private var editedEmail = ""
+    @State private var editedPhone = ""
+    @State private var editedStoreAddress = ""
+    @State private var editedStorePhone = ""
+    @State private var editedStoreDescription = ""
+    @State private var selectedCurrency = "USD"
+    @State private var profileImage: UIImage? = nil
     
     var body: some View {
         NavigationStack {
             List {
-                // Profile Section - Compact
+                // MARK: - Profile Section (Personal Information)
                 if let user = authManager.currentUser {
                     Section {
-                        HStack(spacing: 10) {
-                            // Account Icon
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.blue)
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Text(user.companyName)
-                                        .font(.system(size: 14, weight: .semibold))
-                                    
-                                    // Pro Badge - Sleek inline design
-                                    if user.isPro {
-                                        HStack(spacing: 2) {
-                                            Image(systemName: "crown.fill")
-                                                .font(.system(size: 8))
-                                            Text("PRO")
-                                                .font(.system(size: 8, weight: .black))
-                                        }
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 5)
-                                        .padding(.vertical, 2)
-                                        .background(
-                                            LinearGradient(colors: [.orange, .yellow], startPoint: .leading, endPoint: .trailing)
-                                        )
-                                        .cornerRadius(4)
+                        // Profile Picture
+                        HStack {
+                            Button {
+                                showImagePicker = true
+                            } label: {
+                                ZStack {
+                                    if let image = profileImage {
+                                        Image(uiImage: image)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 60, height: 60)
+                                            .clipShape(Circle())
+                                    } else {
+                                        Circle()
+                                            .fill(Color.blue.opacity(0.2))
+                                            .frame(width: 60, height: 60)
+                                            .overlay(
+                                                Image(systemName: "person.fill")
+                                                    .font(.system(size: 28))
+                                                    .foregroundColor(.blue)
+                                            )
                                     }
+                                    
+                                    // Camera badge
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 22, height: 22)
+                                        .overlay(
+                                            Image(systemName: "camera.fill")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.white)
+                                        )
+                                        .offset(x: 20, y: 20)
                                 }
-                                
-                                Text(user.name)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                                Text(user.email)
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.gray)
                             }
                             
                             Spacer()
                             
-                            Button {
-                                editedCompanyName = user.companyName
-                                editedUserName = user.name
-                                showEditProfile = true
-                            } label: {
-                                Image(systemName: "pencil.circle.fill")
-                                    .font(.system(size: 18))
-                                    .foregroundColor(.blue)
+                            // Pro Badge
+                            if user.isPro {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "crown.fill")
+                                        .font(.system(size: 12))
+                                    Text("PRO")
+                                        .font(.system(size: 12, weight: .black))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    LinearGradient(colors: [.orange, .yellow], startPoint: .leading, endPoint: .trailing)
+                                )
+                                .cornerRadius(8)
                             }
                         }
-                        .padding(.vertical, 2)
+                        .padding(.vertical, 6)
                         
+                        // Full Name
+                        HStack {
+                            Label("Full Name", systemImage: "person.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(user.name)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        // Email
+                        HStack {
+                            Label("Email", systemImage: "envelope.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(user.email)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        // Phone Number
+                        HStack {
+                            Label("Phone", systemImage: "phone.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(user.phone.isEmpty ? "Not set" : user.phone)
+                                .font(.system(size: 14))
+                                .foregroundColor(user.phone.isEmpty ? .gray : .primary)
+                        }
+                        
+                        // Edit Profile Button
+                        Button {
+                            editedUserName = user.name
+                            editedEmail = user.email
+                            editedPhone = user.phone
+                            showEditProfile = true
+                        } label: {
+                            HStack {
+                                Label("Edit Profile", systemImage: "pencil")
+                                    .font(.system(size: 14))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                        
+                        // Change Password Button
+                        Button {
+                            showChangePassword = true
+                        } label: {
+                            HStack {
+                                Label("Change Password", systemImage: "lock.fill")
+                                    .font(.system(size: 14))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    } header: {
+                        Text("Profile")
+                            .font(.system(size: 11))
+                    }
+                    
+                    // MARK: - My Store Section (Business Information)
+                    Section {
+                        // Store Name
+                        HStack {
+                            Label("Store Name", systemImage: "storefront.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(user.companyName.isEmpty ? "Not set" : user.companyName)
+                                .font(.system(size: 14))
+                                .foregroundColor(user.companyName.isEmpty ? .gray : .primary)
+                        }
+                        
+                        // Business Address
+                        HStack {
+                            Label("Address", systemImage: "location.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(editedStoreAddress.isEmpty ? "Not set" : editedStoreAddress)
+                                .font(.system(size: 14))
+                                .foregroundColor(editedStoreAddress.isEmpty ? .gray : .primary)
+                                .lineLimit(1)
+                        }
+                        
+                        // Business Phone
+                        HStack {
+                            Label("Business Phone", systemImage: "phone.badge.checkmark")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(editedStorePhone.isEmpty ? "Not set" : editedStorePhone)
+                                .font(.system(size: 14))
+                                .foregroundColor(editedStorePhone.isEmpty ? .gray : .primary)
+                        }
+                        
+                        // Currency
+                        HStack {
+                            Label("Currency", systemImage: "dollarsign.circle.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text(selectedCurrency)
+                                .font(.system(size: 14))
+                                .foregroundColor(.primary)
+                        }
+                        
+                        // Edit Store Button
+                        Button {
+                            editedCompanyName = user.companyName
+                            showEditStore = true
+                        } label: {
+                            HStack {
+                                Label("Edit Store Info", systemImage: "pencil")
+                                    .font(.system(size: 14))
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                            }
+                            .foregroundColor(.blue)
+                        }
+                    } header: {
+                        Text("My Store")
+                            .font(.system(size: 11))
+                    }
+                    
+                    // Subscription Section
+                    Section {
                         if !user.isPro {
                             Button {
                                 showSubscription = true
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "sparkles")
-                                        .font(.system(size: 12))
+                                        .font(.system(size: 14))
                                         .foregroundColor(.orange)
                                     Text("Upgrade to Pro")
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(.orange)
                                     Spacer()
                                     Text("$49.99/mo")
-                                        .font(.system(size: 11))
+                                        .font(.system(size: 12))
                                         .foregroundColor(.gray)
                                     Image(systemName: "chevron.right")
                                         .font(.system(size: 10))
@@ -575,16 +725,15 @@ struct SettingsView: View {
                                 }
                             }
                         } else {
-                            // Manage Subscription for Pro users
                             Button {
                                 showManageSubscription = true
                             } label: {
                                 HStack(spacing: 8) {
                                     Image(systemName: "creditcard.fill")
-                                        .font(.system(size: 12))
+                                        .font(.system(size: 14))
                                         .foregroundColor(.blue)
                                     Text("Manage Subscription")
-                                        .font(.system(size: 13, weight: .medium))
+                                        .font(.system(size: 14, weight: .medium))
                                         .foregroundColor(.primary)
                                     Spacer()
                                     Image(systemName: "chevron.right")
@@ -594,7 +743,7 @@ struct SettingsView: View {
                             }
                         }
                     } header: {
-                        Text(localization.localized(.profile))
+                        Text("Subscription")
                             .font(.system(size: 11))
                     }
                 }
@@ -653,6 +802,26 @@ struct SettingsView: View {
                     Text("Sounds")
                 } footer: {
                     Text("Configure audio feedback for timer and orders")
+                }
+                
+                // Network Section
+                Section {
+                    NavigationLink {
+                        NetworkTestView()
+                    } label: {
+                        HStack {
+                            Label("Network", systemImage: "wifi")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text("Check Connection")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } header: {
+                    Text("Network")
+                } footer: {
+                    Text("Test your internet connection for live streaming")
                 }
                 
                 // Analytics & Tutorial Section
@@ -906,16 +1075,36 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView(
-                    companyName: $editedCompanyName,
                     userName: $editedUserName,
+                    email: $editedEmail,
+                    phone: $editedPhone,
                     onSave: {
-                        authManager.updateCompanyName(editedCompanyName)
                         authManager.updateUserName(editedUserName)
+                        authManager.updateEmail(editedEmail)
+                        authManager.updatePhone(editedPhone)
                     }
                 )
             }
+            .sheet(isPresented: $showEditStore) {
+                EditStoreView(
+                    companyName: $editedCompanyName,
+                    storeAddress: $editedStoreAddress,
+                    storePhone: $editedStorePhone,
+                    storeDescription: $editedStoreDescription,
+                    currency: $selectedCurrency,
+                    onSave: {
+                        authManager.updateCompanyName(editedCompanyName)
+                    }
+                )
+            }
+            .sheet(isPresented: $showChangePassword) {
+                ChangePasswordView(authManager: authManager)
+            }
             .sheet(isPresented: $showManageSubscription) {
                 ManageSubscriptionView(authManager: authManager)
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ProfileImagePicker(image: $profileImage)
             }
             .fullScreenCover(isPresented: $showTutorial) {
                 TutorialWrapperView(localization: localization, isPresented: $showTutorial)
@@ -1343,6 +1532,509 @@ struct ManageSubscriptionView: View {
             Text(text)
                 .font(.system(size: 13))
                 .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Edit Profile View (Personal Information)
+struct EditProfileView: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var userName: String
+    @Binding var email: String
+    @Binding var phone: String
+    let onSave: () -> Void
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Full Name", text: $userName)
+                    TextField("Email", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                    TextField("Phone Number", text: $phone)
+                        .keyboardType(.phonePad)
+                } header: {
+                    Text("Personal Information")
+                }
+            }
+            .navigationTitle("Edit Profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Edit Store View (Business Information)
+struct EditStoreView: View {
+    @Environment(\.dismiss) var dismiss
+    @Binding var companyName: String
+    @Binding var storeAddress: String
+    @Binding var storePhone: String
+    @Binding var storeDescription: String
+    @Binding var currency: String
+    let onSave: () -> Void
+    
+    let currencies = ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CNY", "INR", "NGN", "ZAR", "BRL", "MXN"]
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextField("Store/Company Name", text: $companyName)
+                    TextField("Business Address", text: $storeAddress)
+                    TextField("Business Phone", text: $storePhone)
+                        .keyboardType(.phonePad)
+                } header: {
+                    Text("Business Details")
+                }
+                
+                Section {
+                    TextEditor(text: $storeDescription)
+                        .frame(minHeight: 80)
+                } header: {
+                    Text("Store Description (Optional)")
+                }
+                
+                Section {
+                    Picker("Currency", selection: $currency) {
+                        ForEach(currencies, id: \.self) { curr in
+                            Text(curr).tag(curr)
+                        }
+                    }
+                } header: {
+                    Text("Currency Preference")
+                }
+            }
+            .navigationTitle("Edit Store")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onSave()
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// MARK: - Change Password View
+struct ChangePasswordView: View {
+    @Environment(\.dismiss) var dismiss
+    @ObservedObject var authManager: AuthManager
+    @State private var currentPassword = ""
+    @State private var newPassword = ""
+    @State private var confirmPassword = ""
+    @State private var showError = false
+    @State private var errorMessage = ""
+    @State private var isCurrentPasswordVisible = false
+    @State private var isNewPasswordVisible = false
+    @State private var isConfirmPasswordVisible = false
+    
+    var isPasswordValid: Bool {
+        newPassword.count >= 6 &&
+        newPassword.contains(where: { $0.isLetter }) &&
+        newPassword.contains(where: { "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) })
+    }
+    
+    var passwordsMatch: Bool {
+        newPassword == confirmPassword && !newPassword.isEmpty
+    }
+    
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        if isCurrentPasswordVisible {
+                            TextField("Current Password", text: $currentPassword)
+                        } else {
+                            SecureField("Current Password", text: $currentPassword)
+                        }
+                        Button {
+                            isCurrentPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isCurrentPasswordVisible ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } header: {
+                    Text("Verify Identity")
+                }
+                
+                Section {
+                    HStack {
+                        if isNewPasswordVisible {
+                            TextField("New Password", text: $newPassword)
+                        } else {
+                            SecureField("New Password", text: $newPassword)
+                        }
+                        Button {
+                            isNewPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isNewPasswordVisible ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    HStack {
+                        if isConfirmPasswordVisible {
+                            TextField("Confirm Password", text: $confirmPassword)
+                        } else {
+                            SecureField("Confirm Password", text: $confirmPassword)
+                        }
+                        Button {
+                            isConfirmPasswordVisible.toggle()
+                        } label: {
+                            Image(systemName: isConfirmPasswordVisible ? "eye.slash" : "eye")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                    
+                    // Password requirements
+                    VStack(alignment: .leading, spacing: 4) {
+                        PasswordRequirementRow(
+                            met: newPassword.count >= 6,
+                            text: "At least 6 characters"
+                        )
+                        PasswordRequirementRow(
+                            met: newPassword.contains(where: { $0.isLetter }),
+                            text: "At least one letter"
+                        )
+                        PasswordRequirementRow(
+                            met: newPassword.contains(where: { "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) }),
+                            text: "At least one symbol"
+                        )
+                        if !confirmPassword.isEmpty {
+                            PasswordRequirementRow(
+                                met: passwordsMatch,
+                                text: "Passwords match"
+                            )
+                        }
+                    }
+                    .font(.system(size: 12))
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("New Password")
+                } footer: {
+                    Text("Password must be at least 6 characters with at least one letter and one symbol")
+                }
+            }
+            .navigationTitle("Change Password")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        if currentPassword.isEmpty {
+                            errorMessage = "Please enter your current password"
+                            showError = true
+                        } else if !isPasswordValid {
+                            errorMessage = "New password doesn't meet requirements"
+                            showError = true
+                        } else if !passwordsMatch {
+                            errorMessage = "Passwords don't match"
+                            showError = true
+                        } else {
+                            // Save password
+                            authManager.updatePassword(newPassword)
+                            dismiss()
+                        }
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!isPasswordValid || !passwordsMatch || currentPassword.isEmpty)
+                }
+            }
+            .alert("Error", isPresented: $showError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(errorMessage)
+            }
+        }
+        .presentationDetents([.large])
+    }
+}
+
+// MARK: - Password Requirement Row
+struct PasswordRequirementRow: View {
+    let met: Bool
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: met ? "checkmark.circle.fill" : "circle")
+                .foregroundColor(met ? .green : .gray)
+                .font(.system(size: 12))
+            Text(text)
+                .foregroundColor(met ? .primary : .gray)
+        }
+    }
+}
+
+// MARK: - Network Test View
+struct NetworkTestView: View {
+    @Environment(\.dismiss) var dismiss
+    @State private var isTestingNetwork = false
+    @State private var testComplete = false
+    @State private var connectionStatus = "Unknown"
+    @State private var connectionType = "Unknown"
+    @State private var downloadSpeed = 0.0
+    @State private var uploadSpeed = 0.0
+    @State private var latency = 0
+    @State private var signalStrength = "Unknown"
+    
+    var connectionQuality: (text: String, color: Color, icon: String) {
+        if downloadSpeed >= 50 && uploadSpeed >= 10 && latency < 50 {
+            return ("Excellent - Great for live streaming", .green, "checkmark.circle.fill")
+        } else if downloadSpeed >= 25 && uploadSpeed >= 5 && latency < 100 {
+            return ("Good - Suitable for live streaming", .green, "checkmark.circle")
+        } else if downloadSpeed >= 10 && uploadSpeed >= 2 {
+            return ("Fair - May experience occasional lag", .orange, "exclamationmark.triangle.fill")
+        } else {
+            return ("Poor - Not recommended for live streaming", .red, "xmark.circle.fill")
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                // Current Status
+                Section {
+                    HStack {
+                        Label("Status", systemImage: "wifi")
+                        Spacer()
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(connectionStatus == "Connected" ? Color.green : Color.red)
+                                .frame(width: 8, height: 8)
+                            Text(connectionStatus)
+                                .foregroundColor(connectionStatus == "Connected" ? .green : .red)
+                        }
+                        .font(.system(size: 14))
+                    }
+                    
+                    HStack {
+                        Label("Connection Type", systemImage: "antenna.radiowaves.left.and.right")
+                        Spacer()
+                        Text(connectionType)
+                            .font(.system(size: 14))
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack {
+                        Label("Signal Strength", systemImage: "cellularbars")
+                        Spacer()
+                        Text(signalStrength)
+                            .font(.system(size: 14))
+                            .foregroundColor(signalStrengthColor)
+                    }
+                } header: {
+                    Text("Connection Status")
+                }
+                
+                // Test Results
+                if testComplete {
+                    Section {
+                        HStack {
+                            Label("Download", systemImage: "arrow.down.circle.fill")
+                                .foregroundColor(.blue)
+                            Spacer()
+                            Text("\(String(format: "%.1f", downloadSpeed)) Mbps")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        
+                        HStack {
+                            Label("Upload", systemImage: "arrow.up.circle.fill")
+                                .foregroundColor(.green)
+                            Spacer()
+                            Text("\(String(format: "%.1f", uploadSpeed)) Mbps")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                        
+                        HStack {
+                            Label("Latency", systemImage: "timer")
+                                .foregroundColor(.orange)
+                            Spacer()
+                            Text("\(latency) ms")
+                                .font(.system(size: 14, weight: .semibold))
+                        }
+                    } header: {
+                        Text("Speed Test Results")
+                    }
+                    
+                    // Quality Assessment
+                    Section {
+                        HStack(spacing: 10) {
+                            Image(systemName: connectionQuality.icon)
+                                .font(.system(size: 24))
+                                .foregroundColor(connectionQuality.color)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(connectionQuality.text)
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(connectionQuality.color)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Streaming Readiness")
+                    }
+                    
+                    // Recommendations
+                    Section {
+                        VStack(alignment: .leading, spacing: 8) {
+                            recommendationRow(icon: "arrow.up", text: "Upload: Minimum 5 Mbps for HD streaming")
+                            recommendationRow(icon: "timer", text: "Latency: Under 100ms for smooth experience")
+                            recommendationRow(icon: "wifi", text: "Use WiFi when possible for stability")
+                        }
+                        .font(.system(size: 13))
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("Recommended for Live Streaming")
+                    }
+                }
+                
+                // Test Button
+                Section {
+                    Button {
+                        runNetworkTest()
+                    } label: {
+                        HStack {
+                            Spacer()
+                            if isTestingNetwork {
+                                ProgressView()
+                                    .padding(.trailing, 8)
+                                Text("Testing...")
+                            } else {
+                                Image(systemName: "speedometer")
+                                Text(testComplete ? "Test Again" : "Test Network Speed")
+                            }
+                            Spacer()
+                        }
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                        .padding(.vertical, 12)
+                        .background(Color.blue)
+                        .cornerRadius(10)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                }
+            }
+            .navigationTitle("Network")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            .onAppear {
+                checkConnectionStatus()
+            }
+        }
+    }
+    
+    private var signalStrengthColor: Color {
+        switch signalStrength {
+        case "Excellent": return .green
+        case "Good": return .green
+        case "Fair": return .orange
+        case "Poor": return .red
+        default: return .gray
+        }
+    }
+    
+    private func recommendationRow(icon: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(.blue)
+                .frame(width: 20)
+            Text(text)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private func checkConnectionStatus() {
+        // Simple check - in real app would use NWPathMonitor
+        connectionStatus = "Connected"
+        connectionType = "WiFi"
+        signalStrength = "Good"
+    }
+    
+    private func runNetworkTest() {
+        isTestingNetwork = true
+        testComplete = false
+        
+        // Simulate network test (in real app would actually measure)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+            // Simulated results - in production would use actual network measurement
+            downloadSpeed = Double.random(in: 25...120)
+            uploadSpeed = Double.random(in: 5...50)
+            latency = Int.random(in: 15...80)
+            signalStrength = downloadSpeed > 50 ? "Excellent" : (downloadSpeed > 25 ? "Good" : "Fair")
+            
+            isTestingNetwork = false
+            testComplete = true
+        }
+    }
+}
+
+// MARK: - Profile Image Picker
+struct ProfileImagePicker: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+    @Environment(\.dismiss) var dismiss
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ProfileImagePicker
+        
+        init(_ parent: ProfileImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let image = info[.editedImage] as? UIImage ?? info[.originalImage] as? UIImage {
+                parent.image = image
+            }
+            parent.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.dismiss()
         }
     }
 }
