@@ -192,6 +192,9 @@ struct QuickAddView: View {
                             )
                             authManager.incrementOrderCount()
                             
+                            // Play order added sound
+                            SoundManager.shared.playOrderAddedSound()
+                            
                             showBuyerPopup = false
                             selectedProductForOrder = nil
                             buyerName = ""

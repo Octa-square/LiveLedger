@@ -198,7 +198,7 @@ struct LiveLedgerLogo: View {
     }
 }
 
-// MARK: - Auth View
+// MARK: - Auth View (Compact Single-Screen Design)
 struct AuthView: View {
     @ObservedObject var authManager: AuthManager
     @State private var email = ""
@@ -211,8 +211,24 @@ struct AuthView: View {
     @State private var agreedToTerms = false
     @State private var showPassword = false
     @State private var showConfirmPassword = false
-    @State private var showErrors = false
-    @State private var showPasswordRequirementsAlert = false
+    @State private var passwordFieldFocused = false
+    @State private var showPasswordTooltip = false
+    @FocusState private var focusedField: Field?
+    
+    enum Field {
+        case name, email, password, confirmPassword, company, referral
+    }
+    
+    // Password validation
+    private var isPasswordValid: Bool {
+        password.count >= 6 &&
+        password.contains(where: { $0.isLetter }) &&
+        password.contains(where: { $0.isNumber || "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) })
+    }
+    
+    private var showPasswordError: Bool {
+        !password.isEmpty && !isPasswordValid && focusedField == .confirmPassword
+    }
     
     var body: some View {
         GeometryReader { geometry in
@@ -225,196 +241,218 @@ struct AuthView: View {
                     .clipped()
                     .ignoresSafeArea()
                 
-                // Semi-transparent overlay for readability
+                // Semi-transparent overlay
                 LinearGradient(colors: [
-                    Color(red: 0.07, green: 0.5, blue: 0.46).opacity(0.6),
-                    Color(red: 0.05, green: 0.35, blue: 0.35).opacity(0.7)
+                    Color(red: 0.07, green: 0.5, blue: 0.46).opacity(0.75),
+                    Color(red: 0.05, green: 0.35, blue: 0.35).opacity(0.85)
                 ], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
                 
-                ScrollView {
-                VStack(spacing: 30) {
-                    Spacer(minLength: 50)
+                // Content - NO SCROLLING, fits on screen
+                VStack(spacing: 0) {
+                    // Top spacing
+                    Spacer().frame(height: 20)
                     
-                    // Logo
-                    VStack(spacing: 16) {
-                        LiveLedgerLogo(size: 100)
+                    // Logo Section (Compact)
+                    VStack(spacing: 6) {
+                        LiveLedgerLogo(size: 60)
                         
                         Text("LiveLedger")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
                         Text("Track sales in real-time during live streams")
-                            .font(.subheadline)
+                            .font(.system(size: 12))
                             .foregroundColor(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
                     }
                     
-                    // Features
-                    VStack(alignment: .leading, spacing: 14) {
-                        FeatureRow(icon: "bolt.fill", color: .yellow, text: "Instant tap-to-add orders")
-                        FeatureRow(icon: "printer.fill", color: .blue, text: "Print receipts & reports")
-                        FeatureRow(icon: "chart.bar.fill", color: .green, text: "Real-time analytics")
-                        FeatureRow(icon: "square.and.arrow.up", color: .purple, text: "Export to CSV")
-                    }
-                    .padding(.vertical, 10)
+                    Spacer().frame(height: 12)
                     
-                    // Sign Up Form
-                    VStack(spacing: 14) {
-                        Text("Create Your Account")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                        
-                        CustomTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
-                        CustomTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
-                        
-                        // Password field
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: "lock.fill")
-                                    .foregroundColor(.white.opacity(0.7))
-                                if showPassword {
-                                    TextField("Password (min 6 characters)", text: $password)
-                                        .foregroundColor(.white)
-                                } else {
-                                    SecureField("Password (min 6 characters)", text: $password)
-                                        .foregroundColor(.white)
-                                }
-                                Button {
-                                    showPassword.toggle()
-                                } label: {
-                                    Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
-                                        .foregroundColor(.white.opacity(0.7))
-                                }
-                            }
-                            .padding()
-                            .background(Color.white.opacity(0.15))
-                            .cornerRadius(12)
-                            
+                    // Features (Compact horizontal)
+                    HStack(spacing: 16) {
+                        CompactFeature(icon: "bolt.fill", color: .yellow, text: "Instant orders")
+                        CompactFeature(icon: "printer.fill", color: .blue, text: "Print receipts")
+                        CompactFeature(icon: "chart.bar.fill", color: .green, text: "Analytics")
+                    }
+                    .padding(.horizontal, 30)
+                    
+                    Spacer().frame(height: 16)
+                    
+                    // Sign Up Form (Compact)
+                    VStack(spacing: 8) {
+                        // Row 1: Name & Email
+                        HStack(spacing: 8) {
+                            CompactField(placeholder: "Full Name", text: $name, icon: "person.fill")
+                                .focused($focusedField, equals: .name)
+                            CompactField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboard: .emailAddress)
+                                .focused($focusedField, equals: .email)
                         }
                         
-                        // Confirm Password field
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Image(systemName: "lock.fill")
-                                    .foregroundColor(.white.opacity(0.7))
-                                if showConfirmPassword {
-                                    TextField("Confirm Password", text: $confirmPassword)
-                                        .foregroundColor(.white)
-                                        .onChange(of: confirmPassword) { _, newValue in
-                                            // Show popup if password doesn't meet requirements
-                                            if !newValue.isEmpty && !password.isEmpty {
-                                                let hasLetter = password.contains(where: { $0.isLetter })
-                                                let hasNumber = password.contains(where: { $0.isNumber })
-                                                if password.count < 6 || !hasLetter || !hasNumber {
-                                                    showPasswordRequirementsAlert = true
-                                                }
-                                            }
-                                        }
-                                } else {
-                                    SecureField("Confirm Password", text: $confirmPassword)
-                                        .foregroundColor(.white)
-                                        .onChange(of: confirmPassword) { _, newValue in
-                                            // Show popup if password doesn't meet requirements
-                                            if !newValue.isEmpty && !password.isEmpty {
-                                                let hasLetter = password.contains(where: { $0.isLetter })
-                                                let hasNumber = password.contains(where: { $0.isNumber })
-                                                if password.count < 6 || !hasLetter || !hasNumber {
-                                                    showPasswordRequirementsAlert = true
-                                                }
-                                            }
-                                        }
-                                }
-                                Button {
-                                    showConfirmPassword.toggle()
-                                } label: {
-                                    Image(systemName: showConfirmPassword ? "eye.slash.fill" : "eye.fill")
+                        // Row 2: Password & Confirm
+                        HStack(spacing: 8) {
+                            // Password field with validation
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 12))
                                         .foregroundColor(.white.opacity(0.7))
+                                    
+                                    if showPassword {
+                                        TextField("Password", text: $password)
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.white)
+                                            .tint(.white)
+                                            .focused($focusedField, equals: .password)
+                                    } else {
+                                        SecureField("Password", text: $password)
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.white)
+                                            .tint(.white)
+                                            .focused($focusedField, equals: .password)
+                                    }
+                                    
+                                    Button { showPassword.toggle() } label: {
+                                        Image(systemName: showPassword ? "eye.slash" : "eye")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
                                 }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 10)
+                                .background(showPasswordError ? Color.red.opacity(0.3) : Color.white.opacity(0.15))
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .strokeBorder(showPasswordError ? Color.red : Color.clear, lineWidth: 1.5)
+                                )
+                                
+                                Text("Min 6 chars, 1 letter, 1 number/symbol")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(showPasswordError ? .red : .white.opacity(0.5))
                             }
-                            .padding()
-                            .background(Color.white.opacity(0.15))
-                            .cornerRadius(12)
                             
-                            if showErrors && !confirmPassword.isEmpty && password != confirmPassword {
-                                Text("⚠️ Passwords do not match")
-                                    .font(.caption)
-                                    .foregroundColor(.red)
-                            } else if showErrors && !confirmPassword.isEmpty && password == confirmPassword {
-                                Text("✓ Passwords match")
-                                    .font(.caption)
-                                    .foregroundColor(.green)
+                            // Confirm Password
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.white.opacity(0.7))
+                                    
+                                    if showConfirmPassword {
+                                        TextField("Confirm", text: $confirmPassword)
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.white)
+                                            .tint(.white)
+                                            .focused($focusedField, equals: .confirmPassword)
+                                    } else {
+                                        SecureField("Confirm", text: $confirmPassword)
+                                            .font(.system(size: 13))
+                                            .foregroundColor(.white)
+                                            .tint(.white)
+                                            .focused($focusedField, equals: .confirmPassword)
+                                    }
+                                    
+                                    Button { showConfirmPassword.toggle() } label: {
+                                        Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.white.opacity(0.6))
+                                    }
+                                }
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 10)
+                                .background(Color.white.opacity(0.15))
+                                .cornerRadius(8)
+                                
+                                // Match indicator
+                                if !confirmPassword.isEmpty {
+                                    Text(password == confirmPassword ? "✓ Match" : "✗ No match")
+                                        .font(.system(size: 9))
+                                        .foregroundColor(password == confirmPassword ? .green : .red)
+                                } else {
+                                    Text(" ")
+                                        .font(.system(size: 9))
+                                }
                             }
                         }
                         
-                        CustomTextField(placeholder: "Company/Store Name (optional)", text: $companyName, icon: "building.2.fill")
-                        CustomTextField(placeholder: "Referral Code (optional)", text: $referralCode, icon: "gift.fill")
+                        // Row 3: Company & Referral
+                        HStack(spacing: 8) {
+                            CompactField(placeholder: "Company (optional)", text: $companyName, icon: "building.2.fill")
+                                .focused($focusedField, equals: .company)
+                            CompactField(placeholder: "Referral (optional)", text: $referralCode, icon: "gift.fill")
+                                .focused($focusedField, equals: .referral)
+                        }
                         
-                        // Currency Picker
+                        // Currency Picker (Compact)
                         HStack {
                             Image(systemName: "dollarsign.circle.fill")
+                                .font(.system(size: 12))
                                 .foregroundColor(.white.opacity(0.7))
                             
-                            Picker("Currency", selection: $selectedCurrency) {
+                            Text("Currency:")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.7))
+                            
+                            Picker("", selection: $selectedCurrency) {
                                 ForEach(AppUser.currencies, id: \.self) { currency in
                                     Text(currency).tag(currency)
                                 }
                             }
                             .pickerStyle(.menu)
                             .tint(.white)
+                            .scaleEffect(0.9)
                             
                             Spacer()
                         }
-                        .padding()
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
                         .background(Color.white.opacity(0.15))
-                        .cornerRadius(12)
+                        .cornerRadius(8)
                         
-                        // Terms
-                        Toggle(isOn: $agreedToTerms) {
-                            Text("I agree to the Terms of Service and Privacy Policy")
-                                .font(.caption)
+                        // Terms with clickable links
+                        HStack(spacing: 4) {
+                            Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
+                                .font(.system(size: 16))
+                                .foregroundColor(agreedToTerms ? .green : .white.opacity(0.7))
+                                .onTapGesture { agreedToTerms.toggle() }
+                            
+                            Text("I agree to ")
+                                .font(.system(size: 11))
                                 .foregroundColor(.white.opacity(0.8))
-                        }
-                        .toggleStyle(CheckboxToggleStyle())
-                        
-                        // Error Summary
-                        if showErrors && !isFormValid {
-                            VStack(alignment: .leading, spacing: 4) {
-                                if name.isEmpty {
-                                    Text("• Full name is required")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
+                            
+                            Button {
+                                // Open Terms URL
+                                if let url = URL(string: "https://example.com/terms") {
+                                    UIApplication.shared.open(url)
                                 }
-                                if email.isEmpty || !email.contains("@") {
-                                    Text("• Valid email is required")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                }
-                                if password.count < 6 {
-                                    Text("• Password must be at least 6 characters")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                }
-                                if password != confirmPassword {
-                                    Text("• Passwords must match")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                }
-                                if !agreedToTerms {
-                                    Text("• You must agree to the terms")
-                                        .font(.caption)
-                                        .foregroundColor(.orange)
-                                }
+                            } label: {
+                                Text("Terms of Service")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .underline()
                             }
-                            .padding(10)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.red.opacity(0.2))
-                            .cornerRadius(8)
+                            
+                            Text(" and ")
+                                .font(.system(size: 11))
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            Button {
+                                // Open Privacy URL
+                                if let url = URL(string: "https://example.com/privacy") {
+                                    UIApplication.shared.open(url)
+                                }
+                            } label: {
+                                Text("Privacy Policy")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .underline()
+                            }
                         }
+                        .padding(.vertical, 4)
                         
                         // Sign Up Button
                         Button {
-                            showErrors = true
                             if isFormValid {
                                 authManager.signUp(
                                     email: email,
@@ -427,48 +465,92 @@ struct AuthView: View {
                             }
                         } label: {
                             Text("Create Free Account")
-                                .font(.headline)
+                                .font(.system(size: 15, weight: .bold))
                                 .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                                 .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.white)
-                                .cornerRadius(12)
+                                .padding(.vertical, 12)
+                                .background(isFormValid ? Color.white : Color.white.opacity(0.5))
+                                .cornerRadius(10)
                         }
+                        .disabled(!isFormValid)
                         
                         Text("First 20 orders FREE • No credit card required")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 10))
+                            .foregroundColor(.white.opacity(0.6))
                     }
-                    .padding(20)
-                    .background(Color.white.opacity(0.1))
-                    .cornerRadius(20)
-                    .padding(.horizontal)
+                    .padding(.horizontal, 24)
+                    .padding(.vertical, 16)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(16)
+                    .padding(.horizontal, 20)
                     
-                    Spacer(minLength: 50)
+                    // Bottom spacing
+                    Spacer().frame(height: 20)
                 }
             }
         }
-        .alert("Password Requirements", isPresented: $showPasswordRequirementsAlert) {
-            Button("OK", role: .cancel) {
-                // Clear confirm password so user fixes the password first
-                confirmPassword = ""
-            }
-        } message: {
-            Text("Your password must have:\n• At least 6 characters\n• At least 1 letter (a-z)\n• At least 1 number (0-9)")
-        }
-        } // GeometryReader
+        .ignoresSafeArea(.keyboard)
     }
     
     var isFormValid: Bool {
         !name.isEmpty && 
         !email.isEmpty && 
         email.contains("@") &&
-        password.count >= 6 &&
+        isPasswordValid &&
         password == confirmPassword &&
         agreedToTerms
     }
 }
 
+// MARK: - Compact Feature
+struct CompactFeature: View {
+    let icon: String
+    let color: Color
+    let text: String
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(color)
+                .frame(width: 28, height: 28)
+                .background(color.opacity(0.2))
+                .cornerRadius(6)
+            
+            Text(text)
+                .font(.system(size: 10))
+                .foregroundColor(.white.opacity(0.8))
+        }
+    }
+}
+
+// MARK: - Compact Field
+struct CompactField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    var keyboard: UIKeyboardType = .default
+    
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.7))
+            TextField(placeholder, text: $text)
+                .font(.system(size: 13))
+                .foregroundColor(.white)
+                .keyboardType(keyboard)
+                .autocapitalization(.none)
+                .tint(.white)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 10)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(8)
+    }
+}
+
+// MARK: - Legacy Support
 struct FeatureRow: View {
     let icon: String
     let color: Color
@@ -505,6 +587,7 @@ struct CustomTextField: View {
                 .foregroundColor(.white)
                 .keyboardType(keyboardType)
                 .autocapitalization(.none)
+                .tint(.white)
         }
         .padding()
         .background(Color.white.opacity(0.15))

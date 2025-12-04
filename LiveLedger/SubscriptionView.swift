@@ -25,52 +25,44 @@ struct SubscriptionView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 8) {
+                VStack(spacing: 14) {
+                    // Header (Compact)
+                    VStack(spacing: 4) {
                         Image(systemName: "crown.fill")
-                            .font(.system(size: 50))
+                            .font(.system(size: 32))
                             .foregroundStyle(
                                 LinearGradient(colors: [.yellow, .orange],
                                               startPoint: .top, endPoint: .bottom)
                             )
                         
                         Text("Upgrade to Pro")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.system(size: 18, weight: .bold))
                         
                         Text("Unlock all features and grow your business")
-                            .font(.subheadline)
+                            .font(.system(size: 12))
                             .foregroundColor(.gray)
                     }
-                    .padding(.top)
+                    .padding(.top, 8)
                     
                     // Current Status (if Pro)
                     if storeKit.subscriptionStatus.isActive {
-                        CurrentSubscriptionBanner(
-                            expirationDate: storeKit.expirationDateString
-                        )
-                        .padding(.horizontal)
+                        CompactSubscriptionBanner(expirationDate: storeKit.expirationDateString)
+                            .padding(.horizontal, 16)
                     }
                     
-                    // Plan Cards
-                    VStack(spacing: 16) {
+                    // Plan Cards (Compact)
+                    VStack(spacing: 10) {
                         // Basic Plan
-                        PlanCard(
+                        CompactPlanCard(
                             title: "Basic",
                             price: "Free",
                             period: "forever",
                             features: [
-                                ("checkmark", "First 20 orders free", true),
-                                ("checkmark", "Choose your currency", true),
+                                ("checkmark", "20 free orders", true),
                                 ("checkmark", "Inventory management", true),
-                                ("checkmark", "Basic reports", true),
                                 ("checkmark", "10 CSV exports", true),
                                 ("xmark", "Order filters", false),
-                                ("xmark", "Product images", false),
-                                ("xmark", "Barcode scanning", false),
-                                ("xmark", "Unlimited orders", false),
-                                ("xmark", "Unlimited exports", false),
-                                ("xmark", "Priority support", false)
+                                ("xmark", "Unlimited orders", false)
                             ],
                             isSelected: selectedPlan == .basic,
                             isPro: false
@@ -79,21 +71,16 @@ struct SubscriptionView: View {
                         }
                         
                         // Pro Plan
-                        PlanCard(
+                        CompactPlanCard(
                             title: "Pro",
                             price: storeKit.proMonthlyProduct?.displayPrice ?? "$49.99",
-                            period: "/month",
+                            period: "/mo",
                             features: [
                                 ("checkmark", "Unlimited orders", true),
-                                ("checkmark", "Order filters (platform & price)", true),
-                                ("checkmark", "Choose your currency", true),
-                                ("checkmark", "Advanced inventory", true),
-                                ("checkmark", "Advanced analytics", true),
-                                ("checkmark", "Unlimited CSV exports", true),
+                                ("checkmark", "Order filters", true),
+                                ("checkmark", "Unlimited exports", true),
                                 ("checkmark", "Product images", true),
-                                ("checkmark", "Barcode scanning", true),
-                                ("checkmark", "Multi-platform insights", true),
-                                ("checkmark", "Priority support", true)
+                                ("checkmark", "Barcode scanning", true)
                             ],
                             isSelected: selectedPlan == .pro,
                             isPro: true
@@ -101,72 +88,64 @@ struct SubscriptionView: View {
                             selectedPlan = .pro
                         }
                     }
-                    .padding(.horizontal)
+                    .padding(.horizontal, 16)
                     
                     // Subscribe Button
                     if selectedPlan == .pro && !storeKit.subscriptionStatus.isActive {
-                        VStack(spacing: 12) {
+                        VStack(spacing: 8) {
                             Button {
                                 Task {
                                     await purchaseProSubscription()
                                 }
                             } label: {
-                                HStack {
+                                HStack(spacing: 6) {
                                     if isPurchasing {
                                         ProgressView()
                                             .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                                            .scaleEffect(0.8)
                                     } else {
                                         Image(systemName: "crown.fill")
-                                        Text("Subscribe to Pro - \(storeKit.proMonthlyProduct?.displayPrice ?? "$49.99")/mo")
-                                            .fontWeight(.bold)
+                                            .font(.system(size: 12))
+                                        Text("Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$49.99")/mo")
+                                            .font(.system(size: 13, weight: .bold))
                                     }
                                 }
                                 .foregroundColor(.black)
                                 .frame(maxWidth: .infinity)
-                                .padding()
+                                .padding(.vertical, 10)
                                 .background(
                                     LinearGradient(colors: [.yellow, .orange],
                                                   startPoint: .leading, endPoint: .trailing)
                                 )
-                                .cornerRadius(12)
+                                .cornerRadius(8)
                             }
                             .disabled(isPurchasing || storeKit.proMonthlyProduct == nil)
                             
-                            // Show if product not loaded
                             if storeKit.proMonthlyProduct == nil {
-                                VStack(spacing: 8) {
-                                    Text("⚠️ Products not loaded")
-                                        .font(.caption)
+                                Button {
+                                    Task { await storeKit.loadProducts() }
+                                } label: {
+                                    Text("⚠️ Tap to load products")
+                                        .font(.system(size: 10))
                                         .foregroundColor(.orange)
-                                    
-                                    Button {
-                                        Task {
-                                            await storeKit.loadProducts()
-                                        }
-                                    } label: {
-                                        Text("Tap to Retry")
-                                            .font(.caption)
-                                            .foregroundColor(.blue)
-                                    }
                                 }
-                            } else {
-                                Text("Cancel anytime in Settings")
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
                             }
                             
-                            // Restore Purchases
-                            Button {
-                                Task {
-                                    await storeKit.restorePurchases()
+                            HStack(spacing: 16) {
+                                Text("Cancel anytime")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
+                                
+                                Button {
+                                    Task { await storeKit.restorePurchases() }
+                                } label: {
+                                    Text("Restore Purchases")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.blue)
                                 }
-                            } label: {
-                                Text("Restore Purchases")
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
                             }
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 16)
                     }
                     
                     // Already Pro - Manage Subscription
@@ -174,66 +153,62 @@ struct SubscriptionView: View {
                         Button {
                             openSubscriptionManagement()
                         } label: {
-                            HStack {
+                            HStack(spacing: 6) {
                                 Image(systemName: "gear")
+                                    .font(.system(size: 12))
                                 Text("Manage Subscription")
+                                    .font(.system(size: 12))
                             }
                             .foregroundColor(.blue)
-                            .padding()
+                            .padding(.vertical, 8)
                             .frame(maxWidth: .infinity)
                             .background(Color.blue.opacity(0.1))
-                            .cornerRadius(12)
+                            .cornerRadius(8)
                         }
-                        .padding(.horizontal)
+                        .padding(.horizontal, 16)
                     }
                     
-                    // Why Pro Section
-                    VStack(alignment: .leading, spacing: 16) {
+                    // Why Pro Section (Compact)
+                    VStack(alignment: .leading, spacing: 10) {
                         Text("Why Go Pro?")
-                            .font(.headline)
+                            .font(.system(size: 14, weight: .bold))
                         
-                        WhyProRow(icon: "infinity", color: .blue,
-                                 title: "Unlimited Everything",
-                                 subtitle: "No limits on orders or exports. Scale your business freely.")
+                        CompactWhyProRow(icon: "infinity", color: .blue,
+                                        title: "Unlimited Everything",
+                                        subtitle: "No limits on orders or exports")
                         
-                        WhyProRow(icon: "photo.stack", color: .purple,
-                                 title: "Product Images",
-                                 subtitle: "Add photos to products for easy identification during live sales.")
+                        CompactWhyProRow(icon: "photo.stack", color: .purple,
+                                        title: "Product Images",
+                                        subtitle: "Add photos for easy identification")
                         
-                        WhyProRow(icon: "barcode", color: .green,
-                                 title: "Barcode Support",
-                                 subtitle: "Scan barcodes to quickly find and add products.")
+                        CompactWhyProRow(icon: "barcode", color: .green,
+                                        title: "Barcode Support",
+                                        subtitle: "Scan barcodes to find products")
                         
-                        WhyProRow(icon: "line.3.horizontal.decrease.circle", color: .orange,
-                                 title: "Order Filters",
-                                 subtitle: "Filter orders by platform and discount status for better insights.")
-                        
-                        WhyProRow(icon: "chart.line.uptrend.xyaxis", color: .pink,
-                                 title: "Advanced Analytics",
-                                 subtitle: "Deep insights into sales trends, top products, and more.")
+                        CompactWhyProRow(icon: "line.3.horizontal.decrease.circle", color: .orange,
+                                        title: "Order Filters",
+                                        subtitle: "Filter by platform and status")
                     }
-                    .padding()
+                    .padding(12)
                     .background(Color(.systemGray6))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
+                    .cornerRadius(10)
+                    .padding(.horizontal, 16)
                     
-                    // Terms
-                    VStack(spacing: 8) {
-                        Text("Subscription automatically renews monthly unless cancelled at least 24 hours before the end of the current period. Manage your subscription in iOS Settings.")
-                            .font(.caption2)
+                    // Terms (Compact)
+                    VStack(spacing: 4) {
+                        Text("Subscription renews monthly. Manage in iOS Settings.")
+                            .font(.system(size: 9))
                             .foregroundColor(.gray)
                             .multilineTextAlignment(.center)
                         
-                        HStack(spacing: 16) {
-                            Link("Terms of Service", destination: URL(string: "https://octasquare.com/liveledger/terms")!)
-                                .font(.caption2)
-                            Link("Privacy Policy", destination: URL(string: "https://octasquare.com/liveledger/privacy")!)
-                                .font(.caption2)
+                        HStack(spacing: 12) {
+                            Link("Terms", destination: URL(string: "https://octasquare.com/liveledger/terms")!)
+                                .font(.system(size: 9))
+                            Link("Privacy", destination: URL(string: "https://octasquare.com/liveledger/privacy")!)
+                                .font(.system(size: 9))
                         }
                     }
-                    .padding()
-                    
-                    Spacer(minLength: 30)
+                    .padding(.vertical, 8)
                 }
             }
             .navigationTitle("Plans")
@@ -241,6 +216,7 @@ struct SubscriptionView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { dismiss() }
+                        .font(.system(size: 14))
                 }
             }
             .alert("Purchase Error", isPresented: $showError) {
@@ -251,7 +227,7 @@ struct SubscriptionView: View {
             .alert("Welcome to Pro! 🎉", isPresented: $showSuccess) {
                 Button("OK") { dismiss() }
             } message: {
-                Text("Your Pro subscription is now active. Enjoy unlimited orders and all premium features!")
+                Text("Your Pro subscription is now active!")
             }
         }
     }
@@ -259,7 +235,7 @@ struct SubscriptionView: View {
     // MARK: - Purchase Function
     private func purchaseProSubscription() async {
         guard let product = storeKit.proMonthlyProduct else {
-            errorMessage = "Product not available. Please try again later."
+            errorMessage = "Product not available. Please try again."
             showError = true
             return
         }
@@ -269,18 +245,16 @@ struct SubscriptionView: View {
         
         do {
             try await storeKit.purchase(product)
-            // Update auth manager
             authManager.upgradeToPro()
             showSuccess = true
         } catch PurchaseError.purchaseCancelled {
-            // User cancelled, no error message needed
+            // User cancelled
         } catch {
             errorMessage = error.localizedDescription
             showError = true
         }
     }
     
-    // MARK: - Open Subscription Management
     private func openSubscriptionManagement() {
         if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
             UIApplication.shared.open(url)
@@ -288,22 +262,23 @@ struct SubscriptionView: View {
     }
 }
 
-// MARK: - Current Subscription Banner
-struct CurrentSubscriptionBanner: View {
+// MARK: - Compact Subscription Banner
+struct CompactSubscriptionBanner: View {
     let expirationDate: String?
     
     var body: some View {
-        HStack {
+        HStack(spacing: 8) {
             Image(systemName: "crown.fill")
+                .font(.system(size: 14))
                 .foregroundColor(.yellow)
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text("Pro Active")
-                    .font(.headline)
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundColor(.green)
                 if let date = expirationDate {
                     Text("Renews \(date)")
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .foregroundColor(.gray)
                 }
             }
@@ -311,20 +286,17 @@ struct CurrentSubscriptionBanner: View {
             Spacer()
             
             Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 16))
                 .foregroundColor(.green)
-                .font(.title2)
         }
-        .padding()
+        .padding(10)
         .background(Color.green.opacity(0.1))
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.green.opacity(0.3), lineWidth: 1)
-        )
+        .cornerRadius(8)
     }
 }
 
-struct PlanCard: View {
+// MARK: - Compact Plan Card
+struct CompactPlanCard: View {
     let title: String
     let price: String
     let period: String
@@ -334,67 +306,70 @@ struct PlanCard: View {
     let onSelect: () -> Void
     
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 8) {
             // Header
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
                         Text(title)
-                            .font(.title2.bold())
+                            .font(.system(size: 15, weight: .bold))
                         
                         if isPro {
                             Text("POPULAR")
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.black)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
                                 .background(Color.yellow)
-                                .cornerRadius(4)
+                                .cornerRadius(3)
                         }
                     }
                     
-                    HStack(alignment: .bottom, spacing: 2) {
+                    HStack(alignment: .bottom, spacing: 1) {
                         Text(price)
-                            .font(.system(size: 32, weight: .bold))
+                            .font(.system(size: 20, weight: .bold))
                             .foregroundColor(isPro ? .orange : .primary)
                         Text(period)
-                            .font(.subheadline)
+                            .font(.system(size: 11))
                             .foregroundColor(.gray)
-                            .padding(.bottom, 4)
+                            .padding(.bottom, 2)
                     }
                 }
                 
                 Spacer()
                 
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.title2)
+                    .font(.system(size: 18))
                     .foregroundColor(isSelected ? (isPro ? .orange : .blue) : .gray)
             }
             
             Divider()
             
-            // Features
-            VStack(alignment: .leading, spacing: 10) {
+            // Features (Compact Grid)
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 4) {
                 ForEach(features, id: \.text) { feature in
-                    HStack(spacing: 10) {
+                    HStack(spacing: 4) {
                         Image(systemName: feature.icon)
-                            .font(.system(size: 12))
-                            .foregroundColor(feature.included ? .green : .gray.opacity(0.5))
-                            .frame(width: 16)
+                            .font(.system(size: 9))
+                            .foregroundColor(feature.included ? .green : .gray.opacity(0.4))
+                            .frame(width: 12)
                         
                         Text(feature.text)
-                            .font(.subheadline)
-                            .foregroundColor(feature.included ? .primary : .gray.opacity(0.5))
+                            .font(.system(size: 10))
+                            .foregroundColor(feature.included ? .primary : .gray.opacity(0.4))
+                            .lineLimit(1)
+                        
+                        Spacer()
                     }
                 }
             }
         }
-        .padding()
+        .padding(10)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color(.systemBackground))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 10)
                         .strokeBorder(isSelected ? (isPro ? Color.orange : Color.blue) : Color.gray.opacity(0.3),
                                      lineWidth: isSelected ? 2 : 1)
                 )
@@ -403,28 +378,31 @@ struct PlanCard: View {
     }
 }
 
-struct WhyProRow: View {
+// MARK: - Compact Why Pro Row
+struct CompactWhyProRow: View {
     let icon: String
     let color: Color
     let title: String
     let subtitle: String
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(spacing: 8) {
             Image(systemName: icon)
-                .font(.system(size: 20))
+                .font(.system(size: 12))
                 .foregroundColor(color)
-                .frame(width: 40, height: 40)
+                .frame(width: 26, height: 26)
                 .background(color.opacity(0.15))
-                .cornerRadius(10)
+                .cornerRadius(6)
             
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(title)
-                    .font(.subheadline.bold())
+                    .font(.system(size: 11, weight: .semibold))
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.system(size: 9))
                     .foregroundColor(.gray)
             }
+            
+            Spacer()
         }
     }
 }

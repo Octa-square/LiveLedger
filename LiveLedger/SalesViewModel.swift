@@ -454,6 +454,11 @@ class SalesViewModel: ObservableObject {
         lastTimerUpdateDate = Date()
         startTimerLoop()
         saveTimerState()
+        
+        // Play timer start sound
+        Task { @MainActor in
+            SoundManager.shared.playTimerStartSound()
+        }
     }
     
     /// Manually pause the timer

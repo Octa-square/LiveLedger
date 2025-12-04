@@ -576,6 +576,26 @@ struct SettingsView: View {
                     Text(localization.localized(.language))
                 }
                 
+                // Sound Settings Section
+                Section {
+                    NavigationLink {
+                        SoundSettingsView(soundManager: SoundManager.shared)
+                    } label: {
+                        HStack {
+                            Label("Sound Settings", systemImage: "speaker.wave.2.fill")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text(SoundManager.shared.soundsEnabled ? "On" : "Off")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } header: {
+                    Text("Sounds")
+                } footer: {
+                    Text("Configure audio feedback for timer and orders")
+                }
+                
                 // Analytics & Tutorial Section
                 Section {
                     NavigationLink {

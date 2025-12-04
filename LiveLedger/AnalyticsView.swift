@@ -57,7 +57,7 @@ struct AnalyticsView: View {
     
     // MARK: - Computed Stats
     private var totalRevenue: Double {
-        filteredOrders.reduce(0) { $0 + ($1.price * Double($1.quantity)) }
+        filteredOrders.reduce(0.0) { $0 + ($1.pricePerUnit * Double($1.quantity)) }
     }
     
     private var totalOrders: Int {
@@ -79,11 +79,11 @@ struct AnalyticsView: View {
         for order in filteredOrders {
             let platformId = order.platform.id
             if var existing = breakdown[platformId] {
-                existing.revenue += order.price * Double(order.quantity)
+                existing.revenue += order.pricePerUnit * Double(order.quantity)
                 existing.orders += 1
                 breakdown[platformId] = existing
             } else {
-                breakdown[platformId] = (order.platform, order.price * Double(order.quantity), 1)
+                breakdown[platformId] = (order.platform, order.pricePerUnit * Double(order.quantity), 1)
             }
         }
         
@@ -98,10 +98,10 @@ struct AnalyticsView: View {
             let name = order.productName
             if var existing = products[name] {
                 existing.quantity += order.quantity
-                existing.revenue += order.price * Double(order.quantity)
+                existing.revenue += order.pricePerUnit * Double(order.quantity)
                 products[name] = existing
             } else {
-                products[name] = (order.quantity, order.price * Double(order.quantity))
+                products[name] = (order.quantity, order.pricePerUnit * Double(order.quantity))
             }
         }
         
@@ -475,7 +475,7 @@ struct AnalyticsView: View {
         
         for order in filteredOrders {
             let day = calendar.startOfDay(for: order.timestamp)
-            dailySales[day, default: 0] += order.price * Double(order.quantity)
+            dailySales[day, default: 0] += order.pricePerUnit * Double(order.quantity)
         }
         
         return dailySales.map { (date: $0.key, revenue: $0.value) }
