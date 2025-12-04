@@ -670,7 +670,7 @@ struct StatBox: View {
 
 // MARK: - Pie Chart View
 struct PieChartView: View {
-    let data: [(platform: Platform, revenue: Double)]
+    let data: [(platform: Platform, revenue: Double, orders: Int)]
     @Binding var hoveredSlice: UUID?
     let theme: AppTheme
     
@@ -738,7 +738,7 @@ struct PieChartView: View {
         }
     }
     
-    private func angle(for index: Int, in data: [(platform: Platform, revenue: Double)]) -> Double {
+    private func angle(for index: Int, in data: [(platform: Platform, revenue: Double, orders: Int)]) -> Double {
         guard total > 0 else { return -90 }
         
         var currentAngle: Double = -90 // Start from top
