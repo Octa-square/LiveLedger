@@ -8,7 +8,7 @@
 import SwiftUI
 import Combine
 
-// MARK: - Supported Languages
+// MARK: - Supported Languages (20+)
 enum AppLanguage: String, CaseIterable, Codable {
     case english = "en"
     case french = "fr"
@@ -23,6 +23,17 @@ enum AppLanguage: String, CaseIterable, Codable {
     case hindi = "hi"
     case russian = "ru"
     case dutch = "nl"
+    case polish = "pl"
+    case turkish = "tr"
+    case vietnamese = "vi"
+    case thai = "th"
+    case indonesian = "id"
+    case malay = "ms"
+    case swedish = "sv"
+    case danish = "da"
+    case greek = "el"
+    case hebrew = "he"
+    case czech = "cs"
     
     var displayName: String {
         switch self {
@@ -39,6 +50,17 @@ enum AppLanguage: String, CaseIterable, Codable {
         case .hindi: return "हिन्दी"
         case .russian: return "Русский"
         case .dutch: return "Nederlands"
+        case .polish: return "Polski"
+        case .turkish: return "Türkçe"
+        case .vietnamese: return "Tiếng Việt"
+        case .thai: return "ภาษาไทย"
+        case .indonesian: return "Bahasa Indonesia"
+        case .malay: return "Bahasa Melayu"
+        case .swedish: return "Svenska"
+        case .danish: return "Dansk"
+        case .greek: return "Ελληνικά"
+        case .hebrew: return "עברית"
+        case .czech: return "Čeština"
         }
     }
     
@@ -57,6 +79,17 @@ enum AppLanguage: String, CaseIterable, Codable {
         case .hindi: return "🇮🇳"
         case .russian: return "🇷🇺"
         case .dutch: return "🇳🇱"
+        case .polish: return "🇵🇱"
+        case .turkish: return "🇹🇷"
+        case .vietnamese: return "🇻🇳"
+        case .thai: return "🇹🇭"
+        case .indonesian: return "🇮🇩"
+        case .malay: return "🇲🇾"
+        case .swedish: return "🇸🇪"
+        case .danish: return "🇩🇰"
+        case .greek: return "🇬🇷"
+        case .hebrew: return "🇮🇱"
+        case .czech: return "🇨🇿"
         }
     }
 }

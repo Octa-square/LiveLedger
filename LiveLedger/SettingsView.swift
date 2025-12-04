@@ -438,42 +438,51 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showLanguagePicker = false
     @State private var showEditProfile = false
+    @State private var showManageSubscription = false
     @State private var editedCompanyName = ""
     @State private var editedUserName = ""
     
     var body: some View {
         NavigationStack {
             List {
-                // Profile Section
+                // Profile Section - Compact
                 if let user = authManager.currentUser {
                     Section {
-                        HStack(spacing: 12) {
+                        HStack(spacing: 10) {
                             // Account Icon
                             Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
+                                .font(.system(size: 32))
                                 .foregroundColor(.blue)
                             
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(user.companyName)
-                                    .font(.headline)
-                                Text(user.name)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text(user.email)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                
-                                HStack(spacing: 4) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                HStack(spacing: 6) {
+                                    Text(user.companyName)
+                                        .font(.system(size: 14, weight: .semibold))
+                                    
+                                    // Pro Badge - Sleek inline design
                                     if user.isPro {
-                                        Label("PRO", systemImage: "crown.fill")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.orange)
-                                    } else {
-                                        Text("Free Plan")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.gray)
+                                        HStack(spacing: 2) {
+                                            Image(systemName: "crown.fill")
+                                                .font(.system(size: 8))
+                                            Text("PRO")
+                                                .font(.system(size: 8, weight: .black))
+                                        }
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 5)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            LinearGradient(colors: [.orange, .yellow], startPoint: .leading, endPoint: .trailing)
+                                        )
+                                        .cornerRadius(4)
                                     }
                                 }
+                                
+                                Text(user.name)
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondary)
+                                Text(user.email)
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
                             }
                             
                             Spacer()
@@ -484,34 +493,58 @@ struct SettingsView: View {
                                 showEditProfile = true
                             } label: {
                                 Image(systemName: "pencil.circle.fill")
-                                    .font(.system(size: 22))
+                                    .font(.system(size: 18))
                                     .foregroundColor(.blue)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 2)
                         
                         if !user.isPro {
                             Button {
                                 showSubscription = true
                             } label: {
-                                HStack {
-                                    Image(systemName: "crown.fill")
+                                HStack(spacing: 8) {
+                                    Image(systemName: "sparkles")
+                                        .font(.system(size: 12))
                                         .foregroundColor(.orange)
                                     Text("Upgrade to Pro")
+                                        .font(.system(size: 13, weight: .medium))
                                         .foregroundColor(.orange)
                                     Spacer()
                                     Text("$49.99/mo")
-                                        .font(.caption)
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.gray)
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.gray)
+                                }
+                            }
+                        } else {
+                            // Manage Subscription for Pro users
+                            Button {
+                                showManageSubscription = true
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: "creditcard.fill")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.blue)
+                                    Text("Manage Subscription")
+                                        .font(.system(size: 13, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 10))
                                         .foregroundColor(.gray)
                                 }
                             }
                         }
                     } header: {
                         Text(localization.localized(.profile))
+                            .font(.system(size: 11))
                     }
                 }
                 
-                // Themes Section
+                // Themes Section - Compact with Visual Previews
                 Section {
                     ForEach(AppTheme.allCases, id: \.self) { theme in
                         Button {
@@ -519,44 +552,51 @@ struct SettingsView: View {
                                 themeManager.currentTheme = theme
                             }
                         } label: {
-                            HStack(spacing: 12) {
-                                // Theme color preview
+                            HStack(spacing: 10) {
+                                // Visual Theme Preview - Shows actual theme appearance
                                 ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(colors: [theme.primaryColor, theme.secondaryColor],
-                                                          startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        )
-                                        .frame(width: 36, height: 36)
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(theme.backgroundColor)
+                                        .frame(width: 32, height: 32)
                                     
-                                    Image(systemName: theme.icon)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white)
+                                    // Mini preview of theme elements
+                                    VStack(spacing: 2) {
+                                        RoundedRectangle(cornerRadius: 2)
+                                            .fill(theme.primaryColor)
+                                            .frame(width: 16, height: 4)
+                                        HStack(spacing: 2) {
+                                            Circle().fill(theme.successColor).frame(width: 4, height: 4)
+                                            Circle().fill(theme.warningColor).frame(width: 4, height: 4)
+                                            Circle().fill(theme.accentColor).frame(width: 4, height: 4)
+                                        }
+                                        RoundedRectangle(cornerRadius: 1)
+                                            .fill(theme.cardBackground)
+                                            .frame(width: 14, height: 6)
+                                    }
                                 }
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .stroke(theme.primaryColor.opacity(0.5), lineWidth: 1)
+                                )
                                 
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(theme.rawValue)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(.primary)
-                                    
-                                    Text(themeDescription(theme))
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.gray)
-                                }
+                                Text(theme.rawValue)
+                                    .font(.system(size: 13, weight: .medium))
+                                    .foregroundColor(.primary)
                                 
                                 Spacer()
                                 
                                 if themeManager.currentTheme == theme {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(theme.primaryColor)
-                                        .font(.system(size: 20))
+                                        .font(.system(size: 16))
                                 }
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, 1)
                         }
                     }
                 } header: {
                     Text(localization.localized(.themes))
+                        .font(.system(size: 11))
                 }
                 
                 // Language Section
@@ -781,6 +821,9 @@ struct SettingsView: View {
                     }
                 )
             }
+            .sheet(isPresented: $showManageSubscription) {
+                ManageSubscriptionView(authManager: authManager)
+            }
             .fullScreenCover(isPresented: $showTutorial) {
                 TutorialWrapperView(localization: localization, isPresented: $showTutorial)
             }
@@ -905,40 +948,61 @@ struct TutorialWrapperView: View {
     }
 }
 
-// MARK: - Language Picker View
+// MARK: - Language Picker View - Compact Grid
 struct LanguagePickerView: View {
     @ObservedObject var localization: LocalizationManager
     @Environment(\.dismiss) var dismiss
     
+    // Create 2-column grid for compact display
+    let columns = [
+        GridItem(.flexible(), spacing: 8),
+        GridItem(.flexible(), spacing: 8)
+    ]
+    
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(AppLanguage.allCases, id: \.self) { language in
-                    Button {
-                        withAnimation {
-                            localization.currentLanguage = language
-                        }
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Text(language.flag)
-                                .font(.system(size: 28))
-                            
-                            Text(language.displayName)
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundColor(.primary)
-                            
-                            Spacer()
-                            
-                            if localization.currentLanguage == language {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .foregroundColor(.green)
-                                    .font(.system(size: 20))
+            ScrollView {
+                LazyVGrid(columns: columns, spacing: 8) {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Button {
+                            withAnimation {
+                                localization.currentLanguage = language
                             }
+                            dismiss()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text(language.flag)
+                                    .font(.system(size: 18))
+                                
+                                Text(language.displayName)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                if localization.currentLanguage == language {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                        .font(.system(size: 14))
+                                }
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 8)
+                            .background(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(localization.currentLanguage == language ? 
+                                          Color.green.opacity(0.1) : Color(.systemGray6))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(localization.currentLanguage == language ? 
+                                            Color.green.opacity(0.5) : Color.clear, lineWidth: 1)
+                            )
                         }
-                        .padding(.vertical, 4)
                     }
                 }
+                .padding()
             }
             .navigationTitle("Select Language")
             .navigationBarTitleDisplayMode(.inline)
@@ -997,6 +1061,147 @@ struct EditProfileView: View {
             }
         }
         .presentationDetents([.medium])
+    }
+}
+
+// MARK: - Manage Subscription View
+struct ManageSubscriptionView: View {
+    @ObservedObject var authManager: AuthManager
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var showCancelConfirm = false
+    @State private var showRetentionOffer = false
+    @State private var showFinalCancel = false
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                // Current Plan Section
+                Section {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "crown.fill")
+                                    .foregroundColor(.orange)
+                                Text("Pro Plan")
+                                    .font(.system(size: 16, weight: .bold))
+                            }
+                            Text("$49.99/month")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                        }
+                        Spacer()
+                        Text("Active")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 4)
+                            .background(Color.green)
+                            .cornerRadius(10)
+                    }
+                } header: {
+                    Text("Current Plan")
+                }
+                
+                // Plan Benefits
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        benefitRow(icon: "infinity", text: "Unlimited orders")
+                        benefitRow(icon: "photo.fill", text: "Product images")
+                        benefitRow(icon: "barcode", text: "Barcode scanning")
+                        benefitRow(icon: "chart.bar.fill", text: "Advanced analytics")
+                        benefitRow(icon: "printer.fill", text: "Receipt printing")
+                        benefitRow(icon: "square.and.arrow.up", text: "Export to Excel")
+                    }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text("Your Benefits")
+                }
+                
+                // Billing History (placeholder)
+                Section {
+                    HStack {
+                        Text("Next billing date")
+                            .font(.system(size: 14))
+                        Spacer()
+                        Text(nextBillingDate)
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                    }
+                } header: {
+                    Text("Billing")
+                }
+                
+                // Cancel Section
+                Section {
+                    Button {
+                        showRetentionOffer = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                                .foregroundColor(.red)
+                            Text("Cancel Subscription")
+                                .foregroundColor(.red)
+                        }
+                        .font(.system(size: 14))
+                    }
+                } footer: {
+                    Text("You'll keep Pro access until the end of your billing period")
+                }
+            }
+            .navigationTitle("Manage Subscription")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+            // Retention offer - $5 off
+            .alert("Wait! We have an offer for you", isPresented: $showRetentionOffer) {
+                Button("Accept $5 Off") {
+                    // Apply discount and keep subscription
+                    dismiss()
+                }
+                Button("Still Cancel", role: .destructive) {
+                    showFinalCancel = true
+                }
+                Button("Keep My Plan", role: .cancel) {}
+            } message: {
+                Text("Stay with us and get $5 off your next month! Your new price will be $44.99/month.")
+            }
+            // Final cancellation confirmation
+            .alert("Are you sure?", isPresented: $showFinalCancel) {
+                Button("Yes, Cancel", role: .destructive) {
+                    // Cancel subscription
+                    authManager.downgradeToFree()
+                    dismiss()
+                }
+                Button("Keep Pro", role: .cancel) {}
+            } message: {
+                Text("You'll lose access to all Pro features at the end of your billing period. You can always re-subscribe later.")
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+    
+    private var nextBillingDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        // Calculate 30 days from now as placeholder
+        let nextDate = Calendar.current.date(byAdding: .day, value: 30, to: Date()) ?? Date()
+        return formatter.string(from: nextDate)
+    }
+    
+    private func benefitRow(icon: String, text: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(.orange)
+                .frame(width: 20)
+            Text(text)
+                .font(.system(size: 13))
+                .foregroundColor(.primary)
+        }
     }
 }
 

@@ -136,10 +136,11 @@ struct OrdersListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - native scroll with visible indicators
-                ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 4) {
-                        ForEach(viewModel.filteredOrders) { order in
+                // Orders list - always visible scroll indicator
+                ZStack(alignment: .trailing) {
+                    ScrollView(.vertical, showsIndicators: true) {
+                        LazyVStack(spacing: 2) {
+                            ForEach(viewModel.filteredOrders) { order in
                             MiniOrderRow(
                                 order: order,
                                 theme: theme,
@@ -162,8 +163,32 @@ struct OrdersListView: View {
                             )
                         }
                     }
+                    }
+                    .scrollIndicators(.visible)
+                    
+                    // Scroll hint indicator when more orders exist
+                    if viewModel.filteredOrders.count > 4 {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                VStack(spacing: 2) {
+                                    Image(systemName: "chevron.down")
+                                        .font(.system(size: 10, weight: .bold))
+                                    Text("scroll")
+                                        .font(.system(size: 8))
+                                }
+                                .foregroundColor(theme.textMuted.opacity(0.6))
+                                .padding(4)
+                                .background(theme.cardBackground.opacity(0.8))
+                                .cornerRadius(4)
+                            }
+                            .padding(.trailing, 4)
+                            .padding(.bottom, 2)
+                        }
+                        .allowsHitTesting(false)
+                    }
                 }
-                .scrollIndicators(.visible)
             }
         }
         .padding(10)
@@ -295,10 +320,10 @@ struct MiniOrderRow: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .frame(height: 36)
+        .padding(.vertical, 4)
+        .frame(height: 32)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 6)
                 .fill(theme.cardBackground.opacity(0.5))
         )
         .confirmationDialog("Delete?", isPresented: $showDelete) {

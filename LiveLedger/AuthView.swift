@@ -135,6 +135,11 @@ class AuthManager: ObservableObject {
         saveUser()
     }
     
+    func downgradeToFree() {
+        currentUser?.isPro = false
+        saveUser()
+    }
+    
     func updateCompanyName(_ name: String) {
         currentUser?.companyName = name
         saveUser()

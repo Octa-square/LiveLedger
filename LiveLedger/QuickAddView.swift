@@ -68,7 +68,7 @@ struct QuickAddView: View {
                     Spacer()
                     
                     Text("Tap sell • Hold edit")
-                        .font(.system(size: 8))
+                        .font(.system(size: 10))
                         .foregroundColor(theme.textMuted)
                     
                     Button {
@@ -914,8 +914,129 @@ struct EditProductSheet: View {
     }
 }
 
-// MARK: - Product Image Picker
-struct ProductImagePicker: UIViewControllerRepresentable {
+// MARK: - Product Image Picker with Crop
+struct ProductImagePicker: View {
+    let onImageSelected: (UIImage) -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var selectedImage: UIImage?
+    @State private var showImagePicker = false
+    @State private var showCropPreview = false
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                if let image = selectedImage {
+                    // Preview the selected/cropped image
+                    VStack(spacing: 16) {
+                        Text("Preview")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundColor(.gray)
+                        
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 200, maxHeight: 200)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 2)
+                            )
+                            .shadow(radius: 4)
+                        
+                        Text("Image will be cropped to square for product display")
+                            .font(.system(size: 11))
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                        
+                        HStack(spacing: 16) {
+                            Button {
+                                selectedImage = nil
+                                showImagePicker = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "arrow.counterclockwise")
+                                    Text("Re-select")
+                                }
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(8)
+                            }
+                            
+                            Button {
+                                onImageSelected(image)
+                                dismiss()
+                            } label: {
+                                HStack {
+                                    Image(systemName: "checkmark")
+                                    Text("Use Image")
+                                }
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.green)
+                                .cornerRadius(8)
+                            }
+                        }
+                    }
+                    .padding()
+                } else {
+                    // Initial state - show picker options
+                    VStack(spacing: 20) {
+                        Image(systemName: "photo.on.rectangle.angled")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray)
+                        
+                        Text("Select a product image")
+                            .font(.system(size: 16, weight: .medium))
+                        
+                        Text("After selecting, you can crop and resize the image")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                        
+                        Button {
+                            showImagePicker = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "photo.badge.plus")
+                                Text("Choose from Library")
+                            }
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 24)
+                            .padding(.vertical, 12)
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                        }
+                    }
+                    .padding()
+                }
+                
+                Spacer()
+            }
+            .navigationTitle("Product Image")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .sheet(isPresented: $showImagePicker) {
+                ImagePickerWithCrop { image in
+                    selectedImage = image
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Image Picker with Crop (UIKit)
+struct ImagePickerWithCrop: UIViewControllerRepresentable {
     let onImageSelected: (UIImage) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -923,7 +1044,7 @@ struct ProductImagePicker: UIViewControllerRepresentable {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
         picker.sourceType = .photoLibrary
-        picker.allowsEditing = true
+        picker.allowsEditing = true // Enables iOS built-in crop
         return picker
     }
     
@@ -934,23 +1055,39 @@ struct ProductImagePicker: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ProductImagePicker
+        let parent: ImagePickerWithCrop
         
-        init(_ parent: ProductImagePicker) {
+        init(_ parent: ImagePickerWithCrop) {
             self.parent = parent
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            if let edited = info[.editedImage] as? UIImage {
-                parent.onImageSelected(edited)
-            } else if let original = info[.originalImage] as? UIImage {
-                parent.onImageSelected(original)
+            // Prefer the edited (cropped) image
+            if let editedImage = info[.editedImage] as? UIImage {
+                parent.onImageSelected(editedImage)
+            } else if let originalImage = info[.originalImage] as? UIImage {
+                // If no edited image, crop to square from center
+                let croppedImage = cropToSquare(originalImage)
+                parent.onImageSelected(croppedImage)
             }
             parent.dismiss()
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
+        }
+        
+        // Crop image to square from center
+        private func cropToSquare(_ image: UIImage) -> UIImage {
+            let size = min(image.size.width, image.size.height)
+            let x = (image.size.width - size) / 2
+            let y = (image.size.height - size) / 2
+            let cropRect = CGRect(x: x, y: y, width: size, height: size)
+            
+            guard let cgImage = image.cgImage?.cropping(to: cropRect) else {
+                return image
+            }
+            return UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
         }
     }
 }
