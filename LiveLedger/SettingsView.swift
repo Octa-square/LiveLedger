@@ -92,6 +92,32 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
     
+    // MARK: - Background Image
+    var backgroundImageName: String {
+        switch self {
+        case .minimalistLight: return "ThemeBG_MinimalistLight"
+        case .minimalistDark: return "ThemeBG_MinimalistDark"
+        case .emeraldGreen: return "ThemeBG_EmeraldGreen"
+        case .glassmorphism: return "ThemeBG_Glassmorphism"
+        case .boldFuturistic: return "ThemeBG_BoldFuturistic"
+        case .motionRich: return "ThemeBG_MotionRich"
+        case .sunsetOrange: return "ThemeBG_SunsetOrange"
+        }
+    }
+    
+    // Overlay opacity - lower = more visible background image
+    var backgroundOverlayOpacity: Double {
+        switch self {
+        case .minimalistLight: return 0.7
+        case .minimalistDark: return 0.5
+        case .emeraldGreen: return 0.5
+        case .glassmorphism: return 0.4
+        case .boldFuturistic: return 0.5
+        case .motionRich: return 0.4
+        case .sunsetOrange: return 0.5
+        }
+    }
+    
     // MARK: - Background Colors
     var gradientColors: [Color] {
         switch self {

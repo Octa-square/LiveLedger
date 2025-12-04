@@ -215,15 +215,24 @@ struct AuthView: View {
     @State private var showPasswordRequirementsAlert = false
     
     var body: some View {
-        ZStack {
-            // Background - Green theme matching logo
-            LinearGradient(colors: [
-                Color(red: 0.07, green: 0.5, blue: 0.46),
-                Color(red: 0.05, green: 0.35, blue: 0.35)
-            ], startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
-            
-            ScrollView {
+        GeometryReader { geometry in
+            ZStack {
+                // Background Image
+                Image("AuthBackground")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+                
+                // Semi-transparent overlay for readability
+                LinearGradient(colors: [
+                    Color(red: 0.07, green: 0.5, blue: 0.46).opacity(0.6),
+                    Color(red: 0.05, green: 0.35, blue: 0.35).opacity(0.7)
+                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+                
+                ScrollView {
                 VStack(spacing: 30) {
                     Spacer(minLength: 50)
                     
@@ -447,6 +456,7 @@ struct AuthView: View {
         } message: {
             Text("Your password must have:\n• At least 6 characters\n• At least 1 letter (a-z)\n• At least 1 number (0-9)")
         }
+        } // GeometryReader
     }
     
     var isFormValid: Bool {

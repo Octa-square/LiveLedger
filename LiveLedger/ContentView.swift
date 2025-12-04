@@ -20,12 +20,25 @@ struct MainContentView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        ZStack {
-            // Background
-            theme.gradientColors[0]
+        GeometryReader { geometry in
+            ZStack {
+                // Background Image
+                Image(theme.backgroundImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+                
+                // Semi-transparent overlay for readability
+                LinearGradient(
+                    colors: theme.gradientColors.map { $0.opacity(theme.backgroundOverlayOpacity) },
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
                 .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
+                
+                VStack(spacing: 0) {
                 // FIXED HEADER - X style (~56px height feel)
                 VStack(spacing: 6) {
                     HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
@@ -115,6 +128,7 @@ struct MainContentView: View {
         .sheet(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
         }
+        } // GeometryReader
     }
 }
 
