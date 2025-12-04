@@ -181,13 +181,13 @@ struct HeaderView: View {
                 )
         )
         .sheet(isPresented: $showClearOptions) {
-            ClearOptionsView(viewModel: viewModel)
+            ClearOptionsView(viewModel: viewModel, localization: localization)
         }
         .sheet(isPresented: $showPrintOptions) {
-            PrintOptionsView(viewModel: viewModel, authManager: authManager, platforms: viewModel.platforms)
+            PrintOptionsView(viewModel: viewModel, authManager: authManager, localization: localization, platforms: viewModel.platforms)
         }
         .sheet(isPresented: $showExportOptions) {
-            ExportOptionsView(viewModel: viewModel, platforms: viewModel.platforms)
+            ExportOptionsView(viewModel: viewModel, localization: localization, platforms: viewModel.platforms)
         }
         .fullScreenCover(isPresented: $showAnalytics) {
             AnalyticsDashboardView(viewModel: viewModel, authManager: authManager, themeManager: themeManager)
@@ -198,6 +198,7 @@ struct HeaderView: View {
 // Export Options View - select platforms to export
 struct ExportOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
+    @ObservedObject var localization: LocalizationManager
     let platforms: [Platform]
     @Environment(\.dismiss) private var dismiss
     
@@ -392,6 +393,7 @@ struct ExportOptionsView: View {
 // MARK: - Clear Options View
 struct ClearOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
+    @ObservedObject var localization: LocalizationManager
     @Environment(\.dismiss) private var dismiss
     
     @State private var clearCustomPlatforms = false
@@ -768,6 +770,7 @@ struct ActionButton: View {
 struct PrintOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var authManager: AuthManager
+    @ObservedObject var localization: LocalizationManager
     let platforms: [Platform]
     @Environment(\.dismiss) var dismiss
     
@@ -934,6 +937,7 @@ struct PrintOptionsView: View {
             .sheet(isPresented: $showingDailyReport) {
                 DailyOrderReportView(
                     viewModel: viewModel,
+                    localization: localization,
                     orders: filteredOrders,
                     currencySymbol: currencySymbol,
                     companyName: authManager.currentUser?.companyName ?? "Live Sales",
@@ -1053,6 +1057,7 @@ struct PlatformFilterChip: View {
 // MARK: - Daily Order Report View
 struct DailyOrderReportView: View {
     @ObservedObject var viewModel: SalesViewModel
+    @ObservedObject var localization: LocalizationManager
     let orders: [Order]
     let currencySymbol: String
     let companyName: String
@@ -1095,6 +1100,7 @@ struct DailyOrderReportView: View {
                     LazyVStack(spacing: 20) {
                         ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
                             IndividualReceiptCard(
+                                localization: localization,
                                 order: order,
                                 orderNumber: index + 1,
                                 companyName: companyName,
@@ -1304,6 +1310,7 @@ struct DailyOrderReportView: View {
 
 // MARK: - Individual Receipt Card (POS-style receipt for each order)
 struct IndividualReceiptCard: View {
+    @ObservedObject var localization: LocalizationManager
     let order: Order
     let orderNumber: Int
     let companyName: String
