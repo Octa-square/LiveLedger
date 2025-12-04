@@ -199,17 +199,20 @@ struct AnalyticsView: View {
     
     // MARK: - Platform Filter Card
     private var platformFilterCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Filter by Platform")
-                .font(.system(size: 14, weight: .bold))
-                .foregroundColor(theme.textPrimary)
+        VStack(alignment: .center, spacing: 8) {
+            HStack {
+                Text("Filter by Platform")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
+                Spacer()
+            }
             
             GeometryReader { geo in
                 // Calculate chip width: total width minus spacing (3 gaps of 6px each)
                 let totalSpacing: CGFloat = 6 * 3 // 18px for gaps between 4 chips
                 let chipWidth: CGFloat = (geo.size.width - totalSpacing) / 4
                 
-                ScrollView(.horizontal, showsIndicators: !customPlatforms.isEmpty) {
+                ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 6) {
                         // "All" button
                         AnalyticsPlatformChip(
@@ -237,7 +240,7 @@ struct AnalyticsView: View {
                             }
                         }
                         
-                        // Custom platforms - scrollable to the right
+                        // Custom platforms - completely hidden until scrolled
                         ForEach(customPlatforms) { platform in
                             AnalyticsPlatformChip(
                                 name: platform.name,
@@ -251,14 +254,25 @@ struct AnalyticsView: View {
                             }
                         }
                     }
-                    .frame(minWidth: geo.size.width) // Ensure chips fill and center
                 }
                 .scrollDisabled(customPlatforms.isEmpty)
             }
-            .frame(height: 50)
+            .frame(height: 46)
+            .clipped() // Ensure custom platforms don't peek out
+            
+            // Three-dot scroll indicator - only when custom platforms exist
+            if !customPlatforms.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle()
+                            .fill(theme.textMuted.opacity(0.5))
+                            .frame(width: 5, height: 5)
+                    }
+                }
+            }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .center)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(theme.cardBackground)

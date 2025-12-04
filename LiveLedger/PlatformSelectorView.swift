@@ -164,7 +164,7 @@ struct PlatformSelectorView: View {
             let totalSpacing: CGFloat = 6 * 3 // 18px for gaps between 4 chips
             let chipWidth: CGFloat = (geo.size.width - totalSpacing) / 4
             
-            ScrollView(.horizontal, showsIndicators: !customPlatforms.isEmpty) {
+            ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     // "All" button - FIXED WIDTH
                     FixedPlatformChip(
@@ -186,7 +186,7 @@ struct PlatformSelectorView: View {
                         )
                     }
                     
-                    // Custom platforms - SAME SIZE, scroll to see
+                    // Custom platforms - completely hidden until scrolled
                     ForEach(customPlatforms) { platform in
                         FixedPlatformChip(
                             platform: platform,
@@ -199,17 +199,34 @@ struct PlatformSelectorView: View {
                         )
                     }
                 }
-                .frame(minWidth: geo.size.width) // Ensure chips fill and center
             }
             .scrollDisabled(customPlatforms.isEmpty)
         }
-        .frame(height: 50)
+        .frame(height: 46)
+        .clipped() // Ensure custom platforms don't peek out
+    }
+    
+    // Three-dot indicator for more platforms
+    private var scrollIndicator: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3, id: \.self) { _ in
+                Circle()
+                    .fill(theme.textMuted.opacity(0.5))
+                    .frame(width: 5, height: 5)
+            }
+        }
+        .padding(.top, 2)
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .center, spacing: 4) {
             platformHeader
             platformChips
+            
+            // Three-dot scroll indicator - only shows when custom platforms exist
+            if !customPlatforms.isEmpty {
+                scrollIndicator
+            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
