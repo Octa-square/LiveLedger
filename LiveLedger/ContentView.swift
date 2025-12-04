@@ -207,6 +207,7 @@ struct ContentView: View {
         id: "preview-user",
         email: "preview@example.com",
         name: "Preview User",
+        phone: "",
         companyName: "My Shop",
         currency: "USD ($)",
         isPro: true, // Set to Pro to avoid subscription checks
@@ -217,7 +218,7 @@ struct ContentView: View {
     )
     mockAuthManager.isAuthenticated = true
     
-    return MainContentView(
+    MainContentView(
         authManager: mockAuthManager,
         localization: LocalizationManager.shared
     )
