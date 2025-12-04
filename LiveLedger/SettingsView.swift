@@ -1174,7 +1174,7 @@ struct SettingsView: View {
                 ProfileImagePicker(image: $profileImage)
             }
             .fullScreenCover(isPresented: $showTutorial) {
-                TutorialWrapperView(localization: localization, isPresented: $showTutorial)
+                TutorialWrapperView(localization: localization, authManager: authManager, isPresented: $showTutorial)
             }
         }
     }
@@ -1333,11 +1333,12 @@ struct ImagePicker: UIViewControllerRepresentable {
 // MARK: - Tutorial Wrapper for Settings
 struct TutorialWrapperView: View {
     @ObservedObject var localization: LocalizationManager
+    @ObservedObject var authManager: AuthManager
     @Binding var isPresented: Bool
     @State private var dummy = false
     
     var body: some View {
-        OnboardingView(localization: localization, hasCompletedOnboarding: $dummy, isReTutorial: true)
+        OnboardingView(localization: localization, authManager: authManager, hasCompletedOnboarding: $dummy, isReTutorial: true)
             .onChange(of: dummy) { _, newValue in
                 if newValue {
                     isPresented = false

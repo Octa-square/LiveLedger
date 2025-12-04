@@ -38,7 +38,7 @@ struct RootView: View {
             if hasCompletedOnboarding {
                 MainContentView(authManager: authManager, localization: localization)
             } else {
-                OnboardingView(localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
+                OnboardingView(localization: localization, authManager: authManager, hasCompletedOnboarding: $hasCompletedOnboarding)
             }
         } else {
             AuthView(authManager: authManager)

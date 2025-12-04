@@ -64,13 +64,6 @@ struct MainContentView: View {
                 
                 // CONTENT - Products fixed, Orders stretches to bottom
                 VStack(spacing: 8) {
-                    // Free tier banner
-                    if let user = authManager.currentUser, !user.isPro {
-                        FreeTierBanner(user: user, theme: theme) {
-                            showSubscription = true
-                        }
-                    }
-                    
                     // Products card - fixed size (more transparent to show background)
                     QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
                         limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
@@ -142,51 +135,6 @@ struct MainContentView: View {
             SubscriptionView(authManager: authManager)
         }
         } // GeometryReader
-    }
-}
-
-// Free tier banner
-struct FreeTierBanner: View {
-    let user: AppUser
-    let theme: AppTheme
-    let onUpgrade: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Free Plan")
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(theme.warningColor)
-                Text("\(user.remainingFreeOrders) orders • \(user.remainingFreeExports) exports left")
-                    .font(.system(size: 11))
-                    .foregroundColor(theme.textSecondary)
-            }
-            
-            Spacer()
-            
-            Button(action: onUpgrade) {
-                HStack(spacing: 4) {
-                    Image(systemName: "crown.fill")
-                        .font(.system(size: 10))
-                    Text("Upgrade")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                .foregroundColor(.black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(theme.warningColor)
-                .cornerRadius(6)
-            }
-        }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(theme.warningColor.opacity(0.1))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(theme.warningColor.opacity(0.3), lineWidth: 1)
-                )
-        )
     }
 }
 
