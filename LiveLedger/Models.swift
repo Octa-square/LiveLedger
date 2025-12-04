@@ -93,22 +93,18 @@ struct ProductCatalog: Identifiable, Codable, Equatable {
     var products: [Product]
     
     static let maxProducts = 12
+    static let defaultSlots = 4
     
     init(id: UUID = UUID(), name: String = "My Products", products: [Product] = []) {
         self.id = id
         self.name = name
-        // Always maintain 12 product slots (core catalog structure)
+        // Start with 4 default slots, can expand to 12 max
         if products.isEmpty {
-            self.products = (0..<Self.maxProducts).map { _ in Product() }
-        } else if products.count < Self.maxProducts {
-            // Pad with empty products to reach 12
-            var paddedProducts = products
-            while paddedProducts.count < Self.maxProducts {
-                paddedProducts.append(Product())
-            }
-            self.products = paddedProducts
-        } else {
+            self.products = (0..<Self.defaultSlots).map { _ in Product() }
+        } else if products.count > Self.maxProducts {
             self.products = Array(products.prefix(Self.maxProducts))
+        } else {
+            self.products = products
         }
     }
     
