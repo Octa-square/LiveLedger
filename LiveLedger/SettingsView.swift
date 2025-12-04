@@ -16,15 +16,20 @@ enum AppTheme: String, CaseIterable, Codable {
     case boldFuturistic = "Bold Futuristic"
     case motionRich = "Motion Rich"
     case sunsetOrange = "Sunset Orange"
+    case grayscale = "Grayscale"
     
     // MARK: - Theme Mode
     var isDarkTheme: Bool {
         switch self {
         case .minimalistLight:
             return false
-        case .minimalistDark, .emeraldGreen, .boldFuturistic, .motionRich, .sunsetOrange:
+        case .minimalistDark, .emeraldGreen, .boldFuturistic, .motionRich, .sunsetOrange, .grayscale:
             return true
         }
+    }
+    
+    var isGrayscale: Bool {
+        self == .grayscale
     }
     
     // MARK: - Text Colors (BRIGHTER)
@@ -36,6 +41,7 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return Color(hex: "FFFFFF")
         case .motionRich: return Color(hex: "FFFFFF")
         case .sunsetOrange: return Color(hex: "FFFFFF")
+        case .grayscale: return Color(hex: "FFFFFF")
         }
     }
     
@@ -47,6 +53,7 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return Color(hex: "6EE7B7")
         case .motionRich: return Color(hex: "DDD6FE")
         case .sunsetOrange: return Color(hex: "FED7AA")
+        case .grayscale: return Color(hex: "B0B0B0")
         }
     }
     
@@ -58,6 +65,7 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return Color(hex: "34D399")
         case .motionRich: return Color(hex: "C4B5FD")
         case .sunsetOrange: return Color(hex: "FDBA74")
+        case .grayscale: return Color(hex: "808080")
         }
     }
     
@@ -70,6 +78,7 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return Color(hex: "00F5A0")
         case .motionRich: return Color(hex: "A78BFA")
         case .sunsetOrange: return Color(hex: "FF6A00")
+        case .grayscale: return Color(hex: "666666")
         }
     }
     
@@ -83,6 +92,7 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return Color(hex: "00D1FF")
         case .motionRich: return Color(hex: "EC4899")
         case .sunsetOrange: return Color(hex: "F97316")
+        case .grayscale: return Color(hex: "999999")
         }
     }
     
@@ -92,10 +102,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return "ThemeBG_MinimalistLight"
         case .minimalistDark: return "ThemeBG_MinimalistDark"
         case .emeraldGreen: return "ThemeBG_EmeraldGreen"
-        case .glassmorphism: return "ThemeBG_Glassmorphism"
         case .boldFuturistic: return "ThemeBG_BoldFuturistic"
         case .motionRich: return "ThemeBG_MotionRich"
         case .sunsetOrange: return "ThemeBG_SunsetOrange"
+        case .grayscale: return "ThemeBG_MinimalistDark" // Will be filtered to grayscale
         }
     }
     
@@ -105,10 +115,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return 0.55
         case .minimalistDark: return 0.40
         case .emeraldGreen: return 0.40
-        case .glassmorphism: return 0.30
         case .boldFuturistic: return 0.40
         case .motionRich: return 0.35
         case .sunsetOrange: return 0.40
+        case .grayscale: return 0.45
         }
     }
     
@@ -121,14 +131,14 @@ enum AppTheme: String, CaseIterable, Codable {
             return [Color(hex: "0F0F0F"), Color(hex: "171717"), Color(hex: "1F1F1F")]
         case .emeraldGreen: 
             return [Color(hex: "022C22"), Color(hex: "064E3B"), Color(hex: "065F46")]
-        case .glassmorphism: 
-            return [Color(hex: "0F172A"), Color(hex: "1E293B"), Color(hex: "0F172A")]
         case .boldFuturistic: 
             return [Color(hex: "000000"), Color(hex: "0A0A0A"), Color(hex: "050505")]
         case .motionRich: 
             return [Color(hex: "1E1B4B"), Color(hex: "2E1065"), Color(hex: "1E1B4B")]
         case .sunsetOrange: 
             return [Color(hex: "1C1917"), Color(hex: "292524"), Color(hex: "44403C")]
+        case .grayscale:
+            return [Color(hex: "1A1A1A"), Color(hex: "2C2C2C"), Color(hex: "3D3D3D")]
         }
     }
     
@@ -138,10 +148,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.82)
         case .minimalistDark: return Color(hex: "262626").opacity(0.80)
         case .emeraldGreen: return Color(hex: "064E3B").opacity(0.78)
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.12)
         case .boldFuturistic: return Color(hex: "111111").opacity(0.78)
         case .motionRich: return Color(hex: "312E81").opacity(0.70)
         case .sunsetOrange: return Color(hex: "292524").opacity(0.78)
+        case .grayscale: return Color(hex: "2C2C2C").opacity(0.80)
         }
     }
     
@@ -151,10 +161,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.75)
         case .minimalistDark: return Color(hex: "262626").opacity(0.72)
         case .emeraldGreen: return Color(hex: "064E3B").opacity(0.70)
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.08)
         case .boldFuturistic: return Color(hex: "111111").opacity(0.70)
         case .motionRich: return Color(hex: "312E81").opacity(0.60)
         case .sunsetOrange: return Color(hex: "292524").opacity(0.70)
+        case .grayscale: return Color(hex: "2C2C2C").opacity(0.72)
         }
     }
     
@@ -164,10 +174,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.92)
         case .minimalistDark: return Color(hex: "262626").opacity(0.90)
         case .emeraldGreen: return Color(hex: "064E3B").opacity(0.88)
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.18)
         case .boldFuturistic: return Color(hex: "111111").opacity(0.88)
         case .motionRich: return Color(hex: "312E81").opacity(0.82)
         case .sunsetOrange: return Color(hex: "292524").opacity(0.88)
+        case .grayscale: return Color(hex: "2C2C2C").opacity(0.90)
         }
     }
     
@@ -176,10 +186,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "D1D5DB")
         case .minimalistDark: return Color(hex: "525252")
         case .emeraldGreen: return Color(hex: "10B981").opacity(0.4)
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.2)
         case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.4)
         case .motionRich: return Color(hex: "A78BFA").opacity(0.4)
         case .sunsetOrange: return Color(hex: "FF6A00").opacity(0.4)
+        case .grayscale: return Color(hex: "666666").opacity(0.5)
         }
     }
     
@@ -189,10 +199,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color.white
         case .minimalistDark: return Color(hex: "404040")
         case .emeraldGreen: return Color(hex: "065F46")
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.05)
         case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.1)
         case .motionRich: return Color(hex: "A78BFA").opacity(0.1)
         case .sunsetOrange: return Color(hex: "57534E")
+        case .grayscale: return Color(hex: "4A4A4A")
         }
     }
     
@@ -201,10 +211,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "D1D5DB")
         case .minimalistDark: return Color.black
         case .emeraldGreen: return Color.black.opacity(0.4)
-        case .glassmorphism: return Color.black.opacity(0.4)
         case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.2)
         case .motionRich: return Color(hex: "8B5CF6").opacity(0.3)
         case .sunsetOrange: return Color.black.opacity(0.5)
+        case .grayscale: return Color.black.opacity(0.6)
         }
     }
     
@@ -227,31 +237,41 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return "sun.max.fill"
         case .minimalistDark: return "moon.fill"
         case .emeraldGreen: return "leaf.fill"
-        case .glassmorphism: return "cube.transparent.fill"
         case .boldFuturistic: return "bolt.fill"
         case .motionRich: return "waveform.path"
         case .sunsetOrange: return "sun.horizon.fill"
+        case .grayscale: return "circle.lefthalf.filled"
         }
     }
     
-    // MARK: - Text Readability (for transparent backgrounds)
+    // MARK: - Text Readability & Contrast (for transparent backgrounds)
+    
+    // Text shadow for depth and separation
     var textShadowColor: Color {
         switch self {
-        case .minimalistLight: return Color.black.opacity(0.08)
-        case .minimalistDark: return Color.black.opacity(0.4)
-        case .emeraldGreen: return Color.black.opacity(0.35)
-        case .glassmorphism: return Color.black.opacity(0.5)
-        case .boldFuturistic: return Color.black.opacity(0.5)
-        case .motionRich: return Color.black.opacity(0.4)
-        case .sunsetOrange: return Color.black.opacity(0.35)
+        case .minimalistLight: return Color.white.opacity(0.4)  // Light glow for dark text
+        case .minimalistDark: return Color.black.opacity(0.6)
+        case .emeraldGreen: return Color.black.opacity(0.5)
+        case .boldFuturistic: return Color.black.opacity(0.7)
+        case .motionRich: return Color.black.opacity(0.6)
+        case .sunsetOrange: return Color.black.opacity(0.5)
+        case .grayscale: return Color.black.opacity(0.6)
         }
     }
     
     var textShadowRadius: CGFloat {
         switch self {
-        case .minimalistLight: return 1
-        case .minimalistDark, .emeraldGreen, .sunsetOrange: return 2
-        case .glassmorphism, .boldFuturistic, .motionRich: return 3
+        case .minimalistLight: return 2
+        case .minimalistDark, .emeraldGreen, .sunsetOrange: return 3
+        case .boldFuturistic, .motionRich: return 4
+        case .grayscale: return 3
+        }
+    }
+    
+    var textShadowOffset: CGSize {
+        switch self {
+        case .minimalistLight: return CGSize(width: 0, height: 1)
+        default: return CGSize(width: 0, height: 2)
         }
     }
     
@@ -260,6 +280,31 @@ enum AppTheme: String, CaseIterable, Codable {
         switch self {
         case .minimalistLight: return true
         default: return false
+        }
+    }
+    
+    // MARK: - Adaptive Text Styling
+    
+    // Bold heading text with high contrast
+    var headingTextColor: Color {
+        isLightTheme ? Color(hex: "1A1A1A") : Color.white
+    }
+    
+    // Standard text weights for hierarchy
+    var headingWeight: Font.Weight { .bold }
+    var labelWeight: Font.Weight { .semibold }
+    var bodyWeight: Font.Weight { .medium }
+    
+    // Container background with optimal opacity for text readability
+    var readableContainerBg: Color {
+        switch self {
+        case .minimalistLight: return Color.white.opacity(0.88)
+        case .minimalistDark: return Color.black.opacity(0.80)
+        case .emeraldGreen: return Color(hex: "022C22").opacity(0.82)
+        case .boldFuturistic: return Color.black.opacity(0.82)
+        case .motionRich: return Color(hex: "1E1B4B").opacity(0.80)
+        case .sunsetOrange: return Color(hex: "1C1917").opacity(0.82)
+        case .grayscale: return Color(hex: "1A1A1A").opacity(0.85)
         }
     }
 }
@@ -824,6 +869,26 @@ struct SettingsView: View {
                     Text("Test your internet connection for live streaming")
                 }
                 
+                // Display Settings Section
+                Section {
+                    NavigationLink {
+                        DisplaySettingsView(themeManager: themeManager)
+                    } label: {
+                        HStack {
+                            Label("Display & Appearance", systemImage: "paintbrush.fill")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Text("Customize")
+                                .font(.system(size: 13))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } header: {
+                    Text("Display")
+                } footer: {
+                    Text("Adjust brightness, contrast, and background visibility")
+                }
+                
                 // Analytics & Tutorial Section
                 Section {
                     NavigationLink {
@@ -1117,10 +1182,10 @@ struct SettingsView: View {
         case .minimalistLight: return "Clean & airy whites"
         case .minimalistDark: return "Smooth dark contrast"
         case .emeraldGreen: return "Rich forest vibes"
-        case .glassmorphism: return "Frosted glass panels"
         case .boldFuturistic: return "Neon cyber vibes"
         case .motionRich: return "Smooth purple flow"
         case .sunsetOrange: return "Warm sunset glow"
+        case .grayscale: return "Black & white focus"
         }
     }
 }
@@ -2035,6 +2100,201 @@ struct ProfileImagePicker: UIViewControllerRepresentable {
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
+        }
+    }
+}
+
+// MARK: - Display Settings View
+struct DisplaySettingsView: View {
+    @ObservedObject var themeManager: ThemeManager
+    @Environment(\.dismiss) var dismiss
+    @AppStorage("app_brightness") private var brightness: Double = 1.0
+    @AppStorage("app_contrast") private var contrast: Double = 1.0
+    @AppStorage("app_bg_opacity") private var bgOpacity: Double = 0.80
+    @AppStorage("app_font_size") private var fontSize: String = "Medium"
+    @AppStorage("app_text_weight") private var textWeight: String = "Semi-Bold"
+    
+    private var theme: AppTheme { themeManager.currentTheme }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                // Theme Selection
+                Section {
+                    ForEach(AppTheme.allCases, id: \.self) { selectedTheme in
+                        Button {
+                            withAnimation {
+                                themeManager.currentTheme = selectedTheme
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                // Theme preview circle
+                                ZStack {
+                                    Circle()
+                                        .fill(selectedTheme.gradientColors.first ?? .gray)
+                                        .frame(width: 36, height: 36)
+                                    
+                                    if selectedTheme.isGrayscale {
+                                        // Grayscale indicator
+                                        Circle()
+                                            .stroke(Color.white, lineWidth: 2)
+                                            .frame(width: 18, height: 18)
+                                    }
+                                    
+                                    Image(systemName: selectedTheme.icon)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(selectedTheme.isLightTheme ? .black : .white)
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(selectedTheme.rawValue)
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(.primary)
+                                    
+                                    Text(themeDescription(selectedTheme))
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                if themeManager.currentTheme == selectedTheme {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.green)
+                                        .font(.system(size: 18))
+                                }
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                } header: {
+                    Text("Theme")
+                } footer: {
+                    if theme.isGrayscale {
+                        Text("Grayscale mode converts all colors to black, white, and gray tones")
+                    }
+                }
+                
+                // Brightness Control
+                Section {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label("Brightness", systemImage: "sun.max.fill")
+                                .font(.system(size: 14))
+                            Spacer()
+                            Text("\(Int(brightness * 100))%")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Slider(value: $brightness, in: 0.5...1.5, step: 0.05)
+                            .tint(.yellow)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label("Contrast", systemImage: "circle.lefthalf.filled")
+                                .font(.system(size: 14))
+                            Spacer()
+                            Text("\(Int(contrast * 100))%")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Slider(value: $contrast, in: 0.5...2.0, step: 0.05)
+                            .tint(.blue)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Label("Background Visibility", systemImage: "square.stack.3d.up")
+                                .font(.system(size: 14))
+                            Spacer()
+                            Text("\(Int((1.0 - bgOpacity) * 100))%")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Slider(value: $bgOpacity, in: 0.50...0.95, step: 0.05)
+                            .tint(.purple)
+                        
+                        Text("Lower = more background visible")
+                            .font(.system(size: 10))
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("Display Adjustments")
+                } footer: {
+                    Text("Adjust visual settings for comfortable viewing")
+                }
+                
+                // Font Size
+                Section {
+                    Picker("Font Size", selection: $fontSize) {
+                        Text("Small").tag("Small")
+                        Text("Medium").tag("Medium")
+                        Text("Large").tag("Large")
+                        Text("Extra Large").tag("Extra Large")
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Font Size")
+                }
+                
+                // Text Weight
+                Section {
+                    Picker("Text Style", selection: $textWeight) {
+                        Text("Regular").tag("Regular")
+                        Text("Semi-Bold").tag("Semi-Bold")
+                        Text("Bold").tag("Bold")
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Text Style")
+                } footer: {
+                    Text("Bolder text improves readability on transparent backgrounds")
+                }
+                
+                // Reset Button
+                Section {
+                    Button {
+                        withAnimation {
+                            brightness = 1.0
+                            contrast = 1.0
+                            bgOpacity = 0.80
+                            fontSize = "Medium"
+                            textWeight = "Semi-Bold"
+                        }
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
+                                .font(.system(size: 14, weight: .medium))
+                            Spacer()
+                        }
+                        .foregroundColor(.orange)
+                    }
+                }
+            }
+            .navigationTitle("Display & Appearance")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+    
+    private func themeDescription(_ theme: AppTheme) -> String {
+        switch theme {
+        case .minimalistLight: return "Clean & airy whites"
+        case .minimalistDark: return "Smooth dark contrast"
+        case .emeraldGreen: return "Rich forest vibes"
+        case .boldFuturistic: return "Neon cyber vibes"
+        case .motionRich: return "Smooth purple flow"
+        case .sunsetOrange: return "Warm sunset glow"
+        case .grayscale: return "Black & white focus"
         }
     }
 }
