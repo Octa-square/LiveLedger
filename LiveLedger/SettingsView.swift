@@ -1420,7 +1420,6 @@ struct ManageSubscriptionView: View {
     @Environment(\.dismiss) var dismiss
     
     @State private var showCancelConfirm = false
-    @State private var showRetentionOffer = false
     @State private var showFinalCancel = false
     
     var body: some View {
@@ -1485,7 +1484,7 @@ struct ManageSubscriptionView: View {
                 // Cancel Section
                 Section {
                     Button {
-                        showRetentionOffer = true
+                        showFinalCancel = true
                     } label: {
                         HStack {
                             Image(systemName: "xmark.circle")
@@ -1506,21 +1505,8 @@ struct ManageSubscriptionView: View {
                     Button("Done") { dismiss() }
                 }
             }
-            // Retention offer - $5 off
-            .alert("Wait! We have an offer for you", isPresented: $showRetentionOffer) {
-                Button("Accept $5 Off") {
-                    // Apply discount and keep subscription
-                    dismiss()
-                }
-                Button("Still Cancel", role: .destructive) {
-                    showFinalCancel = true
-                }
-                Button("Keep My Plan", role: .cancel) {}
-            } message: {
-                Text("Stay with us and get $5 off your next month! Your new price will be $44.99/month.")
-            }
-            // Final cancellation confirmation
-            .alert("Are you sure?", isPresented: $showFinalCancel) {
+            // Cancellation confirmation
+            .alert("Cancel Subscription?", isPresented: $showFinalCancel) {
                 Button("Yes, Cancel", role: .destructive) {
                     // Cancel subscription
                     authManager.downgradeToFree()
