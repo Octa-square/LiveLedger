@@ -236,6 +236,8 @@ struct AuthView: View {
     @State private var showPassword = false
     @State private var showConfirmPassword = false
     @State private var showPasswordTooltip = false
+    @State private var showValidationError = false
+    @State private var validationErrorMessage = ""
     @FocusState private var focusedField: Field?
     
     enum Field {
@@ -247,6 +249,29 @@ struct AuthView: View {
         password.count >= 6 &&
         password.contains(where: { $0.isLetter }) &&
         password.contains(where: { $0.isNumber || "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) })
+    }
+    
+    // Get validation error message
+    private func getValidationError() -> String? {
+        if name.isEmpty {
+            return "Please enter your name"
+        }
+        if email.isEmpty || !email.contains("@") {
+            return "Please enter a valid email"
+        }
+        if password.isEmpty {
+            return "Please enter a password"
+        }
+        if !isPasswordValid {
+            return "Password must be at least 6 characters with 1 letter and 1 number/symbol"
+        }
+        if password != confirmPassword {
+            return "Passwords do not match"
+        }
+        if !agreedToTerms {
+            return "Please agree to the Terms & Privacy Policy"
+        }
+        return nil
     }
     
     var body: some View {
@@ -495,9 +520,12 @@ struct AuthView: View {
                         }
                         .padding(.vertical, 4)
                         
-                        // Sign Up Button (Compact)
+                        // Sign Up Button (Compact) - Always tappable with feedback
                         Button {
-                            if isFormValid {
+                            if let error = getValidationError() {
+                                validationErrorMessage = error
+                                showValidationError = true
+                            } else {
                                 authManager.signUp(
                                     email: email,
                                     name: name,
@@ -513,10 +541,9 @@ struct AuthView: View {
                                 .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
-                                .background(isFormValid ? Color.white : Color.white.opacity(0.5))
+                                .background(isFormValid ? Color.white : Color.white.opacity(0.7))
                                 .cornerRadius(10)
                         }
-                        .disabled(!isFormValid)
                         
                         Text("First 20 orders FREE • No credit card required")
                             .font(.system(size: 10))
@@ -533,6 +560,11 @@ struct AuthView: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .alert("Cannot Create Account", isPresented: $showValidationError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(validationErrorMessage)
+        }
     }
     
     var isFormValid: Bool {

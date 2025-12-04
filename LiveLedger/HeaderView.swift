@@ -1513,98 +1513,43 @@ struct DashedLine: Shape {
     }
 }
 
-// Mini logo for header (Logo 10 - Calculator with L stamped + Signal + LIVE)
+// Mini logo for header (matches auth page logo)
 struct LiveLedgerLogoMini: View {
-    private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41)
-    private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)
-    private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)
-    private let buttonGray = Color(red: 0.8, green: 0.84, blue: 0.88)
+    var size: CGFloat = 40
     
     var body: some View {
         ZStack {
-            // Green background
-            RoundedRectangle(cornerRadius: 8)
+            // Green rounded background
+            RoundedRectangle(cornerRadius: size * 0.22)
                 .fill(
-                    LinearGradient(colors: [greenStart, greenEnd],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(
+                        colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .frame(width: 36, height: 36)
+                .frame(width: size, height: size)
             
-            // Signal arcs (top right)
-            MiniSignalArc()
-                .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
-                .frame(width: 16, height: 16)
-                .offset(x: 6, y: -5)
-            
-            MiniSignalArc()
-                .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
-                .frame(width: 11, height: 11)
-                .offset(x: 6, y: -5)
-            
-            MiniSignalArc()
-                .stroke(Color.white, lineWidth: 1.5)
-                .frame(width: 6, height: 6)
-                .offset(x: 6, y: -5)
-            
-            // Calculator body
-            ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white)
-                    .frame(width: 12, height: 16)
-                
-                // Screen
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(greenEnd)
-                    .frame(width: 9, height: 3)
-                    .offset(y: -5)
-                
-                // Buttons (2x3 grid)
-                VStack(spacing: 1) {
-                    HStack(spacing: 1) {
-                        miniButton
-                        miniButton
-                        miniButton
-                    }
-                    HStack(spacing: 1) {
-                        miniButton
-                        miniButton
-                        miniButton
-                    }
-                }
-                .offset(y: 2)
-                
-                // L stamped on calculator
-                Text("L")
-                    .font(.system(size: 14, weight: .black, design: .rounded))
-                    .foregroundColor(.white)
-                    .shadow(color: greenEnd, radius: 1, x: 0.5, y: 0.5)
-                    .offset(x: 5, y: -1)
-            }
-            .offset(x: -5, y: 4)
+            // Big L
+            Text("L")
+                .font(.system(size: size * 0.55, weight: .black, design: .rounded))
+                .foregroundColor(.white)
             
             // LIVE badge
             Text("LIVE")
-                .font(.system(size: 5, weight: .black, design: .rounded))
+                .font(.system(size: size * 0.12, weight: .heavy))
                 .foregroundColor(.white)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 1)
-                .background(
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(liveRed)
-                )
-                .offset(x: -8, y: -14)
+                .padding(.horizontal, size * 0.06)
+                .padding(.vertical, size * 0.03)
+                .background(Color.red)
+                .cornerRadius(size * 0.05)
+                .offset(x: -size * 0.22, y: -size * 0.32)
         }
-        .frame(width: 40, height: 40)
-    }
-    
-    private var miniButton: some View {
-        RoundedRectangle(cornerRadius: 0.5)
-            .fill(buttonGray)
-            .frame(width: 2.5, height: 2)
+        .frame(width: size, height: size)
     }
 }
 
-// Mini signal arc for header logo
+// Mini signal arc for header logo (kept for compatibility)
 struct MiniSignalArc: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
