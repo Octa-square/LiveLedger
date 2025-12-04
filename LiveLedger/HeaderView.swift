@@ -1090,124 +1090,141 @@ struct DailyOrderReportView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Header
-                    VStack(spacing: 8) {
-                        Text(companyName)
-                            .font(.title2.bold())
-                        Text(reportType == .salesReport ? "Sales Summary Report" : "Order Report")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        Text(dateFormatter.string(from: Date()))
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                        
-                        Divider()
-                    }
-                    .frame(maxWidth: .infinity)
-                    
-                    // Summary
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("Total Orders: \(orders.count)")
-                            Text("Total Items: \(totalItems)")
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing) {
-                            Text("Total Sales: \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
-                                .fontWeight(.bold)
+                if reportType == .individualReceipts {
+                    // Individual receipts - one card per order
+                    LazyVStack(spacing: 20) {
+                        ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
+                            IndividualReceiptCard(
+                                order: order,
+                                orderNumber: index + 1,
+                                companyName: companyName,
+                                currencySymbol: currencySymbol,
+                                dateFormatter: dateFormatter
+                            )
                         }
                     }
-                    .font(.subheadline)
                     .padding()
-                    .background(Color.gray.opacity(0.1))
-                    .cornerRadius(8)
-                    
-                    // Platform breakdown (for sales report)
-                    if reportType == .salesReport && ordersByPlatform.count > 1 {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("By Platform")
-                                .font(.system(size: 12, weight: .bold))
+                } else {
+                    // Combined report view
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Header
+                        VStack(spacing: 8) {
+                            Text(companyName)
+                                .font(.title2.bold())
+                            Text(reportType == .salesReport ? "Sales Summary Report" : "Order Report")
+                                .font(.headline)
                                 .foregroundColor(.gray)
-                            
-                            ForEach(ordersByPlatform, id: \.platform) { item in
-                                HStack {
-                                    Text(item.platform)
-                                        .font(.system(size: 12))
-                                    Spacer()
-                                    Text("\(item.count) orders")
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.gray)
-                                    Text("\(currencySymbol)\(item.revenue, specifier: "%.2f")")
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Color.blue.opacity(0.1))
-                        .cornerRadius(8)
-                    }
-                    
-                    Divider()
-                    
-                    // Orders Table Header
-                    HStack {
-                        Text("#").frame(width: 25, alignment: .leading)
-                        Text("Product").frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Qty").frame(width: 30)
-                        Text("Price").frame(width: 50, alignment: .trailing)
-                        Text("Total").frame(width: 55, alignment: .trailing)
-                    }
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.gray)
-                    
-                    // Orders
-                    ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
-                        VStack(alignment: .leading, spacing: 4) {
-                            // Main row
-                            HStack {
-                                Text("\(index + 1)").frame(width: 25, alignment: .leading)
-                                Text(order.productName).frame(maxWidth: .infinity, alignment: .leading)
-                                Text("\(order.quantity)").frame(width: 30)
-                                Text("\(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")").frame(width: 50, alignment: .trailing)
-                                Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")").frame(width: 55, alignment: .trailing)
-                            }
-                            .font(.system(size: 11))
-                            
-                            // Buyer details
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Buyer: \(order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName)")
-                                if !order.phoneNumber.isEmpty {
-                                    Text("Phone: \(order.phoneNumber)")
-                                }
-                                if !order.address.isEmpty {
-                                    Text("Address: \(order.address)")
-                                }
-                                Text("Platform: \(order.platform.name) • Status: \(order.paymentStatus.rawValue)")
-                            }
-                            .font(.system(size: 9))
-                            .foregroundColor(.gray)
-                            .padding(.leading, 25)
+                            Text(dateFormatter.string(from: Date()))
+                                .font(.caption)
+                                .foregroundColor(.gray)
                             
                             Divider()
                         }
-                    }
-                    
-                    // Footer
-                    VStack(spacing: 4) {
-                        Divider()
+                        .frame(maxWidth: .infinity)
+                        
+                        // Summary
                         HStack {
-                            Text("GRAND TOTAL")
-                                .fontWeight(.bold)
+                            VStack(alignment: .leading) {
+                                Text("Total Orders: \(orders.count)")
+                                Text("Total Items: \(totalItems)")
+                            }
                             Spacer()
-                            Text("\(currencySymbol)\(totalRevenue, specifier: "%.2f")")
-                                .fontWeight(.bold)
+                            VStack(alignment: .trailing) {
+                                Text("Total Sales: \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
+                                    .fontWeight(.bold)
+                            }
                         }
-                        .font(.headline)
+                        .font(.subheadline)
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(8)
+                        
+                        // Platform breakdown (for sales report)
+                        if reportType == .salesReport && ordersByPlatform.count > 1 {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("By Platform")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.gray)
+                                
+                                ForEach(ordersByPlatform, id: \.platform) { item in
+                                    HStack {
+                                        Text(item.platform)
+                                            .font(.system(size: 12))
+                                        Spacer()
+                                        Text("\(item.count) orders")
+                                            .font(.system(size: 11))
+                                            .foregroundColor(.gray)
+                                        Text("\(currencySymbol)\(item.revenue, specifier: "%.2f")")
+                                            .font(.system(size: 12, weight: .semibold))
+                                    }
+                                }
+                            }
+                            .padding()
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                        
+                        Divider()
+                        
+                        // Orders Table Header
+                        HStack {
+                            Text("#").frame(width: 25, alignment: .leading)
+                            Text("Product").frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Qty").frame(width: 30)
+                            Text("Price").frame(width: 50, alignment: .trailing)
+                            Text("Total").frame(width: 55, alignment: .trailing)
+                        }
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundColor(.gray)
+                        
+                        // Orders
+                        ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
+                            VStack(alignment: .leading, spacing: 4) {
+                                // Main row
+                                HStack {
+                                    Text("\(index + 1)").frame(width: 25, alignment: .leading)
+                                    Text(order.productName).frame(maxWidth: .infinity, alignment: .leading)
+                                    Text("\(order.quantity)").frame(width: 30)
+                                    Text("\(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")").frame(width: 50, alignment: .trailing)
+                                    Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")").frame(width: 55, alignment: .trailing)
+                                }
+                                .font(.system(size: 11))
+                                
+                                // Buyer details
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Buyer: \(order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName)")
+                                    if !order.phoneNumber.isEmpty {
+                                        Text("Phone: \(order.phoneNumber)")
+                                    }
+                                    if !order.address.isEmpty {
+                                        Text("Address: \(order.address)")
+                                    }
+                                    Text("Platform: \(order.platform.name) • Status: \(order.paymentStatus.rawValue)")
+                                }
+                                .font(.system(size: 9))
+                                .foregroundColor(.gray)
+                                .padding(.leading, 25)
+                                
+                                Divider()
+                            }
+                        }
+                        
+                        // Footer
+                        VStack(spacing: 4) {
+                            Divider()
+                            HStack {
+                                Text("GRAND TOTAL")
+                                    .fontWeight(.bold)
+                                Spacer()
+                                Text("\(currencySymbol)\(totalRevenue, specifier: "%.2f")")
+                                    .fontWeight(.bold)
+                            }
+                            .font(.headline)
+                        }
+                        .padding(.top)
                     }
-                    .padding(.top)
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle(reportType.rawValue)
             .navigationBarTitleDisplayMode(.inline)
@@ -1282,6 +1299,217 @@ struct DailyOrderReportView: View {
         """
         
         return report
+    }
+}
+
+// MARK: - Individual Receipt Card (POS-style receipt for each order)
+struct IndividualReceiptCard: View {
+    let order: Order
+    let orderNumber: Int
+    let companyName: String
+    let currencySymbol: String
+    let dateFormatter: DateFormatter
+    
+    private let receiptTimeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MMM d, yyyy • h:mm a"
+        return f
+    }()
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // Receipt header with torn edge effect
+            Rectangle()
+                .fill(Color.white)
+                .frame(height: 8)
+                .mask(
+                    GeometryReader { geo in
+                        Path { path in
+                            let width = geo.size.width
+                            let height = geo.size.height
+                            path.move(to: .zero)
+                            var x: CGFloat = 0
+                            while x < width {
+                                path.addLine(to: CGPoint(x: x + 4, y: height))
+                                path.addLine(to: CGPoint(x: x + 8, y: 0))
+                                x += 8
+                            }
+                            path.addLine(to: CGPoint(x: width, y: 0))
+                            path.closeSubpath()
+                        }
+                    }
+                )
+            
+            // Main receipt content
+            VStack(spacing: 12) {
+                // Store header
+                VStack(spacing: 4) {
+                    Text(companyName)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.black)
+                    
+                    Text("RECEIPT #\(orderNumber)")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(.gray)
+                    
+                    Text(receiptTimeFormatter.string(from: order.timestamp))
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+                }
+                
+                // Dashed divider
+                DashedLine()
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
+                    .foregroundColor(.gray.opacity(0.5))
+                    .frame(height: 1)
+                
+                // Order details
+                VStack(alignment: .leading, spacing: 8) {
+                    // Product
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(order.productName.uppercased())
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundColor(.black)
+                            
+                            Text("Qty: \(order.quantity) × \(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Spacer()
+                        
+                        Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")")
+                            .font(.system(size: 15, weight: .bold, design: .monospaced))
+                            .foregroundColor(.black)
+                    }
+                    
+                    // Dashed divider
+                    DashedLine()
+                        .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
+                        .foregroundColor(.gray.opacity(0.5))
+                        .frame(height: 1)
+                    
+                    // Customer info
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Image(systemName: "person.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
+                            Text(order.buyerName.hasPrefix("SN-") ? "Customer #\(String(order.buyerName.dropFirst(3)))" : order.buyerName)
+                                .font(.system(size: 11))
+                                .foregroundColor(.black)
+                        }
+                        
+                        if !order.phoneNumber.isEmpty {
+                            HStack {
+                                Image(systemName: "phone.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
+                                Text(order.phoneNumber)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.black)
+                            }
+                        }
+                        
+                        if !order.address.isEmpty {
+                            HStack(alignment: .top) {
+                                Image(systemName: "mappin")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
+                                Text(order.address)
+                                    .font(.system(size: 11))
+                                    .foregroundColor(.black)
+                                    .lineLimit(2)
+                            }
+                        }
+                    }
+                    
+                    // Platform & Status
+                    HStack {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(order.platform.swiftUIColor)
+                                .frame(width: 8, height: 8)
+                            Text(order.platform.name)
+                                .font(.system(size: 10))
+                                .foregroundColor(.gray)
+                        }
+                        
+                        Spacer()
+                        
+                        Text(order.paymentStatus.rawValue)
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(order.paymentStatus == .paid ? .green : .orange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(order.paymentStatus == .paid ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                            )
+                    }
+                }
+                .padding(.horizontal, 4)
+                
+                // Dashed divider
+                DashedLine()
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
+                    .foregroundColor(.gray.opacity(0.5))
+                    .frame(height: 1)
+                
+                // Total
+                HStack {
+                    Text("TOTAL")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundColor(.black)
+                    Spacer()
+                    Text("\(currencySymbol)\(order.totalPrice, specifier: "%.2f")")
+                        .font(.system(size: 18, weight: .bold, design: .monospaced))
+                        .foregroundColor(.black)
+                }
+                
+                // Thank you message
+                Text("Thank you for your purchase!")
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundColor(.gray)
+                    .padding(.top, 4)
+            }
+            .padding(16)
+            .background(Color.white)
+            
+            // Receipt footer with torn edge effect
+            Rectangle()
+                .fill(Color.white)
+                .frame(height: 8)
+                .mask(
+                    GeometryReader { geo in
+                        Path { path in
+                            let width = geo.size.width
+                            let height = geo.size.height
+                            path.move(to: CGPoint(x: 0, y: height))
+                            var x: CGFloat = 0
+                            while x < width {
+                                path.addLine(to: CGPoint(x: x + 4, y: 0))
+                                path.addLine(to: CGPoint(x: x + 8, y: height))
+                                x += 8
+                            }
+                            path.addLine(to: CGPoint(x: width, y: height))
+                            path.closeSubpath()
+                        }
+                    }
+                )
+        }
+        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
+    }
+}
+
+// Dashed line shape
+struct DashedLine: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: 0, y: rect.midY))
+        path.addLine(to: CGPoint(x: rect.width, y: rect.midY))
+        return path
     }
 }
 
