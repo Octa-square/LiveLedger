@@ -75,7 +75,7 @@ struct MainContentView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 8) // Same as top
+                .padding(.bottom, 40) // Extra bottom padding to keep grid above iPhone bottom
             }
         }
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
