@@ -866,7 +866,7 @@ struct ThemeRowView: View {
             // Visual Theme Preview - Shows actual theme appearance
             ZStack {
                 RoundedRectangle(cornerRadius: 6)
-                    .fill(appTheme.backgroundColor)
+                    .fill(LinearGradient(colors: appTheme.gradientColors, startPoint: .top, endPoint: .bottom))
                     .frame(width: 32, height: 32)
                 
                 // Mini preview of theme elements
