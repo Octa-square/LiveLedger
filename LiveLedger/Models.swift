@@ -134,7 +134,7 @@ struct Product: Identifiable, Codable, Equatable {
     var barcode: String
     var imageData: Data?
     
-    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 5, criticalStockThreshold: Int = 2, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
+    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 15, criticalStockThreshold: Int = 10, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
         self.id = id
         self.name = name
         self.price = price
@@ -156,12 +156,12 @@ struct Product: Identifiable, Codable, Equatable {
     }
     
     var stockColor: Color {
-        if stock <= criticalStockThreshold {
-            return .red      // Critical - needs attention!
-        } else if stock <= lowStockThreshold {
-            return .orange   // Low - warning
-        } else {
-            return .gray     // Plenty - no attention needed
+        if stock <= criticalStockThreshold { // ≤10 = Critical
+            return .red      // 🔴 Critical - needs immediate attention!
+        } else if stock <= lowStockThreshold { // 11-15 = Low
+            return .orange   // 🟡 Low stock - warning
+        } else { // ≥16 = Normal
+            return .green    // 🟢 Normal - adequate stock
         }
     }
     

@@ -19,21 +19,21 @@ struct OrdersListView: View {
     private var isPro: Bool { authManager.currentUser?.isPro ?? false }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Header with filters
+        VStack(alignment: .leading, spacing: 4) {
+            // Header with filters - Fixed height
             HStack(spacing: 8) {
                 Text(localization.localized(.orders))
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(theme.textPrimary)
                 
                 if !viewModel.filteredOrders.isEmpty {
                     Text("\(viewModel.filteredOrders.count)")
-                        .font(.system(size: 11, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 6)
+                        .padding(.horizontal, 5)
                         .padding(.vertical, 2)
                         .background(theme.successColor)
-                        .cornerRadius(6)
+                        .cornerRadius(5)
                 }
                 
                 Spacer()
@@ -136,11 +136,10 @@ struct OrdersListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - always visible scroll indicator
-                ZStack(alignment: .trailing) {
-                    ScrollView(.vertical, showsIndicators: true) {
-                        LazyVStack(spacing: 2) {
-                            ForEach(viewModel.filteredOrders) { order in
+                // Orders list - FIXED HEIGHT container with internal scroll
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 1) {
+                        ForEach(viewModel.filteredOrders) { order in
                             MiniOrderRow(
                                 order: order,
                                 theme: theme,
@@ -163,35 +162,12 @@ struct OrdersListView: View {
                             )
                         }
                     }
-                    }
-                    .scrollIndicators(.visible)
-                    
-                    // Scroll hint indicator when more orders exist
-                    if viewModel.filteredOrders.count > 4 {
-                        VStack {
-                            Spacer()
-                            HStack {
-                                Spacer()
-                                VStack(spacing: 2) {
-                                    Image(systemName: "chevron.down")
-                                        .font(.system(size: 10, weight: .bold))
-                                    Text("scroll")
-                                        .font(.system(size: 8))
-                                }
-                                .foregroundColor(theme.textMuted.opacity(0.6))
-                                .padding(4)
-                                .background(theme.cardBackground.opacity(0.8))
-                                .cornerRadius(4)
-                            }
-                            .padding(.trailing, 4)
-                            .padding(.bottom, 2)
-                        }
-                        .allowsHitTesting(false)
-                    }
+                    .padding(.vertical, 2)
                 }
+                .scrollIndicators(.visible)
             }
         }
-        .padding(10)
+        .padding(8)
         .background(
             RoundedRectangle(cornerRadius: 12)
                 .fill(theme.cardBackground)

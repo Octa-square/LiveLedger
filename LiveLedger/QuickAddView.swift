@@ -649,6 +649,8 @@ struct EditProductSheet: View {
     @State private var showBarcodeScanner = false
     @State private var showProAlert = false
     @State private var showAbbreviateAlert = false
+    @State private var priceHasError = false
+    @State private var stockHasError = false
     
     var body: some View {
         NavigationStack {
@@ -751,13 +753,57 @@ struct EditProductSheet: View {
                             }
                             HStack {
                                 Text("Price $").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $priceText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
-                                    .onChange(of: priceText) { _, v in if let d = Double(v) { product.price = d } }
+                                TextField("0", text: $priceText)
+                                    .textFieldStyle(.roundedBorder)
+                                    .keyboardType(.decimalPad)
+                                    .foregroundColor(priceHasError ? .red : .primary)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(priceHasError ? Color.red : Color.clear, lineWidth: 1)
+                                    )
+                                    .onChange(of: priceText) { _, newValue in
+                                        // Filter out non-numeric characters (allow digits and decimal point)
+                                        let filtered = newValue.filter { $0.isNumber || $0 == "." }
+                                        if filtered != newValue {
+                                            priceText = filtered
+                                            priceHasError = true
+                                        } else {
+                                            priceHasError = false
+                                        }
+                                        if let d = Double(filtered) { product.price = d }
+                                    }
+                                if priceHasError {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(.red)
+                                        .font(.system(size: 14))
+                                }
                             }
                             HStack {
                                 Text("Stock").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $stockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
-                                    .onChange(of: stockText) { _, v in if let i = Int(v) { product.stock = i } }
+                                TextField("0", text: $stockText)
+                                    .textFieldStyle(.roundedBorder)
+                                    .keyboardType(.numberPad)
+                                    .foregroundColor(stockHasError ? .red : .primary)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 5)
+                                            .stroke(stockHasError ? Color.red : Color.clear, lineWidth: 1)
+                                    )
+                                    .onChange(of: stockText) { _, newValue in
+                                        // Filter out non-numeric characters (digits only)
+                                        let filtered = newValue.filter { $0.isNumber }
+                                        if filtered != newValue {
+                                            stockText = filtered
+                                            stockHasError = true
+                                        } else {
+                                            stockHasError = false
+                                        }
+                                        if let i = Int(filtered) { product.stock = i }
+                                    }
+                                if stockHasError {
+                                    Image(systemName: "exclamationmark.circle.fill")
+                                        .foregroundColor(.red)
+                                        .font(.system(size: 14))
+                                }
                             }
                         }
                         .padding()
@@ -914,14 +960,15 @@ struct EditProductSheet: View {
     }
 }
 
-// MARK: - Product Image Picker with Crop
+// MARK: - Product Image Picker - Direct Action Sheet
 struct ProductImagePicker: View {
     let onImageSelected: (UIImage) -> Void
     @Environment(\.dismiss) var dismiss
     
     @State private var selectedImage: UIImage?
-    @State private var showImagePicker = false
-    @State private var showCropPreview = false
+    @State private var showSourcePicker = true // Show immediately
+    @State private var showCamera = false
+    @State private var showPhotoLibrary = false
     
     var body: some View {
         NavigationStack {
@@ -944,15 +991,14 @@ struct ProductImagePicker: View {
                             )
                             .shadow(radius: 4)
                         
-                        Text("Image will be cropped to square for product display")
+                        Text("Image cropped to square for product display")
                             .font(.system(size: 11))
                             .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
                         
                         HStack(spacing: 16) {
                             Button {
                                 selectedImage = nil
-                                showImagePicker = true
+                                showSourcePicker = true
                             } label: {
                                 HStack {
                                     Image(systemName: "arrow.counterclockwise")
@@ -985,49 +1031,58 @@ struct ProductImagePicker: View {
                     }
                     .padding()
                 } else {
-                    // Initial state - show picker options
-                    VStack(spacing: 20) {
+                    // Waiting state while picker is open
+                    VStack(spacing: 16) {
                         Image(systemName: "photo.on.rectangle.angled")
-                            .font(.system(size: 60))
+                            .font(.system(size: 50))
+                            .foregroundColor(.gray.opacity(0.5))
+                        Text("Select an image source")
+                            .font(.system(size: 14))
                             .foregroundColor(.gray)
-                        
-                        Text("Select a product image")
-                            .font(.system(size: 16, weight: .medium))
-                        
-                        Text("After selecting, you can crop and resize the image")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                        
-                        Button {
-                            showImagePicker = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "photo.badge.plus")
-                                Text("Choose from Library")
-                            }
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundColor(.white)
-                            .padding(.horizontal, 24)
-                            .padding(.vertical, 12)
-                            .background(Color.blue)
-                            .cornerRadius(10)
-                        }
                     }
                     .padding()
                 }
                 
                 Spacer()
             }
-            .navigationTitle("Product Image")
+            .navigationTitle("Add Image")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showImagePicker) {
-                ImagePickerWithCrop { image in
+            // Direct action sheet on appear
+            .confirmationDialog("Choose Image Source", isPresented: $showSourcePicker, titleVisibility: .visible) {
+                Button {
+                    showCamera = true
+                } label: {
+                    Label("Camera", systemImage: "camera")
+                }
+                
+                Button {
+                    showPhotoLibrary = true
+                } label: {
+                    Label("Photo Library", systemImage: "photo.on.rectangle")
+                }
+                
+                Button("Cancel", role: .cancel) {
+                    if selectedImage == nil {
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("Select a photo from your library or take a new one")
+            }
+            // Camera picker
+            .sheet(isPresented: $showCamera) {
+                DirectImagePicker(sourceType: .camera) { image in
+                    selectedImage = image
+                }
+            }
+            // Photo library picker
+            .sheet(isPresented: $showPhotoLibrary) {
+                DirectImagePicker(sourceType: .photoLibrary) { image in
                     selectedImage = image
                 }
             }
@@ -1035,16 +1090,17 @@ struct ProductImagePicker: View {
     }
 }
 
-// MARK: - Image Picker with Crop (UIKit)
-struct ImagePickerWithCrop: UIViewControllerRepresentable {
+// MARK: - Direct Image Picker (Camera or Library)
+struct DirectImagePicker: UIViewControllerRepresentable {
+    let sourceType: UIImagePickerController.SourceType
     let onImageSelected: (UIImage) -> Void
     @Environment(\.dismiss) var dismiss
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
-        picker.sourceType = .photoLibrary
-        picker.allowsEditing = true // Enables iOS built-in crop
+        picker.sourceType = sourceType
+        picker.allowsEditing = true // Built-in iOS crop
         return picker
     }
     
@@ -1055,18 +1111,18 @@ struct ImagePickerWithCrop: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: ImagePickerWithCrop
+        let parent: DirectImagePicker
         
-        init(_ parent: ImagePickerWithCrop) {
+        init(_ parent: DirectImagePicker) {
             self.parent = parent
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            // Prefer the edited (cropped) image
+            // Prefer edited (cropped) image
             if let editedImage = info[.editedImage] as? UIImage {
                 parent.onImageSelected(editedImage)
             } else if let originalImage = info[.originalImage] as? UIImage {
-                // If no edited image, crop to square from center
+                // Crop to square from center
                 let croppedImage = cropToSquare(originalImage)
                 parent.onImageSelected(croppedImage)
             }
@@ -1077,7 +1133,6 @@ struct ImagePickerWithCrop: UIViewControllerRepresentable {
             parent.dismiss()
         }
         
-        // Crop image to square from center
         private func cropToSquare(_ image: UIImage) -> UIImage {
             let size = min(image.size.width, image.size.height)
             let x = (image.size.width - size) / 2
@@ -1091,6 +1146,7 @@ struct ImagePickerWithCrop: UIViewControllerRepresentable {
         }
     }
 }
+
 
 #Preview {
     ZStack {
