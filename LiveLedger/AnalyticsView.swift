@@ -191,9 +191,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     
@@ -278,9 +282,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .center)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     
@@ -304,9 +312,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     
@@ -425,9 +437,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     
@@ -495,9 +511,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     
@@ -542,9 +562,13 @@ struct AnalyticsView: View {
         .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 4, y: 2)
         )
     }
     

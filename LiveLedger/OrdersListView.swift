@@ -173,14 +173,20 @@ struct OrdersListView: View {
         }
         .padding(8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(theme.cardBorder, lineWidth: 1)
-                )
+            ZStack {
+                // Semi-transparent background (75-80% opacity)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackgroundSubtle)
+                // Subtle glass blur effect
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.2))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.15), radius: 6, x: 3, y: 3)
+            .shadow(color: theme.shadowLight.opacity(0.2), radius: 6, x: -3, y: -3)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(theme.cardBorder.opacity(0.6), lineWidth: 1)
+            )
         )
         .sheet(item: $editingOrder) { order in
             EditOrderSheet(

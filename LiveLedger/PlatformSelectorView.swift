@@ -234,14 +234,20 @@ struct PlatformSelectorView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(theme.cardBorder, lineWidth: 1)
-                )
+            ZStack {
+                // Semi-transparent background (85% opacity for platform selector)
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(theme.cardBackground)
+                // Subtle glass blur effect
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.ultraThinMaterial.opacity(0.15))
+            }
+            .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
+            .shadow(color: theme.shadowLight.opacity(0.25), radius: 5, x: -3, y: -3)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(theme.cardBorder.opacity(0.7), lineWidth: 1)
+            )
         )
         .sheet(isPresented: $showingAddPlatform) {
             AddPlatformSheet(

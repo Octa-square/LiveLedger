@@ -108,13 +108,13 @@ enum AppTheme: String, CaseIterable, Codable {
     // Overlay opacity - lower = more visible background image
     var backgroundOverlayOpacity: Double {
         switch self {
-        case .minimalistLight: return 0.7
-        case .minimalistDark: return 0.5
-        case .emeraldGreen: return 0.5
-        case .glassmorphism: return 0.4
-        case .boldFuturistic: return 0.5
-        case .motionRich: return 0.4
-        case .sunsetOrange: return 0.5
+        case .minimalistLight: return 0.55
+        case .minimalistDark: return 0.40
+        case .emeraldGreen: return 0.40
+        case .glassmorphism: return 0.30
+        case .boldFuturistic: return 0.40
+        case .motionRich: return 0.35
+        case .sunsetOrange: return 0.40
         }
     }
     
@@ -138,16 +138,42 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
     
-    // MARK: - Card/Surface Colors
+    // MARK: - Card/Surface Colors (Semi-transparent for background visibility)
     var cardBackground: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "FFFFFF")
-        case .minimalistDark: return Color(hex: "262626")
-        case .emeraldGreen: return Color(hex: "064E3B")
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.1)
-        case .boldFuturistic: return Color(hex: "111111")
-        case .motionRich: return Color(hex: "312E81").opacity(0.6)
-        case .sunsetOrange: return Color(hex: "292524")
+        case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.82)
+        case .minimalistDark: return Color(hex: "262626").opacity(0.80)
+        case .emeraldGreen: return Color(hex: "064E3B").opacity(0.78)
+        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.12)
+        case .boldFuturistic: return Color(hex: "111111").opacity(0.78)
+        case .motionRich: return Color(hex: "312E81").opacity(0.70)
+        case .sunsetOrange: return Color(hex: "292524").opacity(0.78)
+        }
+    }
+    
+    // More transparent card for larger areas (product grid, orders)
+    var cardBackgroundSubtle: Color {
+        switch self {
+        case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.75)
+        case .minimalistDark: return Color(hex: "262626").opacity(0.72)
+        case .emeraldGreen: return Color(hex: "064E3B").opacity(0.70)
+        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.08)
+        case .boldFuturistic: return Color(hex: "111111").opacity(0.70)
+        case .motionRich: return Color(hex: "312E81").opacity(0.60)
+        case .sunsetOrange: return Color(hex: "292524").opacity(0.70)
+        }
+    }
+    
+    // Higher opacity for input fields and critical elements
+    var cardBackgroundSolid: Color {
+        switch self {
+        case .minimalistLight: return Color(hex: "FFFFFF").opacity(0.92)
+        case .minimalistDark: return Color(hex: "262626").opacity(0.90)
+        case .emeraldGreen: return Color(hex: "064E3B").opacity(0.88)
+        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.18)
+        case .boldFuturistic: return Color(hex: "111111").opacity(0.88)
+        case .motionRich: return Color(hex: "312E81").opacity(0.82)
+        case .sunsetOrange: return Color(hex: "292524").opacity(0.88)
         }
     }
     
@@ -211,6 +237,35 @@ enum AppTheme: String, CaseIterable, Codable {
         case .boldFuturistic: return "bolt.fill"
         case .motionRich: return "waveform.path"
         case .sunsetOrange: return "sun.horizon.fill"
+        }
+    }
+    
+    // MARK: - Text Readability (for transparent backgrounds)
+    var textShadowColor: Color {
+        switch self {
+        case .minimalistLight: return Color.black.opacity(0.08)
+        case .minimalistDark: return Color.black.opacity(0.4)
+        case .emeraldGreen: return Color.black.opacity(0.35)
+        case .glassmorphism: return Color.black.opacity(0.5)
+        case .boldFuturistic: return Color.black.opacity(0.5)
+        case .motionRich: return Color.black.opacity(0.4)
+        case .sunsetOrange: return Color.black.opacity(0.35)
+        }
+    }
+    
+    var textShadowRadius: CGFloat {
+        switch self {
+        case .minimalistLight: return 1
+        case .minimalistDark, .emeraldGreen, .sunsetOrange: return 2
+        case .glassmorphism, .boldFuturistic, .motionRich: return 3
+        }
+    }
+    
+    // Check if theme is light (for dynamic text contrast)
+    var isLightTheme: Bool {
+        switch self {
+        case .minimalistLight: return true
+        default: return false
         }
     }
 }

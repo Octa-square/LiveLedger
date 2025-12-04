@@ -47,8 +47,14 @@ struct MainContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    theme.cardBackground
-                        .shadow(color: theme.shadowDark.opacity(0.1), radius: 2, y: 2)
+                    // Semi-transparent header (90% opacity for readability)
+                    ZStack {
+                        theme.cardBackgroundSolid
+                        // Subtle blur effect for glass feel
+                        Rectangle()
+                            .fill(.ultraThinMaterial.opacity(0.3))
+                    }
+                    .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
                 )
                 
                 // CONTENT - Products fixed, Orders stretches to bottom
@@ -60,13 +66,13 @@ struct MainContentView: View {
                         }
                     }
                     
-                    // Products card - fixed size
+                    // Products card - fixed size (more transparent to show background)
                     QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
                         limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
                         showLimitAlert = true
                     })
                     
-                    // Orders - stretches all the way down
+                    // Orders - stretches all the way down (more transparent)
                     OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
                         .frame(maxHeight: .infinity)
                 }
