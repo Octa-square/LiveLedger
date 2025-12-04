@@ -156,14 +156,14 @@ struct AnalyticsView: View {
     
     // MARK: - Time Period Card
     private var timePeriodCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 12) {
             Text("Time Period")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(theme.textPrimary)
             
             HStack(spacing: 8) {
                 ForEach(TimePeriod.allCases, id: \.self) { period in
-                    Button {
+                        Button {
                         if period == .custom {
                             showCustomDatePicker = true
                         }
@@ -310,41 +310,14 @@ struct AnalyticsView: View {
         )
     }
     
-    // MARK: - Sales by Platform Card
+    // MARK: - Sales by Platform Card (Pie Chart)
+    @State private var hoveredSlice: UUID? = nil
+    
     private var salesByPlatformCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Sales by Platform")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundColor(theme.textPrimary)
-            
-            // Simple bar representation
-            ForEach(platformBreakdown.prefix(5), id: \.platform.id) { item in
-                HStack {
-                    Image(systemName: item.platform.icon)
-                        .foregroundColor(item.platform.swiftUIColor)
-                        .frame(width: 20)
-                    
-                    Text(item.platform.name)
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(theme.textSecondary)
-                        .frame(width: 70, alignment: .leading)
-                    
-                    GeometryReader { geo in
-                        let maxRevenue = platformBreakdown.first?.revenue ?? 1
-                        let width = (item.revenue / maxRevenue) * geo.size.width
-                        
-                        RoundedRectangle(cornerRadius: 4)
-                            .fill(item.platform.swiftUIColor)
-                            .frame(width: max(width, 20), height: 20)
-                    }
-                    .frame(height: 20)
-                    
-                    Text("\(currencySymbol)\(String(format: "%.0f", item.revenue))")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(theme.textPrimary)
-                        .frame(width: 60, alignment: .trailing)
-                }
-            }
             
             if platformBreakdown.isEmpty {
                 Text("No sales data for this period")
@@ -352,6 +325,101 @@ struct AnalyticsView: View {
                     .foregroundColor(theme.textMuted)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
+            } else {
+                HStack(alignment: .center, spacing: 16) {
+                    // Pie Chart (Left side)
+                    ZStack {
+                        // Pie slices with dividers
+                        PieChartView(
+                            data: platformBreakdown,
+                            hoveredSlice: $hoveredSlice,
+                            theme: theme
+                        )
+                        .frame(width: 120, height: 120)
+                        
+                        // Clean center with subtle inner circle
+                        Circle()
+                            .fill(theme.cardBackground)
+                            .frame(width: 40, height: 40)
+                            .shadow(color: theme.shadowDark.opacity(0.1), radius: 2)
+                    }
+                    .frame(width: 130, height: 130)
+                    
+                    // Legend (Right side)
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(platformBreakdown, id: \.platform.id) { item in
+                            let percentage = (item.revenue / grandTotal) * 100
+                            let isHovered = hoveredSlice == item.platform.id
+                            
+                            HStack(spacing: 6) {
+                                // Color indicator
+                                Circle()
+                                    .fill(item.platform.swiftUIColor)
+                                    .frame(width: 8, height: 8)
+                                
+                                // Platform name
+                                Text(item.platform.name)
+                                    .font(.system(size: 11, weight: isHovered ? .bold : .medium))
+                                    .foregroundColor(theme.textPrimary)
+                                    .frame(minWidth: 55, alignment: .leading)
+                                
+                                Spacer()
+                                
+                                // Percentage | Amount
+                                Text("\(String(format: "%.0f", percentage))%")
+                                    .font(.system(size: 10, weight: .medium))
+                                    .foregroundColor(theme.textMuted)
+                                    .frame(width: 28, alignment: .trailing)
+                                
+                                Text("|")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(theme.textMuted.opacity(0.5))
+                                
+                                Text("\(currencySymbol)\(formatCurrency(item.revenue))")
+                                    .font(.system(size: 10, weight: .semibold))
+                                    .foregroundColor(isHovered ? theme.accentColor : theme.textPrimary)
+                                    .frame(width: 55, alignment: .trailing)
+                            }
+                            .padding(.vertical, 2)
+                            .background(isHovered ? theme.accentColor.opacity(0.1) : Color.clear)
+                            .cornerRadius(4)
+                            .onTapGesture {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    hoveredSlice = hoveredSlice == item.platform.id ? nil : item.platform.id
+                                }
+                            }
+                        }
+                        
+                        // Divider line
+                        Rectangle()
+                            .fill(theme.cardBorder)
+                            .frame(height: 1)
+                            .padding(.vertical, 4)
+                        
+                        // Grand Total
+                        HStack(spacing: 6) {
+                            Text("Total")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(theme.textPrimary)
+                            
+                            Spacer()
+                            
+                            Text("100%")
+                                .font(.system(size: 10, weight: .medium))
+                                .foregroundColor(theme.textMuted)
+                                .frame(width: 28, alignment: .trailing)
+                            
+                            Text("|")
+                                .font(.system(size: 10))
+                                .foregroundColor(theme.textMuted.opacity(0.5))
+                            
+                            Text("\(currencySymbol)\(formatCurrency(grandTotal))")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(theme.successColor)
+                                .frame(width: 55, alignment: .trailing)
+                        }
+                    }
+                }
             }
         }
         .padding(14)
@@ -361,6 +429,17 @@ struct AnalyticsView: View {
                 .fill(theme.cardBackground)
                 .shadow(color: theme.shadowDark.opacity(0.1), radius: 4, y: 2)
         )
+    }
+    
+    private var grandTotal: Double {
+        platformBreakdown.reduce(0) { $0 + $1.revenue }
+    }
+    
+    private func formatCurrency(_ value: Double) -> String {
+        if value >= 1000 {
+            return String(format: "%.1fK", value / 1000)
+        }
+        return String(format: "%.0f", value)
     }
     
     // MARK: - Top Products Card
@@ -386,13 +465,13 @@ struct AnalyticsView: View {
                             .frame(width: 24)
                         
                         // Product name
-                        Text(product.name)
+                Text(product.name)
                             .font(.system(size: 13, weight: .medium))
                             .foregroundColor(theme.textPrimary)
                             .lineLimit(1)
-                        
-                        Spacer()
-                        
+            
+            Spacer()
+            
                         // Quantity
                         Text("\(product.quantity) sold")
                             .font(.system(size: 11))
@@ -433,7 +512,7 @@ struct AnalyticsView: View {
             
             if dailySales.isEmpty {
                 Text("No sales data for this period")
-                    .font(.system(size: 12))
+                        .font(.system(size: 12))
                     .foregroundColor(theme.textMuted)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 20)
@@ -519,8 +598,8 @@ struct AnalyticsPlatformChip: View {
             VStack(spacing: 2) {
                 Image(systemName: icon)
                     .font(.system(size: 14, weight: .semibold))
-                
-                Text(name)
+            
+            Text(name)
                     .font(.system(size: 10, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
@@ -562,5 +641,119 @@ struct StatBox: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(color.opacity(0.1))
         )
+    }
+}
+
+// MARK: - Pie Chart View
+struct PieChartView: View {
+    let data: [(platform: Platform, revenue: Double)]
+    @Binding var hoveredSlice: UUID?
+    let theme: AppTheme
+    
+    private var total: Double {
+        data.reduce(0) { $0 + $1.revenue }
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            let size = min(geometry.size.width, geometry.size.height)
+            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            let radius = size / 2
+            
+            ZStack {
+                // Draw pie slices
+                ForEach(Array(data.enumerated()), id: \.element.platform.id) { index, item in
+                    let startAngle = angle(for: index, in: data)
+                    let endAngle = angle(for: index + 1, in: data)
+                    let isHovered = hoveredSlice == item.platform.id
+                    let percentage = total > 0 ? (item.revenue / total) * 100 : 0
+                    
+                    // Pie slice
+                    PieSlice(
+                        startAngle: startAngle,
+                        endAngle: endAngle,
+                        radius: isHovered ? radius * 1.05 : radius
+                    )
+                    .fill(item.platform.swiftUIColor)
+                    .overlay(
+                        // White divider line
+                        PieSlice(
+                            startAngle: startAngle,
+                            endAngle: endAngle,
+                            radius: isHovered ? radius * 1.05 : radius
+                        )
+                        .stroke(theme.cardBackground, lineWidth: 2)
+                    )
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            hoveredSlice = hoveredSlice == item.platform.id ? nil : item.platform.id
+                        }
+                    }
+                    
+                    // Hover tooltip (percentage only)
+                    if isHovered {
+                        let midAngle = (startAngle + endAngle) / 2
+                        let tooltipRadius = radius * 0.65
+                        let x = center.x + tooltipRadius * cos(midAngle * .pi / 180)
+                        let y = center.y + tooltipRadius * sin(midAngle * .pi / 180)
+                        
+                        Text("\(item.platform.name): \(String(format: "%.0f", percentage))%")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(Color.black.opacity(0.75))
+                            )
+                            .position(x: x, y: y)
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+            }
+        }
+    }
+    
+    private func angle(for index: Int, in data: [(platform: Platform, revenue: Double)]) -> Double {
+        guard total > 0 else { return -90 }
+        
+        var currentAngle: Double = -90 // Start from top
+        for i in 0..<index {
+            let percentage = data[i].revenue / total
+            currentAngle += percentage * 360
+        }
+        return currentAngle
+    }
+}
+
+// MARK: - Pie Slice Shape
+struct PieSlice: Shape {
+    var startAngle: Double
+    var endAngle: Double
+    var radius: CGFloat
+    
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(startAngle, endAngle) }
+        set {
+            startAngle = newValue.first
+            endAngle = newValue.second
+        }
+    }
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        
+        path.move(to: center)
+        path.addArc(
+            center: center,
+            radius: radius,
+            startAngle: .degrees(startAngle),
+            endAngle: .degrees(endAngle),
+            clockwise: false
+        )
+        path.closeSubpath()
+        
+        return path
     }
 }
