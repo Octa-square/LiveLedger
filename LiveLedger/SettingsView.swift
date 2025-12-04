@@ -546,52 +546,16 @@ struct SettingsView: View {
                 
                 // Themes Section - Compact with Visual Previews
                 Section {
-                    ForEach(AppTheme.allCases, id: \.self) { theme in
+                    ForEach(AppTheme.allCases, id: \.self) { selectedTheme in
                         Button {
                             withAnimation {
-                                themeManager.currentTheme = theme
+                                themeManager.currentTheme = selectedTheme
                             }
                         } label: {
-                            HStack(spacing: 10) {
-                                // Visual Theme Preview - Shows actual theme appearance
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(theme.backgroundColor)
-                                        .frame(width: 32, height: 32)
-                                    
-                                    // Mini preview of theme elements
-                                    VStack(spacing: 2) {
-                                        RoundedRectangle(cornerRadius: 2)
-                                            .fill(theme.primaryColor)
-                                            .frame(width: 16, height: 4)
-                                        HStack(spacing: 2) {
-                                            Circle().fill(theme.successColor).frame(width: 4, height: 4)
-                                            Circle().fill(theme.warningColor).frame(width: 4, height: 4)
-                                            Circle().fill(theme.accentColor).frame(width: 4, height: 4)
-                                        }
-                                        RoundedRectangle(cornerRadius: 1)
-                                            .fill(theme.cardBackground)
-                                            .frame(width: 14, height: 6)
-                                    }
-                                }
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .stroke(theme.primaryColor.opacity(0.5), lineWidth: 1)
-                                )
-                                
-                                Text(theme.rawValue)
-                                    .font(.system(size: 13, weight: .medium))
-                                    .foregroundColor(.primary)
-                                
-                                Spacer()
-                                
-                                if themeManager.currentTheme == theme {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(theme.primaryColor)
-                                        .font(.system(size: 16))
-                                }
-                            }
-                            .padding(.vertical, 1)
+                            ThemeRowView(
+                                appTheme: selectedTheme,
+                                isSelected: themeManager.currentTheme == selectedTheme
+                            )
                         }
                     }
                 } header: {
@@ -889,6 +853,55 @@ struct FeedbackView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Theme Row View
+struct ThemeRowView: View {
+    let appTheme: AppTheme
+    let isSelected: Bool
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            // Visual Theme Preview - Shows actual theme appearance
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(appTheme.backgroundColor)
+                    .frame(width: 32, height: 32)
+                
+                // Mini preview of theme elements
+                VStack(spacing: 2) {
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(appTheme.primaryColor)
+                        .frame(width: 16, height: 4)
+                    HStack(spacing: 2) {
+                        Circle().fill(appTheme.successColor).frame(width: 4, height: 4)
+                        Circle().fill(appTheme.warningColor).frame(width: 4, height: 4)
+                        Circle().fill(appTheme.accentColor).frame(width: 4, height: 4)
+                    }
+                    RoundedRectangle(cornerRadius: 1)
+                        .fill(appTheme.cardBackground)
+                        .frame(width: 14, height: 6)
+                }
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(appTheme.primaryColor.opacity(0.5), lineWidth: 1)
+            )
+            
+            Text(appTheme.rawValue)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(.primary)
+            
+            Spacer()
+            
+            if isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(appTheme.primaryColor)
+                    .font(.system(size: 16))
+            }
+        }
+        .padding(.vertical, 1)
     }
 }
 
