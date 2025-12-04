@@ -726,103 +726,257 @@ struct AnalyticsDashboardView: View {
     private var compareSection: some View {
         VStack(spacing: 16) {
             AnalyticsCard(title: "Period Comparison", theme: theme) {
+                // Calculate stats for both periods
+                let period1Orders = viewModel.orders.filter { $0.timestamp >= compareStartDate1 && $0.timestamp <= compareEndDate1 }
+                let period2Orders = viewModel.orders.filter { $0.timestamp >= compareStartDate2 && $0.timestamp <= compareEndDate2 }
+                let period1Revenue = period1Orders.reduce(0.0) { $0 + $1.totalPrice }
+                let period2Revenue = period2Orders.reduce(0.0) { $0 + $1.totalPrice }
+                let period1Items = period1Orders.reduce(0) { $0 + $1.quantity }
+                let period2Items = period2Orders.reduce(0) { $0 + $1.quantity }
+                let period1Avg = period1Orders.count > 0 ? period1Revenue / Double(period1Orders.count) : 0
+                let period2Avg = period2Orders.count > 0 ? period2Revenue / Double(period2Orders.count) : 0
+                
                 VStack(spacing: 16) {
-                    // Period 1
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Period 1")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(theme.accentColor)
-                        
-                        HStack {
-                            DatePicker("From", selection: $compareStartDate1, displayedComponents: .date)
-                                .labelsHidden()
-                            Text("to")
-                                .foregroundColor(theme.textMuted)
-                            DatePicker("To", selection: $compareEndDate1, displayedComponents: .date)
-                                .labelsHidden()
-                        }
-                        .font(.system(size: 12))
-                    }
-                    
-                    // Period 2
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Period 2")
-                            .font(.system(size: 12, weight: .bold))
-                            .foregroundColor(.orange)
-                        
-                        HStack {
-                            DatePicker("From", selection: $compareStartDate2, displayedComponents: .date)
-                                .labelsHidden()
-                            Text("to")
-                                .foregroundColor(theme.textMuted)
-                            DatePicker("To", selection: $compareEndDate2, displayedComponents: .date)
-                                .labelsHidden()
-                        }
-                        .font(.system(size: 12))
-                    }
-                    
-                    Divider()
-                    
-                    // Comparison Results
-                    let period1Orders = viewModel.orders.filter { $0.timestamp >= compareStartDate1 && $0.timestamp <= compareEndDate1 }
-                    let period2Orders = viewModel.orders.filter { $0.timestamp >= compareStartDate2 && $0.timestamp <= compareEndDate2 }
-                    let period1Revenue = period1Orders.reduce(0.0) { $0 + $1.totalPrice }
-                    let period2Revenue = period2Orders.reduce(0.0) { $0 + $1.totalPrice }
-                    
-                    HStack(spacing: 20) {
-                        VStack {
+                    // PERIOD 1 - Date picker and stats together
+                    VStack(spacing: 12) {
+                        // Header with date range
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("Period 1")
-                                .font(.system(size: 10))
-                                .foregroundColor(theme.textMuted)
-                            Text("\(currencySymbol)\(String(format: "%.2f", period1Revenue))")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(theme.accentColor)
-                            Text("\(period1Orders.count) orders")
-                                .font(.system(size: 10))
-                                .foregroundColor(theme.textMuted)
+                            
+                            HStack {
+                                DatePicker("", selection: $compareStartDate1, displayedComponents: .date)
+                                    .labelsHidden()
+                                Text("to")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(theme.textMuted)
+                                DatePicker("", selection: $compareEndDate1, displayedComponents: .date)
+                                    .labelsHidden()
+                            }
+                            .font(.system(size: 12))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        
+                        // Period 1 Stats
+                        HStack(spacing: 12) {
+                            // Total Sales
+                            VStack(spacing: 4) {
+                                Text("Total Sales")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(currencySymbol)\(formatCompact(period1Revenue))")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(theme.accentColor)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Orders
+                            VStack(spacing: 4) {
+                                Text("Orders")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(period1Orders.count)")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Items Sold
+                            VStack(spacing: 4) {
+                                Text("Items")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(period1Items)")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Avg Order
+                            VStack(spacing: 4) {
+                                Text("Avg Order")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(currencySymbol)\(formatCompact(period1Avg))")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .padding(12)
                         .background(theme.accentColor.opacity(0.1))
                         .cornerRadius(10)
-                        
-                        VStack {
+                    }
+                    
+                    // Divider between periods
+                    HStack {
+                        Rectangle()
+                            .fill(theme.textMuted.opacity(0.3))
+                            .frame(height: 1)
+                        Text("vs")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(theme.textMuted)
+                            .padding(.horizontal, 8)
+                        Rectangle()
+                            .fill(theme.textMuted.opacity(0.3))
+                            .frame(height: 1)
+                    }
+                    
+                    // PERIOD 2 - Date picker and stats together
+                    VStack(spacing: 12) {
+                        // Header with date range
+                        VStack(alignment: .leading, spacing: 8) {
                             Text("Period 2")
-                                .font(.system(size: 10))
-                                .foregroundColor(theme.textMuted)
-                            Text("\(currencySymbol)\(String(format: "%.2f", period2Revenue))")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(.orange)
-                            Text("\(period2Orders.count) orders")
-                                .font(.system(size: 10))
-                                .foregroundColor(theme.textMuted)
+                            
+                            HStack {
+                                DatePicker("", selection: $compareStartDate2, displayedComponents: .date)
+                                    .labelsHidden()
+                                Text("to")
+                                    .font(.system(size: 11))
+                                    .foregroundColor(theme.textMuted)
+                                DatePicker("", selection: $compareEndDate2, displayedComponents: .date)
+                                    .labelsHidden()
+                            }
+                            .font(.system(size: 12))
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding()
+                        
+                        // Period 2 Stats
+                        HStack(spacing: 12) {
+                            // Total Sales
+                            VStack(spacing: 4) {
+                                Text("Total Sales")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(currencySymbol)\(formatCompact(period2Revenue))")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(.orange)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Orders
+                            VStack(spacing: 4) {
+                                Text("Orders")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(period2Orders.count)")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Items Sold
+                            VStack(spacing: 4) {
+                                Text("Items")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(period2Items)")
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            
+                            Divider().frame(height: 30)
+                            
+                            // Avg Order
+                            VStack(spacing: 4) {
+                                Text("Avg Order")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(theme.textMuted)
+                                Text("\(currencySymbol)\(formatCompact(period2Avg))")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(theme.textPrimary)
+                            }
+                            .frame(maxWidth: .infinity)
+                        }
+                        .padding(12)
                         .background(Color.orange.opacity(0.1))
                         .cornerRadius(10)
                     }
                     
-                    // Difference
-                    let diff = period2Revenue - period1Revenue
-                    let diffPercent = period1Revenue > 0 ? (diff / period1Revenue) * 100 : 0
+                    // DIFFERENCE Summary
+                    let revenueDiff = period2Revenue - period1Revenue
+                    let ordersDiff = period2Orders.count - period1Orders.count
+                    let itemsDiff = period2Items - period1Items
+                    let revenuePercent = period1Revenue > 0 ? (revenueDiff / period1Revenue) * 100 : 0
                     
-                    HStack {
-                        Image(systemName: diff >= 0 ? "arrow.up.right" : "arrow.down.right")
-                            .foregroundColor(diff >= 0 ? .green : .red)
-                        Text(diff >= 0 ? "+\(currencySymbol)\(String(format: "%.2f", diff))" : "\(currencySymbol)\(String(format: "%.2f", diff))")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(diff >= 0 ? .green : .red)
-                        Text("(\(String(format: "%.1f", diffPercent))%)")
-                            .font(.system(size: 12))
+                    VStack(spacing: 10) {
+                        Text("Change from Period 1 to Period 2")
+                            .font(.system(size: 10, weight: .medium))
                             .foregroundColor(theme.textMuted)
+                        
+                        HStack(spacing: 16) {
+                            // Revenue Change
+                            VStack(spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: revenueDiff >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                        .font(.system(size: 10))
+                                    Text(revenueDiff >= 0 ? "+\(currencySymbol)\(formatCompact(revenueDiff))" : "-\(currencySymbol)\(formatCompact(abs(revenueDiff)))")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .foregroundColor(revenueDiff >= 0 ? .green : .red)
+                                Text("Revenue (\(String(format: "%+.1f", revenuePercent))%)")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(theme.textMuted)
+                            }
+                            
+                            // Orders Change
+                            VStack(spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: ordersDiff >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                        .font(.system(size: 10))
+                                    Text(ordersDiff >= 0 ? "+\(ordersDiff)" : "\(ordersDiff)")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .foregroundColor(ordersDiff >= 0 ? .green : .red)
+                                Text("Orders")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(theme.textMuted)
+                            }
+                            
+                            // Items Change
+                            VStack(spacing: 2) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: itemsDiff >= 0 ? "arrow.up.right" : "arrow.down.right")
+                                        .font(.system(size: 10))
+                                    Text(itemsDiff >= 0 ? "+\(itemsDiff)" : "\(itemsDiff)")
+                                        .font(.system(size: 13, weight: .bold))
+                                }
+                                .foregroundColor(itemsDiff >= 0 ? .green : .red)
+                                Text("Items")
+                                    .font(.system(size: 8))
+                                    .foregroundColor(theme.textMuted)
+                            }
+                        }
                     }
-                    .padding()
+                    .padding(12)
                     .frame(maxWidth: .infinity)
                     .background(theme.cardBackground)
-                    .cornerRadius(8)
+                    .cornerRadius(10)
                 }
             }
+        }
+    }
+    
+    // Helper function to format numbers compactly
+    private func formatCompact(_ value: Double) -> String {
+        if value >= 1_000_000 {
+            return String(format: "%.1fM", value / 1_000_000)
+        } else if value >= 1_000 {
+            return String(format: "%.1fK", value / 1_000)
+        } else {
+            return String(format: "%.0f", value)
         }
     }
     
