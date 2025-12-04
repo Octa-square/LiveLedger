@@ -140,9 +140,9 @@ struct OrdersListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - FIXED HEIGHT container with internal scroll
+                // Orders list - compact container with internal scroll
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 1) {
+                    LazyVStack(spacing: 0) {
                         ForEach(viewModel.filteredOrders) { order in
                             MiniOrderRow(
                                 order: order,
@@ -166,7 +166,6 @@ struct OrdersListView: View {
                             )
                         }
                     }
-                    .padding(.vertical, 2)
                 }
                 .scrollIndicators(.visible)
             }
@@ -306,8 +305,8 @@ struct MiniOrderRow: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .frame(height: 32)
+        .padding(.vertical, 2)
+        .frame(height: 28)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(theme.cardBackground.opacity(0.5))

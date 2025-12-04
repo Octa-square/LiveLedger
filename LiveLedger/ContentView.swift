@@ -72,9 +72,8 @@ struct MainContentView: View {
                         showLimitAlert = true
                     })
                     
-                    // Orders - stretches all the way down (more transparent)
+                    // Orders - compact, only takes needed height
                     OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
-                        .frame(maxHeight: .infinity)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
