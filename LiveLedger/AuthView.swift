@@ -203,11 +203,12 @@ struct LiveLedgerLogo: View {
     }
 }
 
-// MARK: - Auth View (Compact Single-Screen Design)
+// MARK: - Auth View (Centered, Polished Design)
 struct AuthView: View {
     @ObservedObject var authManager: AuthManager
     @State private var email = ""
     @State private var name = ""
+    @State private var phoneNumber = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var companyName = ""
@@ -216,12 +217,11 @@ struct AuthView: View {
     @State private var agreedToTerms = false
     @State private var showPassword = false
     @State private var showConfirmPassword = false
-    @State private var passwordFieldFocused = false
     @State private var showPasswordTooltip = false
     @FocusState private var focusedField: Field?
     
     enum Field {
-        case name, email, password, confirmPassword, company, referral
+        case name, email, phone, password, confirmPassword, company, referral
     }
     
     // Password validation
@@ -229,10 +229,6 @@ struct AuthView: View {
         password.count >= 6 &&
         password.contains(where: { $0.isLetter }) &&
         password.contains(where: { $0.isNumber || "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) })
-    }
-    
-    private var showPasswordError: Bool {
-        !password.isEmpty && !isPasswordValid && focusedField == .confirmPassword
     }
     
     var body: some View {
@@ -253,65 +249,72 @@ struct AuthView: View {
                 ], startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
                 
-                // Content - NO SCROLLING, fits on screen
+                // Vertically centered content
                 VStack(spacing: 0) {
-                    // Top spacing
-                    Spacer().frame(height: 20)
+                    Spacer()
                     
-                    // Logo Section (Compact)
-                    VStack(spacing: 6) {
-                        LiveLedgerLogo(size: 60)
+                    // Logo Section (Larger)
+                    VStack(spacing: 8) {
+                        LiveLedgerLogo(size: 80) // Increased from 60
                         
                         Text("LiveLedger")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(.system(size: 28, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
-                        Text("Track sales in real-time during live streams")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
+                        Text("Your Complete Live Sales Solution")
+                            .font(.system(size: 13))
+                            .foregroundColor(.white.opacity(0.9))
                     }
-                    
-                    Spacer().frame(height: 12)
-                    
-                    // Features (Compact horizontal)
-                    HStack(spacing: 16) {
-                        CompactFeature(icon: "bolt.fill", color: .yellow, text: "Instant orders")
-                        CompactFeature(icon: "printer.fill", color: .blue, text: "Print receipts")
-                        CompactFeature(icon: "chart.bar.fill", color: .green, text: "Analytics")
-                    }
-                    .padding(.horizontal, 30)
                     
                     Spacer().frame(height: 16)
                     
-                    // Sign Up Form (Compact)
+                    // Features (5 features in 2 rows)
                     VStack(spacing: 8) {
+                        HStack(spacing: 20) {
+                            FeaturePill(icon: "bolt.fill", text: "Instant Orders", color: .yellow)
+                            FeaturePill(icon: "printer.fill", text: "Print Receipts", color: .cyan)
+                            FeaturePill(icon: "chart.bar.fill", text: "Analytics", color: .green)
+                        }
+                        HStack(spacing: 20) {
+                            FeaturePill(icon: "square.grid.2x2.fill", text: "Multi-Platform", color: .pink)
+                            FeaturePill(icon: "square.and.arrow.up.fill", text: "Export Data", color: .orange)
+                        }
+                    }
+                    
+                    Spacer().frame(height: 16)
+                    
+                    // Sign Up Form
+                    VStack(spacing: 10) {
                         // Row 1: Name & Email
                         HStack(spacing: 8) {
-                            CompactField(placeholder: "Full Name", text: $name, icon: "person.fill")
+                            AuthInputField(placeholder: "Full Name", text: $name, icon: "person.fill")
                                 .focused($focusedField, equals: .name)
-                            CompactField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboard: .emailAddress)
+                            AuthInputField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboard: .emailAddress)
                                 .focused($focusedField, equals: .email)
                         }
                         
-                        // Row 2: Password & Confirm
+                        // Row 2: Phone Number (full width)
+                        AuthInputField(placeholder: "Phone Number", text: $phoneNumber, icon: "phone.fill", keyboard: .phonePad)
+                            .focused($focusedField, equals: .phone)
+                        
+                        // Row 3: Password & Confirm (aligned, same size)
                         HStack(spacing: 8) {
-                            // Password field with validation
-                            VStack(alignment: .leading, spacing: 2) {
+                            // Password field
+                            ZStack(alignment: .topTrailing) {
                                 HStack(spacing: 6) {
                                     Image(systemName: "lock.fill")
                                         .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.7))
+                                        .foregroundColor(.white.opacity(0.8))
                                     
                                     if showPassword {
                                         TextField("Password", text: $password)
-                                            .font(.system(size: 13))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white)
                                             .tint(.white)
                                             .focused($focusedField, equals: .password)
                                     } else {
                                         SecureField("Password", text: $password)
-                                            .font(.system(size: 13))
+                                            .font(.system(size: 14))
                                             .foregroundColor(.white)
                                             .tint(.white)
                                             .focused($focusedField, equals: .password)
@@ -319,85 +322,98 @@ struct AuthView: View {
                                     
                                     Button { showPassword.toggle() } label: {
                                         Image(systemName: showPassword ? "eye.slash" : "eye")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.white.opacity(0.6))
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.white.opacity(0.7))
                                     }
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 10)
-                                .background(showPasswordError ? Color.red.opacity(0.3) : Color.white.opacity(0.15))
-                                .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(showPasswordError ? Color.red : Color.clear, lineWidth: 1.5)
-                                )
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 12)
+                                .background(Color.white.opacity(0.2))
+                                .cornerRadius(10)
+                                .onChange(of: focusedField) { _, newValue in
+                                    if newValue == .password {
+                                        showPasswordTooltip = true
+                                        // Auto-dismiss after 3 seconds
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                                            showPasswordTooltip = false
+                                        }
+                                    }
+                                }
+                                .onChange(of: password) { _, _ in
+                                    showPasswordTooltip = false
+                                }
                                 
-                                Text("Min 6 chars, 1 letter, 1 number/symbol")
-                                    .font(.system(size: 9))
-                                    .foregroundColor(showPasswordError ? .red : .white.opacity(0.5))
+                                // Auto-dismissing tooltip
+                                if showPasswordTooltip {
+                                    Text("Min 6 chars, 1 letter, 1 symbol")
+                                        .font(.system(size: 9, weight: .medium))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.black.opacity(0.8))
+                                        .cornerRadius(6)
+                                        .offset(y: -35)
+                                        .transition(.opacity.combined(with: .scale))
+                                        .animation(.easeInOut(duration: 0.2), value: showPasswordTooltip)
+                                }
                             }
                             
-                            // Confirm Password
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.7))
-                                    
-                                    if showConfirmPassword {
-                                        TextField("Confirm", text: $confirmPassword)
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.white)
-                                            .tint(.white)
-                                            .focused($focusedField, equals: .confirmPassword)
-                                    } else {
-                                        SecureField("Confirm", text: $confirmPassword)
-                                            .font(.system(size: 13))
-                                            .foregroundColor(.white)
-                                            .tint(.white)
-                                            .focused($focusedField, equals: .confirmPassword)
-                                    }
-                                    
-                                    Button { showConfirmPassword.toggle() } label: {
-                                        Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.white.opacity(0.6))
-                                    }
+                            // Confirm Password field (same size)
+                            HStack(spacing: 6) {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.white.opacity(0.8))
+                                
+                                if showConfirmPassword {
+                                    TextField("Confirm Password", text: $confirmPassword)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                        .tint(.white)
+                                        .focused($focusedField, equals: .confirmPassword)
+                                } else {
+                                    SecureField("Confirm Password", text: $confirmPassword)
+                                        .font(.system(size: 14))
+                                        .foregroundColor(.white)
+                                        .tint(.white)
+                                        .focused($focusedField, equals: .confirmPassword)
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.15))
-                                .cornerRadius(8)
                                 
                                 // Match indicator
                                 if !confirmPassword.isEmpty {
-                                    Text(password == confirmPassword ? "✓ Match" : "✗ No match")
-                                        .font(.system(size: 9))
+                                    Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                        .font(.system(size: 12))
                                         .foregroundColor(password == confirmPassword ? .green : .red)
                                 } else {
-                                    Text(" ")
-                                        .font(.system(size: 9))
+                                    Button { showConfirmPassword.toggle() } label: {
+                                        Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.white.opacity(0.7))
+                                    }
                                 }
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 12)
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(10)
                         }
                         
-                        // Row 3: Company & Referral
+                        // Row 4: Company & Referral
                         HStack(spacing: 8) {
-                            CompactField(placeholder: "Company (optional)", text: $companyName, icon: "building.2.fill")
+                            AuthInputField(placeholder: "Company (optional)", text: $companyName, icon: "building.2.fill")
                                 .focused($focusedField, equals: .company)
-                            CompactField(placeholder: "Referral (optional)", text: $referralCode, icon: "gift.fill")
+                            AuthInputField(placeholder: "Referral (optional)", text: $referralCode, icon: "gift.fill")
                                 .focused($focusedField, equals: .referral)
                         }
                         
-                        // Currency Picker (Compact)
+                        // Currency Picker
                         HStack {
                             Image(systemName: "dollarsign.circle.fill")
                                 .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.7))
+                                .foregroundColor(.white.opacity(0.8))
                             
                             Text("Currency:")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.7))
+                                .font(.system(size: 13))
+                                .foregroundColor(.white.opacity(0.8))
                             
                             Picker("", selection: $selectedCurrency) {
                                 ForEach(AppUser.currencies, id: \.self) { currency in
@@ -406,55 +422,52 @@ struct AuthView: View {
                             }
                             .pickerStyle(.menu)
                             .tint(.white)
-                            .scaleEffect(0.9)
                             
                             Spacer()
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.15))
-                        .cornerRadius(8)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(10)
                         
                         // Terms with clickable links
                         HStack(spacing: 4) {
                             Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 16))
-                                .foregroundColor(agreedToTerms ? .green : .white.opacity(0.7))
+                                .font(.system(size: 18))
+                                .foregroundColor(agreedToTerms ? .green : .white.opacity(0.8))
                                 .onTapGesture { agreedToTerms.toggle() }
                             
                             Text("I agree to ")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.8))
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.9))
                             
                             Button {
-                                // Open Terms URL
                                 if let url = URL(string: "https://example.com/terms") {
                                     UIApplication.shared.open(url)
                                 }
                             } label: {
-                                Text("Terms of Service")
-                                    .font(.system(size: 11, weight: .medium))
+                                Text("Terms")
+                                    .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(.white)
                                     .underline()
                             }
                             
-                            Text(" and ")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.8))
+                            Text(" & ")
+                                .font(.system(size: 12))
+                                .foregroundColor(.white.opacity(0.9))
                             
                             Button {
-                                // Open Privacy URL
                                 if let url = URL(string: "https://example.com/privacy") {
                                     UIApplication.shared.open(url)
                                 }
                             } label: {
-                                Text("Privacy Policy")
-                                    .font(.system(size: 11, weight: .medium))
+                                Text("Privacy")
+                                    .font(.system(size: 12, weight: .semibold))
                                     .foregroundColor(.white)
                                     .underline()
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 6)
                         
                         // Sign Up Button
                         Button {
@@ -470,27 +483,26 @@ struct AuthView: View {
                             }
                         } label: {
                             Text("Create Free Account")
-                                .font(.system(size: 15, weight: .bold))
+                                .font(.system(size: 16, weight: .bold))
                                 .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                                 .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
+                                .padding(.vertical, 14)
                                 .background(isFormValid ? Color.white : Color.white.opacity(0.5))
-                                .cornerRadius(10)
+                                .cornerRadius(12)
                         }
                         .disabled(!isFormValid)
                         
                         Text("First 20 orders FREE • No credit card required")
-                            .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 11))
+                            .foregroundColor(.white.opacity(0.7))
                     }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 16)
-                    .background(Color.black.opacity(0.2))
-                    .cornerRadius(16)
                     .padding(.horizontal, 20)
+                    .padding(.vertical, 18)
+                    .background(Color.black.opacity(0.25))
+                    .cornerRadius(20)
+                    .padding(.horizontal, 16)
                     
-                    // Bottom spacing
-                    Spacer().frame(height: 20)
+                    Spacer()
                 }
             }
         }
@@ -504,6 +516,54 @@ struct AuthView: View {
         isPasswordValid &&
         password == confirmPassword &&
         agreedToTerms
+    }
+}
+
+// MARK: - Feature Pill (Compact)
+struct FeaturePill: View {
+    let icon: String
+    let text: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundColor(color)
+            Text(text)
+                .font(.system(size: 10, weight: .medium))
+                .foregroundColor(.white.opacity(0.9))
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Auth Input Field (Uniform size, readable placeholder)
+struct AuthInputField: View {
+    let placeholder: String
+    @Binding var text: String
+    let icon: String
+    var keyboard: UIKeyboardType = .default
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(.white.opacity(0.8))
+            TextField(placeholder, text: $text)
+                .font(.system(size: 14))
+                .foregroundColor(.white)
+                .keyboardType(keyboard)
+                .autocapitalization(.none)
+                .tint(.white)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.2))
+        .cornerRadius(10)
     }
 }
 

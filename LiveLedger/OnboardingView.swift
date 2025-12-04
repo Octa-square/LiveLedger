@@ -34,31 +34,35 @@ struct OnboardingView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Logo/Welcome Header
-                VStack(spacing: 8) {
-                    LiveLedgerLogoMini()
-                        .scaleEffect(1.2)
-                    
-                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .padding(.top, 40)
-                .padding(.bottom, 10)
-                
-                // Skip button
+                // Skip button at top-right (professional placement)
                 HStack {
                     Spacer()
                     Button {
                         completeOnboarding()
                     } label: {
                         Text(localization.localized(.skip))
-                            .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.15))
+                            .cornerRadius(16)
                     }
                 }
+                .padding(.top, 16)
+                .padding(.trailing, 20)
+                
+                // Logo/Welcome Header (Larger)
+                VStack(spacing: 10) {
+                    LiveLedgerLogoMini()
+                        .scaleEffect(1.5) // Increased from 1.2
+                    
+                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .padding(.top, 10)
+                .padding(.bottom, 10)
                 
                 // Page content
                 TabView(selection: $currentPage) {
@@ -183,3 +187,4 @@ struct TutorialButton: View {
 #Preview {
     OnboardingView(localization: LocalizationManager(), hasCompletedOnboarding: .constant(false))
 }
+
