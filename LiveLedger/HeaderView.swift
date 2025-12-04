@@ -57,7 +57,7 @@ struct HeaderView: View {
                     // Seller's account info (smaller, secondary)
                     if let user = authManager.currentUser {
                         HStack(spacing: 4) {
-                            Text("Account:")
+                            Text(localization.localized(.account) + ":")
                                 .font(.system(size: 11, weight: .regular))
                                 .foregroundColor(theme.textMuted)
                             
@@ -222,7 +222,7 @@ struct ExportOptionsView: View {
                             Image(systemName: selectAll ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 22))
                                 .foregroundColor(selectAll ? .green : .gray)
-                            Text("All Platforms")
+                            Text(localization.localized(.allPlatforms))
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
                         }
@@ -418,7 +418,7 @@ struct ClearOptionsView: View {
                     .foregroundColor(.orange)
                     .padding(.top, 20)
                 
-                Text("Select what to clear")
+                Text(localization.localized(.selectToClear))
                     .font(.system(size: 16, weight: .semibold))
                 
                 // Options
@@ -480,7 +480,7 @@ struct ClearOptionsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "trash.fill")
-                        Text("Clear Selected")
+                        Text(localization.localized(.clearSelected))
                     }
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(.white)
@@ -800,7 +800,7 @@ struct PrintOptionsView: View {
                 VStack(spacing: 16) {
                     // Print Type Selection
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Print Type")
+                        Text(localization.localized(.printType))
                             .font(.system(size: 13, weight: .bold))
                             .foregroundColor(.gray)
                         
@@ -821,7 +821,7 @@ struct PrintOptionsView: View {
                     // Platform Filter
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("Filter by Platform")
+                            Text(localization.localized(.filterByPlatform))
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundColor(.gray)
                             
@@ -1125,12 +1125,12 @@ struct DailyOrderReportView: View {
                         // Summary
                         HStack {
                             VStack(alignment: .leading) {
-                                Text("Total Orders: \(orders.count)")
-                                Text("Total Items: \(totalItems)")
+                                Text("\(localization.localized(.totalOrders)): \(orders.count)")
+                                Text("\(localization.localized(.items)): \(totalItems)")
                             }
                             Spacer()
                             VStack(alignment: .trailing) {
-                                Text("Total Sales: \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
+                                Text("\(localization.localized(.totalSales)): \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
                                     .fontWeight(.bold)
                             }
                         }
@@ -1142,7 +1142,7 @@ struct DailyOrderReportView: View {
                         // Platform breakdown (for sales report)
                         if reportType == .salesReport && ordersByPlatform.count > 1 {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("By Platform")
+                                Text(localization.localized(.byPlatform))
                                     .font(.system(size: 12, weight: .bold))
                                     .foregroundColor(.gray)
                                 
@@ -1169,10 +1169,10 @@ struct DailyOrderReportView: View {
                         // Orders Table Header
                         HStack {
                             Text("#").frame(width: 25, alignment: .leading)
-                            Text("Product").frame(maxWidth: .infinity, alignment: .leading)
-                            Text("Qty").frame(width: 30)
-                            Text("Price").frame(width: 50, alignment: .trailing)
-                            Text("Total").frame(width: 55, alignment: .trailing)
+                            Text(localization.localized(.product)).frame(maxWidth: .infinity, alignment: .leading)
+                            Text(localization.localized(.quantity)).frame(width: 30)
+                            Text(localization.localized(.price)).frame(width: 50, alignment: .trailing)
+                            Text(localization.localized(.total)).frame(width: 55, alignment: .trailing)
                         }
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.gray)
@@ -1469,7 +1469,7 @@ struct IndividualReceiptCard: View {
                 }
                 
                 // Thank you message
-                Text("Thank you for your purchase!")
+                Text(localization.localized(.thankYou))
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.gray)
                     .padding(.top, 4)

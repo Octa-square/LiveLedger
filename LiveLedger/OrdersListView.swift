@@ -172,7 +172,7 @@ struct OrdersListView: View {
         }
         .padding(.horizontal, 8)
         .padding(.top, 8)
-        .padding(.bottom, 50) // Extra bottom padding to cut off grid higher
+        .padding(.bottom, 100) // Extra bottom padding to cut off grid higher
         .background(
             ZStack {
                 // Semi-transparent background (75-80% opacity)
