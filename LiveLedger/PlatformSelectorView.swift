@@ -199,23 +199,26 @@ struct PlatformSelectorView: View {
                         )
                     }
                 }
+                .padding(.trailing, 1) // Prevent edge peeking
             }
+            .scrollIndicators(.hidden) // Hide all scroll indicators
             .scrollDisabled(customPlatforms.isEmpty)
         }
         .frame(height: 46)
-        .clipped() // Ensure custom platforms don't peek out
+        .clipShape(Rectangle()) // Hard clip to prevent any peeking
     }
     
-    // Three-dot indicator for more platforms
+    // Three-dot indicator for more platforms (centered below grid)
     private var scrollIndicator: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 5) {
             ForEach(0..<3, id: \.self) { _ in
                 Circle()
-                    .fill(theme.textMuted.opacity(0.5))
-                    .frame(width: 5, height: 5)
+                    .fill(theme.textMuted.opacity(0.6))
+                    .frame(width: 6, height: 6)
             }
         }
-        .padding(.top, 2)
+        .padding(.top, 4)
+        .frame(maxWidth: .infinity) // Center horizontally
     }
     
     var body: some View {
