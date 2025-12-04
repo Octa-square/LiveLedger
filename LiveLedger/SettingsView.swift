@@ -769,18 +769,92 @@ struct SettingsView: View {
                 
                 // About Section
                 Section {
+                    // App Name & Logo
+                    HStack(spacing: 12) {
+                        Image(systemName: "chart.bar.doc.horizontal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(theme.accentColor)
+                            .frame(width: 50, height: 50)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(theme.accentColor.opacity(0.15))
+                            )
+                        
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("LiveLedger")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(theme.textPrimary)
+                            
+                            Text("Sales Tracking for Live Sellers")
+                                .font(.system(size: 12))
+                                .foregroundColor(theme.textMuted)
+                        }
+                        
+                        Spacer()
+                    }
+                    .padding(.vertical, 4)
+                    
+                    // Version
                     HStack {
-                        Text(localization.localized(.version))
+                        Label(localization.localized(.version), systemImage: "info.circle")
+                            .foregroundColor(theme.textSecondary)
                         Spacer()
                         Text("1.0.0")
-                            .foregroundColor(.gray)
+                            .foregroundColor(theme.textMuted)
+                            .font(.system(size: 14, weight: .medium))
                     }
                     
-                    NavigationLink {
-                        IconExportView()
-                    } label: {
-                        Label("Export App Icons", systemImage: "square.and.arrow.down")
+                    // App Description
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("About LiveLedger")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundColor(theme.textPrimary)
+                        
+                        Text("LiveLedger is a powerful sales tracking application designed for live stream sellers. Manage orders across multiple platforms, track inventory in real-time, and gain insights with comprehensive analytics.")
+                            .font(.system(size: 12))
+                            .foregroundColor(theme.textSecondary)
+                            .lineSpacing(2)
                     }
+                    .padding(.vertical, 4)
+                    
+                    // Developer Info
+                    HStack {
+                        Label("Developer", systemImage: "person.fill")
+                            .foregroundColor(theme.textSecondary)
+                        Spacer()
+                        Text("OctaSquare")
+                            .foregroundColor(theme.textMuted)
+                            .font(.system(size: 14))
+                    }
+                    
+                    // Copyright
+                    HStack {
+                        Label("Copyright", systemImage: "c.circle")
+                            .foregroundColor(theme.textSecondary)
+                        Spacer()
+                        Text("© 2024 OctaSquare")
+                            .foregroundColor(theme.textMuted)
+                            .font(.system(size: 14))
+                    }
+                    
+                    // Terms & Privacy Links
+                    HStack {
+                        Link(destination: URL(string: "https://liveledger.app/terms")!) {
+                            Label("Terms of Service", systemImage: "doc.text")
+                                .font(.system(size: 14))
+                                .foregroundColor(theme.accentColor)
+                        }
+                        
+                        Spacer()
+                        
+                        Link(destination: URL(string: "https://liveledger.app/privacy")!) {
+                            Label("Privacy Policy", systemImage: "hand.raised.fill")
+                                .font(.system(size: 14))
+                                .foregroundColor(theme.accentColor)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                    
                 } header: {
                     Text(localization.localized(.about))
                 }
