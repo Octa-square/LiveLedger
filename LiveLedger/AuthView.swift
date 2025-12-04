@@ -392,26 +392,27 @@ struct AuthView: View {
                                     .foregroundColor(.white.opacity(0.8))
                                 
                                 if showConfirmPassword {
-                                    TextField("Confirm Password", text: $confirmPassword)
+                                    TextField("Confirm", text: $confirmPassword)
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
                                         .tint(.white)
                                         .focused($focusedField, equals: .confirmPassword)
                                 } else {
-                                    SecureField("Confirm Password", text: $confirmPassword)
+                                    SecureField("Confirm", text: $confirmPassword)
                                         .font(.system(size: 14))
                                         .foregroundColor(.white)
                                         .tint(.white)
                                         .focused($focusedField, equals: .confirmPassword)
                                 }
                                 
-                                // Match indicator
-                                if !confirmPassword.isEmpty {
-                                    Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(password == confirmPassword ? .green : .red)
-                                } else {
-                                    Button { showConfirmPassword.toggle() } label: {
+                                // Show eye toggle OR match indicator (not blocking input)
+                                Button { showConfirmPassword.toggle() } label: {
+                                    // Only show match status after user finishes typing (both fields have content)
+                                    if !confirmPassword.isEmpty && !password.isEmpty && confirmPassword.count >= password.count {
+                                        Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(password == confirmPassword ? .green : .red)
+                                    } else {
                                         Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
                                             .font(.system(size: 12))
                                             .foregroundColor(.white.opacity(0.7))
