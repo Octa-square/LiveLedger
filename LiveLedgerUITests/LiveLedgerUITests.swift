@@ -1,13 +1,13 @@
 //
-//  SalesAppUITests.swift
-//  SalesAppUITests
+//  LiveLedgerUITests.swift
+//  LiveLedgerUITests
 //
 //  Created by Chinonso Chiji on 12/2/25.
 //
 
 import XCTest
 
-final class SalesAppUITests: XCTestCase {
+final class LiveLedgerUITests: XCTestCase {
 
     override func setUpWithError() throws {
         // Put setup code here. This method is called before the invocation of each test method in the class.

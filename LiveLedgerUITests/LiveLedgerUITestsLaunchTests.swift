@@ -1,13 +1,13 @@
 //
-//  SalesAppUITestsLaunchTests.swift
-//  SalesAppUITests
+//  LiveLedgerUITestsLaunchTests.swift
+//  LiveLedgerUITests
 //
 //  Created by Chinonso Chiji on 12/2/25.
 //
 
 import XCTest
 
-final class SalesAppUITestsLaunchTests: XCTestCase {
+final class LiveLedgerUITestsLaunchTests: XCTestCase {
 
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true

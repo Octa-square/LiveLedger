@@ -1,0 +1,97 @@
+================================================================================
+                        LIVELEDGER - APP STORE LISTING
+================================================================================
+
+APP NAME: LiveLedger
+
+SUBTITLE: Live Stream Sales Manager
+
+CATEGORY: 
+  - Primary: Business
+  - Secondary: Finance
+
+KEYWORDS (100 chars max):
+live sales,tiktok shop,instagram live,facebook live,order tracker,pos,inventory,receipt,sales tracker
+
+================================================================================
+                              DESCRIPTION
+================================================================================
+
+Selling on TikTok, Instagram, or Facebook Live? Stop scrambling with pen and paper. LiveLedger lets you track every sale with a single tap while you're streaming.
+
+🎯 BUILT FOR LIVE SELLERS
+Designed specifically for live stream sellers who need to capture orders fast. Tap a product, add a customer — done. No forms, no delays, no missed sales.
+
+⚡ LIGHTNING-FAST ORDER ENTRY
+• Tap-to-sell — add orders in under 2 seconds
+• Track multiple platforms (TikTok, Instagram, Facebook, YouTube)
+• Auto-save keeps your data safe even if you swipe away
+
+📊 REAL-TIME DASHBOARD
+• See total sales, stock levels, and top sellers at a glance
+• Live session timer to track your streaming time
+• Track fulfilled vs pending orders instantly
+
+🧾 PRINT & EXPORT
+• Print daily sales reports
+• Export orders to CSV
+• Generate POS-style receipts for customers
+
+📦 INVENTORY MANAGEMENT
+• Monitor stock levels with color-coded alerts
+• Low stock warnings before you oversell
+• Manage up to 12 products per session
+
+🌍 WORKS IN YOUR LANGUAGE
+• 13 languages supported
+• Use your local currency
+
+💎 GO PRO FOR MORE
+Free plan includes 20 orders. Upgrade to Pro for:
+✓ Unlimited orders
+✓ Advanced order filters (by platform & discount)
+✓ Product images & barcode scanning
+✓ Advanced analytics
+✓ Unlimited exports
+✓ Priority support
+
+Whether you're selling clothes, cosmetics, jewelry, or crafts — LiveLedger helps you focus on your customers while we handle the numbers.
+
+Download now and never miss another sale!
+
+================================================================================
+                           WHAT'S NEW (Version 1.0)
+================================================================================
+
+🎉 Initial Release!
+
+• Tap-to-sell order entry
+• Multi-platform support (TikTok, Instagram, Facebook)
+• Real-time sales dashboard
+• Inventory tracking with alerts
+• Print receipts and daily reports
+• Export to CSV
+• 13 languages supported
+• Beautiful themes to match your style
+• Pro subscription for power users
+
+================================================================================
+                              SUPPORT INFO
+================================================================================
+
+SUPPORT URL: https://octasquare.github.io/liveledger/support.html
+PRIVACY POLICY URL: https://octasquare.github.io/liveledger/privacy-policy.html
+MARKETING URL: https://octasquare.com
+SUPPORT EMAIL: admin@octasquare.com
+
+================================================================================
+                              AGE RATING
+================================================================================
+
+Age Rating: 4+
+- No objectionable content
+- No in-app purchases of physical goods
+- Contains in-app purchases (subscription)
+
+================================================================================
+

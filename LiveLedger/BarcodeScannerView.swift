@@ -11,7 +11,6 @@ import AVFoundation
 // MARK: - Barcode Scanner View
 struct BarcodeScannerView: View {
     @Environment(\.dismiss) var dismiss
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @Binding var scannedCode: String
     let onScan: (String) -> Void
     
@@ -19,10 +18,6 @@ struct BarcodeScannerView: View {
     @State private var lastScannedCode: String = ""
     @State private var showFlash = false
     @State private var torchOn = false
-    
-    // Responsive sizing for Dynamic Type & device compatibility
-    @ScaledMetric(relativeTo: .body) private var scanFrameWidth: CGFloat = 280
-    @ScaledMetric(relativeTo: .body) private var scanFrameHeight: CGFloat = 180
     
     var body: some View {
         NavigationStack {
@@ -39,16 +34,16 @@ struct BarcodeScannerView: View {
                 VStack {
                     Spacer()
                     
-                    // Scanning frame - scales with Dynamic Type
+                    // Scanning frame
                     ZStack {
                         // Corner brackets
                         ScannerFrameView()
-                            .frame(width: scanFrameWidth, height: scanFrameHeight)
+                            .frame(width: 280, height: 180)
                         
                         // Scanning line animation
                         if isScanning {
                             ScanningLineView()
-                                .frame(width: scanFrameWidth - 20, height: 2)
+                                .frame(width: 260, height: 2)
                         }
                     }
                     
@@ -230,7 +225,6 @@ struct BarcodeCameraView: UIViewControllerRepresentable {
         Coordinator(self)
     }
     
-    @MainActor
     class Coordinator: NSObject, BarcodeScannerDelegate {
         let parent: BarcodeCameraView
         
@@ -238,8 +232,8 @@ struct BarcodeCameraView: UIViewControllerRepresentable {
             self.parent = parent
         }
         
-        nonisolated func didScanBarcode(_ code: String) {
-            Task { @MainActor in
+        func didScanBarcode(_ code: String) {
+            DispatchQueue.main.async {
                 // Haptic feedback
                 let impact = UIImpactFeedbackGenerator(style: .medium)
                 impact.impactOccurred()
@@ -252,7 +246,7 @@ struct BarcodeCameraView: UIViewControllerRepresentable {
 
 // MARK: - Scanner Delegate Protocol
 protocol BarcodeScannerDelegate: AnyObject {
-    @MainActor func didScanBarcode(_ code: String)
+    func didScanBarcode(_ code: String)
 }
 
 // MARK: - Barcode Scanner View Controller
@@ -335,10 +329,7 @@ class BarcodeScannerViewController: UIViewController, AVCaptureMetadataOutputObj
     }
     
     func startScanning() {
-        let session = captureSession
-        DispatchQueue.global(qos: .userInitiated).async { [session] in
-            session?.startRunning()
-        }
+        captureSession?.startRunning()
     }
     
     func stopScanning() {

@@ -12,37 +12,37 @@
 			containerPortal = 4AB5ED022EDFCD8800EC2589 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 4AB5ED092EDFCD8800EC2589;
-			remoteInfo = SalesApp;
+			remoteInfo = LiveLedger;
 		};
 		4AB5ED222EDFCD8F00EC2589 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4AB5ED022EDFCD8800EC2589 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 4AB5ED092EDFCD8800EC2589;
-			remoteInfo = SalesApp;
+			remoteInfo = LiveLedger;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		4AB5ED0A2EDFCD8800EC2589 /* SalesApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SalesApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		4AB5ED172EDFCD8F00EC2589 /* SalesAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SalesAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		4AB5ED212EDFCD8F00EC2589 /* SalesAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SalesAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4AB5ED0A2EDFCD8800EC2589 /* LiveLedger.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveLedger.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4AB5ED172EDFCD8F00EC2589 /* LiveLedgerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiveLedgerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		4AB5ED212EDFCD8F00EC2589 /* LiveLedgerUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LiveLedgerUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		4AB5ED0C2EDFCD8800EC2589 /* SalesApp */ = {
+		4AB5ED0C2EDFCD8800EC2589 /* LiveLedger */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SalesApp;
+			path = LiveLedger;
 			sourceTree = "<group>";
 		};
-		4AB5ED1A2EDFCD8F00EC2589 /* SalesAppTests */ = {
+		4AB5ED1A2EDFCD8F00EC2589 /* LiveLedgerTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SalesAppTests;
+			path = LiveLedgerTests;
 			sourceTree = "<group>";
 		};
-		4AB5ED242EDFCD8F00EC2589 /* SalesAppUITests */ = {
+		4AB5ED242EDFCD8F00EC2589 /* LiveLedgerUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = SalesAppUITests;
+			path = LiveLedgerUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -75,9 +75,9 @@
 		4AB5ED012EDFCD8800EC2589 = {
 			isa = PBXGroup;
 			children = (
-				4AB5ED0C2EDFCD8800EC2589 /* SalesApp */,
-				4AB5ED1A2EDFCD8F00EC2589 /* SalesAppTests */,
-				4AB5ED242EDFCD8F00EC2589 /* SalesAppUITests */,
+				4AB5ED0C2EDFCD8800EC2589 /* LiveLedger */,
+				4AB5ED1A2EDFCD8F00EC2589 /* LiveLedgerTests */,
+				4AB5ED242EDFCD8F00EC2589 /* LiveLedgerUITests */,
 				4AB5ED0B2EDFCD8800EC2589 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -85,9 +85,9 @@
 		4AB5ED0B2EDFCD8800EC2589 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4AB5ED0A2EDFCD8800EC2589 /* SalesApp.app */,
-				4AB5ED172EDFCD8F00EC2589 /* SalesAppTests.xctest */,
-				4AB5ED212EDFCD8F00EC2589 /* SalesAppUITests.xctest */,
+				4AB5ED0A2EDFCD8800EC2589 /* LiveLedger.app */,
+				4AB5ED172EDFCD8F00EC2589 /* LiveLedgerTests.xctest */,
+				4AB5ED212EDFCD8F00EC2589 /* LiveLedgerUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,9 +95,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		4AB5ED092EDFCD8800EC2589 /* SalesApp */ = {
+		4AB5ED092EDFCD8800EC2589 /* LiveLedger */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4AB5ED2B2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesApp" */;
+			buildConfigurationList = 4AB5ED2B2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedger" */;
 			buildPhases = (
 				4AB5ED062EDFCD8800EC2589 /* Sources */,
 				4AB5ED072EDFCD8800EC2589 /* Frameworks */,
@@ -108,18 +108,18 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				4AB5ED0C2EDFCD8800EC2589 /* SalesApp */,
+				4AB5ED0C2EDFCD8800EC2589 /* LiveLedger */,
 			);
-			name = SalesApp;
+			name = LiveLedger;
 			packageProductDependencies = (
 			);
-			productName = SalesApp;
-			productReference = 4AB5ED0A2EDFCD8800EC2589 /* SalesApp.app */;
+			productName = LiveLedger;
+			productReference = 4AB5ED0A2EDFCD8800EC2589 /* LiveLedger.app */;
 			productType = "com.apple.product-type.application";
 		};
-		4AB5ED162EDFCD8F00EC2589 /* SalesAppTests */ = {
+		4AB5ED162EDFCD8F00EC2589 /* LiveLedgerTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4AB5ED2E2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesAppTests" */;
+			buildConfigurationList = 4AB5ED2E2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedgerTests" */;
 			buildPhases = (
 				4AB5ED132EDFCD8F00EC2589 /* Sources */,
 				4AB5ED142EDFCD8F00EC2589 /* Frameworks */,
@@ -131,18 +131,18 @@
 				4AB5ED192EDFCD8F00EC2589 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4AB5ED1A2EDFCD8F00EC2589 /* SalesAppTests */,
+				4AB5ED1A2EDFCD8F00EC2589 /* LiveLedgerTests */,
 			);
-			name = SalesAppTests;
+			name = LiveLedgerTests;
 			packageProductDependencies = (
 			);
-			productName = SalesAppTests;
-			productReference = 4AB5ED172EDFCD8F00EC2589 /* SalesAppTests.xctest */;
+			productName = LiveLedgerTests;
+			productReference = 4AB5ED172EDFCD8F00EC2589 /* LiveLedgerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		4AB5ED202EDFCD8F00EC2589 /* SalesAppUITests */ = {
+		4AB5ED202EDFCD8F00EC2589 /* LiveLedgerUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4AB5ED312EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesAppUITests" */;
+			buildConfigurationList = 4AB5ED312EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedgerUITests" */;
 			buildPhases = (
 				4AB5ED1D2EDFCD8F00EC2589 /* Sources */,
 				4AB5ED1E2EDFCD8F00EC2589 /* Frameworks */,
@@ -154,13 +154,13 @@
 				4AB5ED232EDFCD8F00EC2589 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				4AB5ED242EDFCD8F00EC2589 /* SalesAppUITests */,
+				4AB5ED242EDFCD8F00EC2589 /* LiveLedgerUITests */,
 			);
-			name = SalesAppUITests;
+			name = LiveLedgerUITests;
 			packageProductDependencies = (
 			);
-			productName = SalesAppUITests;
-			productReference = 4AB5ED212EDFCD8F00EC2589 /* SalesAppUITests.xctest */;
+			productName = LiveLedgerUITests;
+			productReference = 4AB5ED212EDFCD8F00EC2589 /* LiveLedgerUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -186,7 +186,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 4AB5ED052EDFCD8800EC2589 /* Build configuration list for PBXProject "SalesApp" */;
+			buildConfigurationList = 4AB5ED052EDFCD8800EC2589 /* Build configuration list for PBXProject "LiveLedger" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -200,9 +200,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				4AB5ED092EDFCD8800EC2589 /* SalesApp */,
-				4AB5ED162EDFCD8F00EC2589 /* SalesAppTests */,
-				4AB5ED202EDFCD8F00EC2589 /* SalesAppUITests */,
+				4AB5ED092EDFCD8800EC2589 /* LiveLedger */,
+				4AB5ED162EDFCD8F00EC2589 /* LiveLedgerTests */,
+				4AB5ED202EDFCD8F00EC2589 /* LiveLedgerUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -258,12 +258,12 @@
 /* Begin PBXTargetDependency section */
 		4AB5ED192EDFCD8F00EC2589 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4AB5ED092EDFCD8800EC2589 /* SalesApp */;
+			target = 4AB5ED092EDFCD8800EC2589 /* LiveLedger */;
 			targetProxy = 4AB5ED182EDFCD8F00EC2589 /* PBXContainerItemProxy */;
 		};
 		4AB5ED232EDFCD8F00EC2589 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 4AB5ED092EDFCD8800EC2589 /* SalesApp */;
+			target = 4AB5ED092EDFCD8800EC2589 /* LiveLedger */;
 			targetProxy = 4AB5ED222EDFCD8F00EC2589 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -400,7 +400,9 @@
 				DEVELOPMENT_TEAM = 9KV9K69G45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Liveledger;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveLedger;
+				INFOPLIST_KEY_NSCameraUsageDescription = "LiveLedger uses the camera to scan product barcodes for quick inventory lookup and order entry.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LiveLedger uses your photo library to add images to your products for easy identification.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -433,7 +435,9 @@
 				DEVELOPMENT_TEAM = 9KV9K69G45;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Liveledger;
+				INFOPLIST_KEY_CFBundleDisplayName = LiveLedger;
+				INFOPLIST_KEY_NSCameraUsageDescription = "LiveLedger uses the camera to scan product barcodes for quick inventory lookup and order entry.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "LiveLedger uses your photo library to add images to your products for easy identification.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -466,7 +470,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Nonso.SalesAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = Nonso.LiveLedgerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -474,7 +478,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SalesApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SalesApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiveLedger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiveLedger";
 			};
 			name = Debug;
 		};
@@ -488,7 +492,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Nonso.SalesAppTests;
+				PRODUCT_BUNDLE_IDENTIFIER = Nonso.LiveLedgerTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -496,7 +500,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SalesApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SalesApp";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LiveLedger.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LiveLedger";
 			};
 			name = Release;
 		};
@@ -508,7 +512,7 @@
 				DEVELOPMENT_TEAM = 9KV9K69G45;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Nonso.SalesAppUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = Nonso.LiveLedgerUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -516,7 +520,7 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SalesApp;
+				TEST_TARGET_NAME = LiveLedger;
 			};
 			name = Debug;
 		};
@@ -528,7 +532,7 @@
 				DEVELOPMENT_TEAM = 9KV9K69G45;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = Nonso.SalesAppUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = Nonso.LiveLedgerUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -536,14 +540,14 @@
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = SalesApp;
+				TEST_TARGET_NAME = LiveLedger;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		4AB5ED052EDFCD8800EC2589 /* Build configuration list for PBXProject "SalesApp" */ = {
+		4AB5ED052EDFCD8800EC2589 /* Build configuration list for PBXProject "LiveLedger" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4AB5ED292EDFCD8F00EC2589 /* Debug */,
@@ -552,7 +556,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4AB5ED2B2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesApp" */ = {
+		4AB5ED2B2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedger" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4AB5ED2C2EDFCD8F00EC2589 /* Debug */,
@@ -561,7 +565,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4AB5ED2E2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesAppTests" */ = {
+		4AB5ED2E2EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedgerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4AB5ED2F2EDFCD8F00EC2589 /* Debug */,
@@ -570,7 +574,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4AB5ED312EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "SalesAppUITests" */ = {
+		4AB5ED312EDFCD8F00EC2589 /* Build configuration list for PBXNativeTarget "LiveLedgerUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				4AB5ED322EDFCD8F00EC2589 /* Debug */,

@@ -12,24 +12,16 @@ struct OnboardingView: View {
     @Binding var hasCompletedOnboarding: Bool
     @State private var currentPage = 0
     @Environment(\.dismiss) var dismiss
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-    
-    // Responsive sizing for Dynamic Type & device compatibility
-    @ScaledMetric(relativeTo: .title) private var iconSize: CGFloat = 50
-    @ScaledMetric(relativeTo: .body) private var pageIndicatorSize: CGFloat = 8
     
     // Flag to check if it's being shown from settings (re-tutorial)
     var isReTutorial: Bool = false
     
-    // Tutorial pages - Comprehensive guide to all features
     let pages: [(icon: String, color: Color, titleKey: String, descriptionKey: LocalizedKey)] = [
         ("bag.fill.badge.plus", .green, "Products & Orders", .tutorialProducts),
-        ("hand.tap.fill", .blue, "Quick Actions", .tutorialQuickActions),
-        ("list.clipboard.fill", .purple, "Track Everything", .tutorialOrders),
+        ("list.clipboard.fill", .blue, "Track Everything", .tutorialOrders),
         ("apps.iphone", .pink, "Multi-Platform", .tutorialPlatforms),
-        ("timer", .orange, "Timer & Sounds", .tutorialTimer),
-        ("chart.bar.fill", .cyan, "Analytics & Reports", .tutorialAnalytics),
-        ("square.and.arrow.up.fill", .yellow, "Export & Print", .tutorialExport)
+        ("chart.bar.fill", .purple, "Analytics", .tutorialAnalytics),
+        ("square.and.arrow.up.fill", .orange, "Export & Print", .tutorialExport)
     ]
     
     var body: some View {
@@ -83,12 +75,12 @@ struct OnboardingView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 
-                // Page indicators - scale with Dynamic Type
-                HStack(spacing: pageIndicatorSize) {
+                // Page indicators
+                HStack(spacing: 8) {
                     ForEach(0..<pages.count, id: \.self) { index in
                         Circle()
                             .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                            .frame(width: pageIndicatorSize, height: pageIndicatorSize)
+                            .frame(width: 8, height: 8)
                             .scaleEffect(currentPage == index ? 1.2 : 1.0)
                             .animation(.spring(response: 0.3), value: currentPage)
                     }
