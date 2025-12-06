@@ -45,19 +45,19 @@ struct MainContentView: View {
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // LAYER 1: WALLPAPER - Full screen, visible throughout (NO BLACK AT BOTTOM)
-                Image(theme.backgroundImageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .ignoresSafeArea(.all)
-                
-                // LAYER 2: Subtle dark overlay for text readability
-                Color.black.opacity(0.15)
-                    .ignoresSafeArea(.all)
+        ZStack {
+            // LAYER 1: WALLPAPER - Full screen edge-to-edge, top to bottom (NO BLACK ANYWHERE)
+            Image(theme.backgroundImageName)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .ignoresSafeArea()
+            
+            // LAYER 2: Subtle dark overlay for text readability
+            Color.black.opacity(0.15)
+                .ignoresSafeArea()
+            
+            // LAYER 3: Content with GeometryReader
+            GeometryReader { geometry in
                 
                 // LAYER 3: CONTENT - Grid containers with green borders
                 // All containers have IDENTICAL styling: green border, 12px rounded corners ALL FOUR SIDES
@@ -122,9 +122,10 @@ struct MainContentView: View {
                     .padding(.bottom, 20) // Small gap at bottom to show wallpaper
                 }
                 
-                // TikTok Live Overlay (floats above everything)
-                TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
             }
+            
+            // TikTok Live Overlay (floats above everything)
+            TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
         }
         .preferredColorScheme(.dark) // Force dark for better contrast
         // Auto-save listener
