@@ -106,7 +106,7 @@ struct TikTokLiveOverlayView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        // Only render when visible - don't use GeometryReader as wrapper to avoid blocking content
+        // Only render when visible - don't block content when hidden
         if overlayManager.isOverlayVisible {
             GeometryReader { geometry in
                 // Overlay widget - positioned absolutely
@@ -160,8 +160,8 @@ struct TikTokLiveOverlayView: View {
                             overlayManager.saveSettings()
                         }
                 )
+                .contentShape(RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24))  // Ensure hit testing works on the shape
             }
-            .allowsHitTesting(true)
             .transition(.scale.combined(with: .opacity))
         }
     }
