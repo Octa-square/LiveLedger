@@ -20,7 +20,6 @@ class TikTokLiveOverlayManager: ObservableObject {
     @Published var isExpanded: Bool = false
     @Published var autoShowOnTimerStart: Bool = true
     
-    // Size constraints
     let minScale: CGFloat = 0.6
     let maxScale: CGFloat = 1.5
     
@@ -77,17 +76,14 @@ class TikTokLiveOverlayManager: ObservableObject {
         }
     }
     
-    // Called when timer starts - auto-shows overlay if enabled
     func onTimerStart() {
         if autoShowOnTimerStart {
             showOverlay()
         }
     }
     
-    // Called when timer stops
     func onTimerStop() {
-        // Optionally hide overlay when timer stops
-        // For now, keep it visible so user can continue adding orders
+        // Keep overlay visible so user can continue adding orders
     }
 }
 
@@ -106,10 +102,8 @@ struct TikTokLiveOverlayView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        // Only render when visible - don't block content when hidden
         if overlayManager.isOverlayVisible {
             GeometryReader { geometry in
-                // Overlay widget - positioned absolutely
                 VStack(spacing: 0) {
                     if overlayManager.isExpanded {
                         expandedView
@@ -127,12 +121,11 @@ struct TikTokLiveOverlayView: View {
                     RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
                         .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
                 )
-                .contentShape(RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24))  // Define hit testing area BEFORE gestures
+                .contentShape(RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24))
                 .position(
                     x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, maxValue: geometry.size.width),
                     y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, maxValue: geometry.size.height)
                 )
-                // Drag gesture for moving
                 .gesture(
                     DragGesture()
                         .onChanged { value in
@@ -141,14 +134,12 @@ struct TikTokLiveOverlayView: View {
                         .onEnded { value in
                             overlayManager.overlayPosition.x += value.translation.width
                             overlayManager.overlayPosition.y += value.translation.height
-                            // Clamp position to screen bounds
                             overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, maxValue: geometry.size.width)
                             overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, maxValue: geometry.size.height)
                             dragOffset = .zero
                             overlayManager.saveSettings()
                         }
                 )
-                // Pinch gesture for resizing
                 .simultaneousGesture(
                     MagnificationGesture()
                         .onChanged { value in
@@ -166,21 +157,17 @@ struct TikTokLiveOverlayView: View {
         }
     }
     
-    // Clamp position to keep overlay on screen
     private func clampPosition(_ value: CGFloat, maxValue: CGFloat) -> CGFloat {
         let padding: CGFloat = 50
         return Swift.min(Swift.max(value, padding), maxValue - padding)
     }
     
-    // Compact floating button with close button
     private var compactView: some View {
         HStack(spacing: 6) {
-            // Main tap area to expand
             Button {
                 overlayManager.toggleExpanded()
             } label: {
                 HStack(spacing: 8) {
-                    // LiveLedger mini logo
                     ZStack {
                         RoundedRectangle(cornerRadius: 8)
                             .fill(
@@ -203,7 +190,6 @@ struct TikTokLiveOverlayView: View {
                         }
                     }
                     
-                    // Quick info
                     VStack(alignment: .leading, spacing: 1) {
                         HStack(spacing: 4) {
                             Circle()
@@ -221,7 +207,6 @@ struct TikTokLiveOverlayView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Close/Hide button
             Button {
                 overlayManager.hideOverlay()
             } label: {
@@ -235,10 +220,8 @@ struct TikTokLiveOverlayView: View {
         .padding(.vertical, 8)
     }
     
-    // Expanded quick-add interface
     private var expandedView: some View {
         VStack(spacing: 10) {
-            // Header with close and hide buttons
             HStack {
                 Text("Quick Add")
                     .font(.system(size: 14, weight: .bold))
@@ -246,7 +229,6 @@ struct TikTokLiveOverlayView: View {
                 
                 Spacer()
                 
-                // Collapse button
                 Button {
                     overlayManager.toggleExpanded()
                 } label: {
@@ -255,7 +237,6 @@ struct TikTokLiveOverlayView: View {
                         .foregroundColor(theme.textMuted)
                 }
                 
-                // Close/Hide button
                 Button {
                     overlayManager.hideOverlay()
                 } label: {
@@ -267,32 +248,21 @@ struct TikTokLiveOverlayView: View {
             .padding(.horizontal, 14)
             .padding(.top, 10)
             
-            // Resize hint
             Text("Pinch to resize • Drag to move")
                 .font(.system(size: 8))
                 .foregroundColor(theme.textMuted.opacity(0.6))
             
-            // Quick action buttons
             HStack(spacing: 10) {
-                QuickActionButton(
-                    icon: "bag.fill",
-                    label: "Products",
-                    color: .blue
-                ) {
+                QuickActionButton(icon: "bag.fill", label: "Products", color: .blue) {
                     showProductsSheet = true
                 }
                 
-                QuickActionButton(
-                    icon: "iphone",
-                    label: "Platform",
-                    color: .purple
-                ) {
+                QuickActionButton(icon: "iphone", label: "Platform", color: .purple) {
                     showPlatformsSheet = true
                 }
             }
             .padding(.horizontal, 14)
             
-            // Quick product grid
             VStack(alignment: .leading, spacing: 4) {
                 Text("QUICK SELL")
                     .font(.system(size: 9, weight: .semibold))
@@ -311,7 +281,6 @@ struct TikTokLiveOverlayView: View {
                 }
             }
             
-            // Current session stats
             HStack(spacing: 12) {
                 StatBadge(value: "\(viewModel.orders.count)", label: "Orders", color: .blue)
                 StatBadge(value: "$\(Int(viewModel.totalRevenue))", label: "Total", color: .green)
@@ -329,17 +298,13 @@ struct TikTokLiveOverlayView: View {
                 .presentationDetents([.height(250)])
         }
         .sheet(item: $selectedProduct) { product in
-            QuickOrderSheet(
-                product: product,
-                viewModel: viewModel,
-                themeManager: themeManager
-            )
-            .presentationDetents([.height(300)])
+            QuickOrderSheet(product: product, viewModel: viewModel, themeManager: themeManager)
+                .presentationDetents([.height(300)])
         }
     }
 }
 
-// MARK: - Overlay Control Button (for use in main app)
+// MARK: - Overlay Control Button
 struct OverlayControlButton: View {
     @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
     
@@ -360,10 +325,7 @@ struct OverlayControlButton: View {
             .foregroundColor(.white)
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
-            .background(
-                Capsule()
-                    .fill(overlayManager.isOverlayVisible ? Color.orange : Color.green)
-            )
+            .background(Capsule().fill(overlayManager.isOverlayVisible ? Color.orange : Color.green))
         }
     }
 }
@@ -603,7 +565,6 @@ struct QuickOrderSheet: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 16) {
-                // Product info
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(product.name.uppercased())
@@ -624,11 +585,9 @@ struct QuickOrderSheet: View {
                 .background(theme.cardBackground)
                 .cornerRadius(10)
                 
-                // Buyer name (optional)
                 TextField("Buyer name (optional)", text: $buyerName)
                     .textFieldStyle(.roundedBorder)
                 
-                // Quantity selector
                 HStack(spacing: 20) {
                     Button {
                         if quantity > 1 { quantity -= 1 }
@@ -652,7 +611,6 @@ struct QuickOrderSheet: View {
                     
                     Spacer()
                     
-                    // Total
                     VStack(alignment: .trailing) {
                         Text("TOTAL")
                             .font(.system(size: 10, weight: .semibold))
@@ -689,9 +647,7 @@ struct QuickOrderSheet: View {
                             quantity: quantity
                         )
                         
-                        // Play sound
                         SoundManager.shared.playOrderAddedSound()
-                        
                         dismiss()
                     }
                     .fontWeight(.bold)
@@ -705,10 +661,6 @@ struct QuickOrderSheet: View {
 #Preview {
     ZStack {
         Color.gray.opacity(0.3).ignoresSafeArea()
-        
-        TikTokLiveOverlayView(
-            viewModel: SalesViewModel(),
-            themeManager: ThemeManager()
-        )
+        TikTokLiveOverlayView(viewModel: SalesViewModel(), themeManager: ThemeManager())
     }
 }
