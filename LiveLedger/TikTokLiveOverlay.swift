@@ -232,7 +232,7 @@ struct TikTokLiveOverlayView: View {
             // Current session stats
             HStack(spacing: 16) {
                 StatBadge(value: "\(viewModel.orders.count)", label: "Orders", color: .blue)
-                StatBadge(value: "$\(Int(viewModel.todayTotal))", label: "Today", color: .green)
+                StatBadge(value: "$\(Int(viewModel.totalRevenue))", label: "Total", color: .green)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
@@ -579,7 +579,7 @@ struct QuickOrderSheet: View {
                         )
                         
                         // Play sound
-                        SoundManager.shared.playOrderSound()
+                        SoundManager.shared.playOrderAddedSound()
                         
                         dismiss()
                     }
