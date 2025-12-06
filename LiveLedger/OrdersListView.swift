@@ -136,11 +136,11 @@ struct OrdersListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - native scroll with visible indicators
+                // Orders list - compact with visible scroll indicator
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 4) {
+                    LazyVStack(spacing: 2) {
                         ForEach(viewModel.filteredOrders) { order in
-                            MiniOrderRow(
+                            CompactOrderRow(
                                 order: order,
                                 theme: theme,
                                 isEditingName: editingNameOrderId == order.id,
@@ -162,8 +162,9 @@ struct OrdersListView: View {
                             )
                         }
                     }
+                    .padding(.vertical, 2)
                 }
-                .scrollIndicators(.visible)
+                .scrollIndicators(.always)
             }
         }
         .padding(10)
@@ -190,8 +191,8 @@ struct OrdersListView: View {
     }
 }
 
-// Super compact order row with neumorphic style
-struct MiniOrderRow: View {
+// Ultra-compact order row - fits 5-6 on screen
+struct CompactOrderRow: View {
     let order: Order
     let theme: AppTheme
     let isEditingName: Bool
@@ -208,31 +209,31 @@ struct MiniOrderRow: View {
     @FocusState private var nameFieldFocused: Bool
     
     var body: some View {
-        HStack(spacing: 6) {
-            // Platform color box (tiny square)
-            RoundedRectangle(cornerRadius: 3)
+        HStack(spacing: 4) {
+            // Platform color bar (thin vertical)
+            RoundedRectangle(cornerRadius: 1.5)
                 .fill(order.platform.swiftUIColor)
-                .frame(width: 10, height: 10)
+                .frame(width: 3, height: 24)
             
-            // Product name - smaller
+            // Product name
             Text(order.productName.uppercased())
-                .font(.system(size: 11, weight: .bold))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundColor(order.isFulfilled ? theme.textMuted : theme.textPrimary)
                 .lineLimit(1)
-                .frame(minWidth: 40, maxWidth: 60, alignment: .leading)
+                .frame(minWidth: 35, maxWidth: 55, alignment: .leading)
                 .strikethrough(order.isFulfilled, color: theme.textMuted)
             
             // Buyer name - tappable
             if isEditingName {
                 TextField("Buyer", text: $tempName)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(theme.textPrimary)
-                    .frame(width: 50)
+                    .frame(width: 45)
                     .textFieldStyle(.plain)
-                    .padding(.horizontal, 3)
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 2)
+                    .padding(.vertical, 1)
                     .background(theme.cardBackground)
-                    .cornerRadius(3)
+                    .cornerRadius(2)
                     .focused($nameFieldFocused)
                     .onSubmit {
                         if !tempName.isEmpty { onNameChange(tempName) }
@@ -245,61 +246,61 @@ struct MiniOrderRow: View {
             } else {
                 Button(action: onNameTap) {
                     Text(order.buyerName)
-                        .font(.system(size: 10, weight: .medium))
+                        .font(.system(size: 9, weight: .medium))
                         .foregroundColor(theme.textSecondary)
                         .lineLimit(1)
                 }
-                .frame(width: 50, alignment: .leading)
+                .frame(width: 45, alignment: .leading)
             }
             
-            // Qty controls - smaller
-            HStack(spacing: 4) {
+            // Qty controls - minimal
+            HStack(spacing: 2) {
                 Button { if order.quantity > 1 { onQuantityChange(order.quantity - 1) } } label: {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(order.quantity > 1 ? theme.textSecondary : theme.textMuted.opacity(0.3))
                 }
                 
                 Text("\(order.quantity)")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundColor(theme.textPrimary)
-                    .frame(width: 16)
+                    .frame(width: 14)
                 
                 Button { onQuantityChange(order.quantity + 1) } label: {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 16))
+                        .font(.system(size: 14))
                         .foregroundColor(theme.textSecondary)
                 }
             }
             
             Spacer()
             
-            // Price - smaller
+            // Price
             Text("$\(order.totalPrice, specifier: "%.0f")")
-                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundColor(theme.successColor)
-                .frame(minWidth: 35, alignment: .trailing)
+                .frame(minWidth: 32, alignment: .trailing)
             
             // More options
             Button(action: onEdit) {
                 Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 15))
+                    .font(.system(size: 13))
                     .foregroundColor(theme.textMuted)
             }
             
             // Delete
             Button { showDelete = true } label: {
                 Image(systemName: "trash")
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                     .foregroundColor(theme.dangerColor.opacity(0.7))
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .frame(height: 36)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .frame(height: 28) // Reduced from 36 to 28 (22% smaller)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(theme.cardBackground.opacity(0.5))
+            RoundedRectangle(cornerRadius: 6)
+                .fill(theme.cardBackground.opacity(0.4))
         )
         .confirmationDialog("Delete?", isPresented: $showDelete) {
             Button("Delete", role: .destructive) { withAnimation { onDelete() } }

@@ -146,9 +146,19 @@ struct PlatformSelectorView: View {
         )
     }
     
+    // Separate default and custom platforms
+    private var defaultPlatforms: [Platform] {
+        viewModel.platforms.filter { !$0.isCustom }
+    }
+    
+    private var customPlatforms: [Platform] {
+        viewModel.platforms.filter { $0.isCustom }
+    }
+    
     private var platformChips: some View {
-        ScrollView(.horizontal, showsIndicators: true) {
-            HStack(spacing: 10) {
+        HStack(spacing: 0) {
+            // Fixed centered section: All + 3 defaults (TikTok, Instagram, Facebook)
+            HStack(spacing: 8) {
                 // "All" button
                 PlatformChip(
                     platform: .all,
@@ -158,22 +168,44 @@ struct PlatformSelectorView: View {
                     onDelete: nil
                 )
                 
-                // Default + Custom platforms
-                ForEach(viewModel.platforms) { platform in
+                // Default platforms (TikTok, Instagram, Facebook)
+                ForEach(defaultPlatforms) { platform in
                     PlatformChip(
                         platform: platform,
                         isSelected: viewModel.selectedPlatform?.id == platform.id,
                         theme: theme,
                         onTap: { viewModel.selectedPlatform = platform },
-                        onDelete: platform.isCustom ? { viewModel.deletePlatform(platform) } : nil
+                        onDelete: nil
                     )
                 }
             }
-            .padding(.horizontal, 2)
-            .padding(.bottom, 4) // Space for scroll indicator
+            
+            // Custom platforms in scrollable area (if any)
+            if !customPlatforms.isEmpty {
+                // Scroll indicator arrow
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(theme.textMuted.opacity(0.5))
+                    .padding(.horizontal, 4)
+                
+                ScrollView(.horizontal, showsIndicators: true) {
+                    HStack(spacing: 8) {
+                        ForEach(customPlatforms) { platform in
+                            PlatformChip(
+                                platform: platform,
+                                isSelected: viewModel.selectedPlatform?.id == platform.id,
+                                theme: theme,
+                                onTap: { viewModel.selectedPlatform = platform },
+                                onDelete: { viewModel.deletePlatform(platform) }
+                            )
+                        }
+                    }
+                    .padding(.trailing, 4)
+                }
+                .scrollIndicators(.visible)
+            }
         }
         .frame(height: 50)
-        .scrollIndicators(.visible)
     }
     
     var body: some View {

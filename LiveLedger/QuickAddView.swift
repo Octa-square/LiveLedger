@@ -67,8 +67,8 @@ struct QuickAddView: View {
                     
                     Spacer()
                     
-                    Text("Tap sell • Hold edit")
-                        .font(.system(size: 8))
+                    Text("Tap: Sell • Hold: Edit")
+                        .font(.system(size: 10, weight: .medium))
                         .foregroundColor(theme.textMuted)
                     
                     Button {

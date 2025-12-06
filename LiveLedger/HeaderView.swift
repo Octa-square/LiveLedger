@@ -16,6 +16,7 @@ struct HeaderView: View {
     @Binding var showSubscription: Bool
     @State private var showPrintOptions = false
     @State private var showExportOptions = false
+    @State private var showClearOptions = false
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -144,7 +145,7 @@ struct HeaderView: View {
                 // Action Buttons - Clear, Export, Print
                 HStack(spacing: 6) {
                     ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
-                        viewModel.showingClearConfirmation = true
+                        showClearOptions = true
                     }
                     
                     ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
@@ -169,11 +170,196 @@ struct HeaderView: View {
                 )
         )
         .sheet(isPresented: $showPrintOptions) {
-            PrintOptionsView(viewModel: viewModel, authManager: authManager)
+            PrintOptionsView(viewModel: viewModel, authManager: authManager, platforms: viewModel.platforms)
         }
         .sheet(isPresented: $showExportOptions) {
             ExportOptionsView(viewModel: viewModel, platforms: viewModel.platforms)
         }
+        .sheet(isPresented: $showClearOptions) {
+            ClearOptionsView(viewModel: viewModel)
+        }
+    }
+}
+
+// MARK: - Clear Options View
+struct ClearOptionsView: View {
+    @ObservedObject var viewModel: SalesViewModel
+    @Environment(\.dismiss) private var dismiss
+    
+    @State private var clearCustomPlatforms = false
+    @State private var clearProducts = false
+    @State private var clearOrders = false
+    @State private var showConfirmation = false
+    
+    var hasCustomPlatforms: Bool {
+        viewModel.platforms.contains { $0.isCustom }
+    }
+    
+    var hasProducts: Bool {
+        viewModel.products.contains { !$0.isEmpty }
+    }
+    
+    var hasOrders: Bool {
+        !viewModel.orders.isEmpty
+    }
+    
+    var selectedCount: Int {
+        [clearCustomPlatforms, clearProducts, clearOrders].filter { $0 }.count
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 16) {
+                // Options List
+                VStack(spacing: 12) {
+                    // Clear Custom Platforms
+                    ClearOptionRow(
+                        title: "Clear Custom Platforms",
+                        subtitle: hasCustomPlatforms ? "\(viewModel.platforms.filter { $0.isCustom }.count) custom platforms" : "No custom platforms",
+                        icon: "star.fill",
+                        color: .orange,
+                        isSelected: $clearCustomPlatforms,
+                        isEnabled: hasCustomPlatforms
+                    )
+                    
+                    // Clear Products
+                    ClearOptionRow(
+                        title: "Clear My Products",
+                        subtitle: hasProducts ? "\(viewModel.products.filter { !$0.isEmpty }.count) products configured" : "No products configured",
+                        icon: "cube.box.fill",
+                        color: .blue,
+                        isSelected: $clearProducts,
+                        isEnabled: hasProducts
+                    )
+                    
+                    // Clear Orders
+                    ClearOptionRow(
+                        title: "Clear Orders",
+                        subtitle: hasOrders ? "\(viewModel.orders.count) orders" : "No orders",
+                        icon: "bag.fill",
+                        color: .green,
+                        isSelected: $clearOrders,
+                        isEnabled: hasOrders
+                    )
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // Clear All shortcut
+                Button {
+                    if hasCustomPlatforms { clearCustomPlatforms = true }
+                    if hasProducts { clearProducts = true }
+                    if hasOrders { clearOrders = true }
+                } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Select All")
+                    }
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.blue)
+                }
+                .disabled(!hasCustomPlatforms && !hasProducts && !hasOrders)
+                
+                Spacer()
+                
+                // Clear Button
+                Button {
+                    showConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "trash.fill")
+                        Text("Clear Selected (\(selectedCount))")
+                    }
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(selectedCount > 0 ? Color.red : Color.gray)
+                    .cornerRadius(12)
+                }
+                .disabled(selectedCount == 0)
+            }
+            .padding()
+            .navigationTitle("Clear Data")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
+            .alert("Confirm Clear", isPresented: $showConfirmation) {
+                Button("Clear", role: .destructive) {
+                    performClear()
+                    dismiss()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete the selected data. This cannot be undone.")
+            }
+        }
+    }
+    
+    func performClear() {
+        if clearCustomPlatforms {
+            viewModel.platforms.removeAll { $0.isCustom }
+        }
+        if clearProducts {
+            // Reset to empty products
+            if let id = viewModel.selectedCatalogId ?? viewModel.catalogs.first?.id,
+               let index = viewModel.catalogs.firstIndex(where: { $0.id == id }) {
+                viewModel.catalogs[index].products = [Product(), Product(), Product(), Product()]
+            }
+        }
+        if clearOrders {
+            viewModel.orders.removeAll()
+        }
+        viewModel.saveData()
+    }
+}
+
+struct ClearOptionRow: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let color: Color
+    @Binding var isSelected: Bool
+    let isEnabled: Bool
+    
+    var body: some View {
+        Button {
+            if isEnabled {
+                isSelected.toggle()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: 18))
+                    .foregroundColor(isEnabled ? color : .gray)
+                    .frame(width: 32)
+                
+                // Text
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(isEnabled ? .primary : .gray)
+                    Text(subtitle)
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+                
+                // Checkbox
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22))
+                    .foregroundColor(isSelected ? color : .gray.opacity(0.4))
+            }
+            .padding(.vertical, 8)
+        }
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.5)
     }
 }
 
@@ -548,26 +734,95 @@ struct ActionButton: View {
 struct PrintOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var authManager: AuthManager
+    let platforms: [Platform]
     @Environment(\.dismiss) var dismiss
     @State private var showingDailyReport = false
+    @State private var showingAllReceipts = false
+    @State private var selectedPrintPlatforms: Set<UUID> = []
+    @State private var printAllPlatforms = true
     
     var currencySymbol: String {
         authManager.currentUser?.currencySymbol ?? "$"
     }
     
+    var ordersForPrint: [Order] {
+        if printAllPlatforms {
+            return viewModel.orders
+        }
+        return viewModel.orders.filter { selectedPrintPlatforms.contains($0.platform.id) }
+    }
+    
     var body: some View {
         NavigationStack {
             List {
+                // Platform Filter Section
+                Section {
+                    // All Platforms toggle
+                    Button {
+                        printAllPlatforms.toggle()
+                        if printAllPlatforms {
+                            selectedPrintPlatforms.removeAll()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: printAllPlatforms ? "checkmark.circle.fill" : "circle")
+                                .foregroundColor(printAllPlatforms ? .green : .gray)
+                            Text("All Platforms")
+                            Spacer()
+                            Text("\(viewModel.orders.count) orders")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    // Individual platforms
+                    ForEach(platforms) { platform in
+                        let platformOrders = viewModel.orders.filter { $0.platform.id == platform.id }
+                        let isSelected = selectedPrintPlatforms.contains(platform.id)
+                        
+                        Button {
+                            printAllPlatforms = false
+                            if isSelected {
+                                selectedPrintPlatforms.remove(platform.id)
+                            } else {
+                                selectedPrintPlatforms.insert(platform.id)
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(isSelected ? platform.swiftUIColor : .gray)
+                                Image(systemName: platform.icon)
+                                    .foregroundColor(platform.swiftUIColor)
+                                Text(platform.name)
+                                Spacer()
+                                Text("\(platformOrders.count)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Filter by Platform")
+                }
+                
                 Section {
                     Button {
                         showingDailyReport = true
                     } label: {
-                        Label("Print Daily Order Report", systemImage: "doc.text.fill")
+                        Label("Print Sales Report", systemImage: "doc.text.fill")
                     }
+                    .disabled(ordersForPrint.isEmpty)
+                    
+                    Button {
+                        showingAllReceipts = true
+                    } label: {
+                        Label("Print All Receipts (\(ordersForPrint.count))", systemImage: "doc.on.doc.fill")
+                    }
+                    .disabled(ordersForPrint.isEmpty)
                 } header: {
-                    Text("Reports")
+                    Text("Print Options")
                 } footer: {
-                    Text("Prints all orders with #, product, barcode, qty, amount, discount, buyer details")
+                    Text("Sales Report: Summary with all orders\nAll Receipts: Individual POS receipts for each order")
                 }
                 
                 Section {
@@ -586,15 +841,129 @@ struct PrintOptionsView: View {
                 }
             }
             .sheet(isPresented: $showingDailyReport) {
-                DailyOrderReportView(viewModel: viewModel, currencySymbol: currencySymbol, companyName: authManager.currentUser?.companyName ?? "Live Sales")
+                DailyOrderReportView(
+                    orders: ordersForPrint,
+                    currencySymbol: currencySymbol,
+                    companyName: authManager.currentUser?.companyName ?? "Live Sales"
+                )
+            }
+            .sheet(isPresented: $showingAllReceipts) {
+                AllReceiptsView(orders: ordersForPrint)
+            }
+            .onAppear {
+                selectedPrintPlatforms = Set(platforms.map { $0.id })
             }
         }
     }
 }
 
+// MARK: - All Receipts View
+struct AllReceiptsView: View {
+    let orders: [Order]
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                LazyVStack(spacing: 20) {
+                    ForEach(orders) { order in
+                        ReceiptCard(order: order)
+                    }
+                }
+                .padding()
+            }
+            .background(Color.gray.opacity(0.2))
+            .navigationTitle("All Receipts (\(orders.count))")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    ShareLink(item: generateAllReceiptsText()) {
+                        Label("Share All", systemImage: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+    }
+    
+    func generateAllReceiptsText() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "MM/dd/yyyy hh:mm a"
+        
+        var text = "ALL RECEIPTS (\(orders.count) orders)\n"
+        text += "Generated: \(dateFormatter.string(from: Date()))\n"
+        text += "================================\n\n"
+        
+        for (index, order) in orders.enumerated() {
+            text += "RECEIPT #\(index + 1)\n"
+            text += "Order #\(order.id.uuidString.prefix(8).uppercased())\n"
+            text += "\(order.productName)\n"
+            text += "\(order.quantity) x $\(String(format: "%.2f", order.pricePerUnit)) = $\(String(format: "%.2f", order.totalPrice))\n"
+            text += "Buyer: \(order.buyerName)\n"
+            text += "Platform: \(order.platform.name)\n"
+            text += "Status: \(order.paymentStatus.rawValue)\n"
+            text += "--------------------------------\n\n"
+        }
+        
+        let total = orders.reduce(0) { $0 + $1.totalPrice }
+        text += "GRAND TOTAL: $\(String(format: "%.2f", total))\n"
+        
+        return text
+    }
+}
+
+struct ReceiptCard: View {
+    let order: Order
+    
+    private let dateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "MM/dd hh:mm a"
+        return f
+    }()
+    
+    var body: some View {
+        VStack(spacing: 6) {
+            Text("RECEIPT")
+                .font(.system(size: 12, weight: .bold, design: .monospaced))
+            Text(dateFormatter.string(from: order.timestamp))
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Divider()
+            
+            Text(order.productName)
+                .font(.system(size: 11, weight: .medium, design: .monospaced))
+            
+            HStack {
+                Text("\(order.quantity) x $\(order.pricePerUnit, specifier: "%.2f")")
+                    .font(.system(size: 10, design: .monospaced))
+                Spacer()
+                Text("$\(order.totalPrice, specifier: "%.2f")")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+            }
+            
+            Divider()
+            
+            HStack {
+                Text(order.buyerName)
+                Spacer()
+                Text(order.platform.name)
+            }
+            .font(.system(size: 9, design: .monospaced))
+            .foregroundColor(.gray)
+        }
+        .padding(12)
+        .background(Color.white)
+        .cornerRadius(4)
+        .shadow(color: .black.opacity(0.1), radius: 4, y: 2)
+    }
+}
+
 // MARK: - Daily Order Report View
 struct DailyOrderReportView: View {
-    @ObservedObject var viewModel: SalesViewModel
+    let orders: [Order]
     let currencySymbol: String
     let companyName: String
     @Environment(\.dismiss) var dismiss
@@ -605,6 +974,10 @@ struct DailyOrderReportView: View {
         f.timeStyle = .short
         return f
     }()
+    
+    var totalRevenue: Double {
+        orders.reduce(0) { $0 + $1.totalPrice }
+    }
     
     var body: some View {
         NavigationStack {
@@ -628,12 +1001,12 @@ struct DailyOrderReportView: View {
                     // Summary
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("Total Orders: \(viewModel.filteredOrders.count)")
-                            Text("Total Items: \(viewModel.filteredOrders.reduce(0) { $0 + $1.quantity })")
+                            Text("Total Orders: \(orders.count)")
+                            Text("Total Items: \(orders.reduce(0) { $0 + $1.quantity })")
                         }
                         Spacer()
                         VStack(alignment: .trailing) {
-                            Text("Total Sales: \(currencySymbol)\(viewModel.totalRevenue, specifier: "%.2f")")
+                            Text("Total Sales: \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
                                 .fontWeight(.bold)
                         }
                     }
@@ -656,7 +1029,7 @@ struct DailyOrderReportView: View {
                     .foregroundColor(.gray)
                     
                     // Orders
-                    ForEach(Array(viewModel.filteredOrders.enumerated()), id: \.element.id) { index, order in
+                    ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
                         VStack(alignment: .leading, spacing: 4) {
                             // Main row
                             HStack {
@@ -695,7 +1068,7 @@ struct DailyOrderReportView: View {
                             Text("GRAND TOTAL")
                                 .fontWeight(.bold)
                             Spacer()
-                            Text("\(currencySymbol)\(viewModel.totalRevenue, specifier: "%.2f")")
+                            Text("\(currencySymbol)\(totalRevenue, specifier: "%.2f")")
                                 .fontWeight(.bold)
                         }
                         .font(.headline)
@@ -728,7 +1101,7 @@ struct DailyOrderReportView: View {
         
         """
         
-        for (index, order) in viewModel.filteredOrders.enumerated() {
+        for (index, order) in orders.enumerated() {
             var orderText = """
             #\(index + 1) \(order.productName)
             """
@@ -756,9 +1129,9 @@ struct DailyOrderReportView: View {
         
         report += """
         ================================
-        TOTAL ORDERS: \(viewModel.filteredOrders.count)
-        TOTAL ITEMS: \(viewModel.filteredOrders.reduce(0) { $0 + $1.quantity })
-        GRAND TOTAL: \(currencySymbol)\(String(format: "%.2f", viewModel.totalRevenue))
+        TOTAL ORDERS: \(orders.count)
+        TOTAL ITEMS: \(orders.reduce(0) { $0 + $1.quantity })
+        GRAND TOTAL: \(currencySymbol)\(String(format: "%.2f", totalRevenue))
         """
         
         return report
