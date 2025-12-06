@@ -128,8 +128,8 @@ struct TikTokLiveOverlayView: View {
                             .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
                     )
                     .position(
-                        x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, max: geometry.size.width),
-                        y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, max: geometry.size.height)
+                        x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, maxValue: geometry.size.width),
+                        y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, maxValue: geometry.size.height)
                     )
                     // Drag gesture for moving
                     .gesture(
@@ -141,8 +141,8 @@ struct TikTokLiveOverlayView: View {
                                 overlayManager.overlayPosition.x += value.translation.width
                                 overlayManager.overlayPosition.y += value.translation.height
                                 // Clamp position to screen bounds
-                                overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, max: geometry.size.width)
-                                overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, max: geometry.size.height)
+                                overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, maxValue: geometry.size.width)
+                                overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, maxValue: geometry.size.height)
                                 dragOffset = .zero
                                 overlayManager.saveSettings()
                             }
@@ -167,9 +167,9 @@ struct TikTokLiveOverlayView: View {
     }
     
     // Clamp position to keep overlay on screen
-    private func clampPosition(_ value: CGFloat, max: CGFloat) -> CGFloat {
+    private func clampPosition(_ value: CGFloat, maxValue: CGFloat) -> CGFloat {
         let padding: CGFloat = 50
-        return min(max(value, padding), max - padding)
+        return Swift.min(Swift.max(value, padding), maxValue - padding)
     }
     
     // Compact floating button with close button
