@@ -21,9 +21,22 @@ struct MainContentView: View {
     
     var body: some View {
         ZStack {
-            // Background
-            theme.gradientColors[0]
-                .ignoresSafeArea()
+            // Background - Theme image with gradient fallback
+            ZStack {
+                // Gradient fallback
+                LinearGradient(
+                    colors: theme.gradientColors,
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                
+                // Theme background image (if exists)
+                Image(theme.backgroundImageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .opacity(0.85)  // Slight transparency for better text readability
+            }
+            .ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // FIXED HEADER - X style (~56px height feel)

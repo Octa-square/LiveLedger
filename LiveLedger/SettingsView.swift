@@ -93,7 +93,20 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
     
-    // MARK: - Background Colors
+    // MARK: - Background Image
+    var backgroundImageName: String {
+        switch self {
+        case .minimalistLight: return "ThemeBG_MinimalistLight"
+        case .minimalistDark: return "ThemeBG_MinimalistDark"
+        case .emeraldGreen: return "ThemeBG_EmeraldGreen"
+        case .glassmorphism: return "ThemeBG_Glassmorphism"
+        case .boldFuturistic: return "ThemeBG_BoldFuturistic"
+        case .motionRich: return "ThemeBG_MotionRich"
+        case .sunsetOrange: return "ThemeBG_SunsetOrange"
+        }
+    }
+    
+    // MARK: - Background Colors (fallback)
     var gradientColors: [Color] {
         switch self {
         case .minimalistLight: 
