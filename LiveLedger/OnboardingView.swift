@@ -84,17 +84,17 @@ struct OnboardingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 
-                // Logo/Welcome Header (larger logo, smaller text)
-                VStack(spacing: 4) {
+                // Logo/Welcome Header
+                VStack(spacing: 14) {  // MORE space between logo and text
                     LiveLedgerLogoMini()
-                        .scaleEffect(2.0)  // Much larger logo
+                        .scaleEffect(2.4)  // 40% larger logo
                     
                     Text("\(localization.localized(.welcomeTo)) LiveLedger")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(.white.opacity(0.9))
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.white.opacity(0.85))
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 0)  // Remove bottom padding - let content flow closer
+                .padding(.top, 6)
+                .padding(.bottom, 0)
                 
                 // Page content
                 TabView(selection: $currentPage) {
@@ -161,45 +161,45 @@ struct TutorialPage {
     let description: String
 }
 
-// MARK: - Compact Onboarding Page (tight spacing)
+// MARK: - Compact Onboarding Page (tight spacing below header)
 struct CompactOnboardingPage: View {
     let page: TutorialPage
     
     var body: some View {
-        VStack(spacing: 10) {  // Tight spacing
-            Spacer(minLength: 10)  // Small top spacer instead of flexible
+        VStack(spacing: 6) {  // Very tight spacing between elements
+            Spacer(minLength: 4)  // Minimal top space - content starts close to header
             
             // Icon - compact size
             ZStack {
                 Circle()
                     .fill(page.color.opacity(0.2))
-                    .frame(width: 100, height: 100)
+                    .frame(width: 95, height: 95)
                 
                 Circle()
                     .fill(page.color.opacity(0.3))
-                    .frame(width: 75, height: 75)
+                    .frame(width: 70, height: 70)
                 
                 Image(systemName: page.icon)
-                    .font(.system(size: 32))
+                    .font(.system(size: 30))
                     .foregroundColor(.white)
             }
             
-            // Title - closer to icon
+            // Title - very close to icon
             Text(page.title)
-                .font(.system(size: 20, weight: .bold))
+                .font(.system(size: 18, weight: .bold))
                 .foregroundColor(.white)
-                .padding(.top, 4)
+                .padding(.top, 2)
             
             // Description - compact
             Text(page.description)
-                .font(.system(size: 13))
+                .font(.system(size: 12))
                 .foregroundColor(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
                 .lineSpacing(2)
-                .padding(.horizontal, 24)
+                .padding(.horizontal, 20)
                 .fixedSize(horizontal: false, vertical: true)
             
-            Spacer()  // Push content up, let bottom have more space
+            Spacer()  // Push content up
         }
     }
 }
