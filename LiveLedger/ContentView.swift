@@ -45,22 +45,25 @@ struct MainContentView: View {
     }
     
     var body: some View {
-        ZStack {
-            // LAYER 1: WALLPAPER - Full screen edge-to-edge, top to bottom (NO BLACK ANYWHERE)
-            Image(theme.backgroundImageName)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .ignoresSafeArea()
-            
-            // LAYER 2: Subtle dark overlay for text readability
-            Color.black.opacity(0.15)
-                .ignoresSafeArea()
-            
-            // LAYER 3: Content with GeometryReader
-            GeometryReader { geometry in
+        GeometryReader { geometry in
+            ZStack {
+                // LAYER 1: WALLPAPER - Maintains aspect ratio, covers full screen
+                // Uses .scaledToFill() to preserve aspect ratio (NO horizontal stretching)
+                // May crop edges but will NOT distort
+                Image(theme.backgroundImageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .ignoresSafeArea()
+                
+                // LAYER 2: Subtle dark overlay for text readability
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea()
                 
                 // LAYER 3: CONTENT - Grid containers with green borders
                 // All containers have IDENTICAL styling: green border, 12px rounded corners ALL FOUR SIDES
+                // UI dimensions are INDEPENDENT of wallpaper - fixed measurements
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: containerSpacing) {
                         // CONTAINER 1: Header + Stats + Action Buttons
@@ -122,10 +125,9 @@ struct MainContentView: View {
                     .padding(.bottom, 20) // Small gap at bottom to show wallpaper
                 }
                 
+                // TikTok Live Overlay (floats above everything)
+                TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
             }
-            
-            // TikTok Live Overlay (floats above everything)
-            TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
         }
         .preferredColorScheme(.dark) // Force dark for better contrast
         // Auto-save listener
