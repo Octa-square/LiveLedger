@@ -26,8 +26,8 @@ struct MainContentView: View {
     private let containerBorderWidth: CGFloat = 2
     private let containerBackground: Color = Color.black.opacity(0.75)
     private let horizontalMargin: CGFloat = 11 // 22pt total from edge (11 + 11 padding)
-    private let internalPadding: CGFloat = 12
-    private let containerSpacing: CGFloat = 12
+    private let internalPadding: CGFloat = 10 // Reduced from 12 for compactness
+    private let containerSpacing: CGFloat = 8  // Reduced from 12 - compact 8pt gaps between containers
     
     // Reusable container modifier
     private func gridContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
@@ -114,8 +114,8 @@ struct MainContentView: View {
                             )
                         }
                         
-                        // CONTAINER 4: Orders Section - TALLER to show more orders (5-7 orders)
-                        // Height increased: ~150pt → ~220pt (vertical only, no width change)
+                        // CONTAINER 4: Orders Section - EXTENDED to show 8-10 orders
+                        // Height: ~270pt (fills remaining screen space)
                         gridContainer {
                             OrdersListView(
                                 viewModel: viewModel,
@@ -123,11 +123,11 @@ struct MainContentView: View {
                                 localization: localization,
                                 authManager: authManager
                             )
-                            .frame(minHeight: max(220, geometry.size.height * 0.32))
+                            .frame(minHeight: max(270, geometry.size.height * 0.38))
                         }
                     }
-                    .padding(.top, 8)
-                    .padding(.bottom, 16) // Small gap - wallpaper visible at bottom
+                    .padding(.top, 4)  // Minimal top padding - start near status bar
+                    .padding(.bottom, 12) // Small gap at bottom for wallpaper peek
                 }
                 
                 // TikTok Live Overlay (floats above everything)
