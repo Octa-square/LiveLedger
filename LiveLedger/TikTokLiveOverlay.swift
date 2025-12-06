@@ -9,7 +9,8 @@ import SwiftUI
 import AVKit
 
 // MARK: - TikTok Live Overlay Manager
-class TikTokLiveOverlayManager: ObservableObject {
+@MainActor
+final class TikTokLiveOverlayManager: ObservableObject {
     static let shared = TikTokLiveOverlayManager()
     
     @Published var isOverlayVisible: Bool = false
