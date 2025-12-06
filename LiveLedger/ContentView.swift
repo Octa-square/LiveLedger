@@ -105,24 +105,26 @@ struct MainContentView: View {
                         )
                         .padding(.horizontal, 12)
                         
-                        // ORDERS SECTION - with wavy bottom
+                        // ORDERS SECTION - extended down with wavy bottom
+                        // Minimum height ensures it extends toward bottom of screen
                         OrdersListView(
                             viewModel: viewModel,
                             themeManager: themeManager,
                             localization: localization,
                             authManager: authManager
                         )
+                        .frame(minHeight: max(200, geometry.size.height * 0.35))
                         .padding(12)
                         .background(
-                            WavyBottomContainer(cornerRadius: 16, waveHeight: 15)
+                            WavyBottomContainer(cornerRadius: 16, waveHeight: 25)
                                 .fill(Color.black.opacity(0.6))
                                 .background(
-                                    WavyBottomContainer(cornerRadius: 16, waveHeight: 15)
+                                    WavyBottomContainer(cornerRadius: 16, waveHeight: 25)
                                         .fill(.ultraThinMaterial)
                                 )
                         )
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 50) // Show wallpaper at bottom
+                        .padding(.bottom, 30) // Small gap to reveal wallpaper at bottom
                     }
                     .padding(.top, 8)
                 }
@@ -244,17 +246,20 @@ struct ShareSheet: UIViewControllerRepresentable {
 // MARK: - Wavy Bottom Container Shape
 struct WavyBottomContainer: Shape {
     var cornerRadius: CGFloat = 16
-    var waveHeight: CGFloat = 20
-    var waveCount: Int = 4
+    var waveHeight: CGFloat = 25
+    var waveCount: Int = 5
     
     func path(in rect: CGRect) -> Path {
         var path = Path()
         
         let width = rect.width
         let height = rect.height
+        let waveBaseY = height - waveHeight
         
-        // Start at top-left with rounded corner
+        // Start at top-left corner
         path.move(to: CGPoint(x: 0, y: cornerRadius))
+        
+        // Top-left rounded corner
         path.addQuadCurve(
             to: CGPoint(x: cornerRadius, y: 0),
             control: CGPoint(x: 0, y: 0)
@@ -263,35 +268,31 @@ struct WavyBottomContainer: Shape {
         // Top edge
         path.addLine(to: CGPoint(x: width - cornerRadius, y: 0))
         
-        // Top-right corner
+        // Top-right rounded corner
         path.addQuadCurve(
             to: CGPoint(x: width, y: cornerRadius),
             control: CGPoint(x: width, y: 0)
         )
         
-        // Right edge - stop before wave starts
-        path.addLine(to: CGPoint(x: width, y: height - waveHeight * 2))
+        // Right edge down to wave start
+        path.addLine(to: CGPoint(x: width, y: waveBaseY))
         
-        // Smooth organic wave at bottom - curved scallop pattern
-        let segmentWidth = width / CGFloat(waveCount)
+        // Create smooth wave pattern at bottom
+        // Using sine-wave-like curves for organic flow
+        let waveSegmentWidth = width / CGFloat(waveCount)
         
         for i in 0..<waveCount {
-            let segmentStart = width - segmentWidth * CGFloat(i)
-            let segmentEnd = segmentStart - segmentWidth
-            let midPoint = (segmentStart + segmentEnd) / 2
+            let segmentStartX = width - (waveSegmentWidth * CGFloat(i))
+            let segmentEndX = segmentStartX - waveSegmentWidth
+            let controlY = (i % 2 == 0) ? height : waveBaseY - waveHeight * 0.5
             
-            // Create scalloped curves
             path.addQuadCurve(
-                to: CGPoint(x: midPoint, y: height - waveHeight),
-                control: CGPoint(x: segmentStart - segmentWidth * 0.25, y: height - waveHeight * 2)
-            )
-            path.addQuadCurve(
-                to: CGPoint(x: segmentEnd, y: height - waveHeight * 2),
-                control: CGPoint(x: midPoint - segmentWidth * 0.25, y: height)
+                to: CGPoint(x: segmentEndX, y: waveBaseY),
+                control: CGPoint(x: (segmentStartX + segmentEndX) / 2, y: controlY)
             )
         }
         
-        // Left edge back to start
+        // Left edge back up
         path.addLine(to: CGPoint(x: 0, y: cornerRadius))
         
         path.closeSubpath()

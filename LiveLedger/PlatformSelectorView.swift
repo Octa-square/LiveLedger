@@ -21,6 +21,11 @@ struct PlatformSelectorView: View {
     
     let colorOptions = ["pink", "purple", "blue", "orange", "green", "red", "yellow", "cyan", "indigo", "mint", "teal", "brown"]
     
+    // Platform chip dimensions
+    private let chipWidth: CGFloat = 70
+    private let chipHeight: CGFloat = 50
+    private let chipSpacing: CGFloat = 8
+    
     // Separate default and custom platforms
     private var defaultPlatforms: [Platform] {
         viewModel.platforms.filter { !$0.isCustom }
@@ -30,11 +35,11 @@ struct PlatformSelectorView: View {
         viewModel.platforms.filter { $0.isCustom }
     }
     
-    // Timer view (compact)
+    // Timer view (compact, same height as Platform label)
     private var sessionTimerView: some View {
         HStack(spacing: 4) {
             Text(viewModel.formattedSessionTime)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
                 .foregroundColor(viewModel.isTimerRunning ? theme.successColor : .white.opacity(0.7))
             
             // Control buttons
@@ -42,9 +47,9 @@ struct PlatformSelectorView: View {
                 if !viewModel.isTimerRunning && !viewModel.isTimerPaused {
                     Button { viewModel.startTimer() } label: {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 22, height: 22)
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -52,9 +57,9 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerRunning {
                     Button { viewModel.pauseTimer() } label: {
                         Image(systemName: "pause.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 22, height: 22)
                             .background(Circle().fill(Color.orange))
                     }
                 }
@@ -62,9 +67,9 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerPaused && !viewModel.isTimerRunning {
                     Button { viewModel.resumeTimer() } label: {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 22, height: 22)
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -72,29 +77,32 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerRunning || viewModel.isTimerPaused || viewModel.sessionElapsedTime > 0 {
                     Button { viewModel.resetTimer() } label: {
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 9))
+                            .font(.system(size: 10))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 22, height: 22)
                             .background(Circle().fill(Color.red))
                     }
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 5)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Color.black.opacity(0.4))
         )
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // ROW 1: "Platform" | Timer (center) | "+ Add" - ALL ON SAME LINE
-            HStack {
-                // "Platform" label - left aligned
+        VStack(alignment: .leading, spacing: 10) {
+            // ROW 1: "Platform" | Timer (center) | "+ Add"
+            // ALL ON SAME HORIZONTAL LINE
+            // "P" aligns with left edge of "All" box below
+            // Right edge of "Add" aligns with right edge of "Facebook" box below
+            HStack(alignment: .center) {
+                // "Platform" label - aligns with left edge of "All" box
                 Text("Platform")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
                 
                 Spacer()
@@ -104,19 +112,19 @@ struct PlatformSelectorView: View {
                 
                 Spacer()
                 
-                // "+ Add" button - right aligned
+                // "+ Add" button - right edge aligns with right edge of "Facebook" box
                 Button {
                     showingAddPlatform = true
                 } label: {
-                    HStack(spacing: 3) {
+                    HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                         Text("Add")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.system(size: 11, weight: .semibold))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
                     .background(
                         Capsule()
                             .fill(
@@ -127,49 +135,58 @@ struct PlatformSelectorView: View {
                 }
             }
             
-            // ROW 2: Platform boxes - All, TikTok, Instagram, Facebook (4 boxes)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    // "All" button
+            // ROW 2: Platform boxes - All 4 MUST be visible: All, TikTok, Instagram, Facebook
+            // Centered group with equal margins
+            HStack(spacing: chipSpacing) {
+                // "All" button
+                PlatformChip(
+                    platform: .all,
+                    isSelected: viewModel.selectedPlatform == nil,
+                    theme: theme,
+                    chipWidth: chipWidth,
+                    chipHeight: chipHeight,
+                    onTap: { viewModel.selectedPlatform = nil },
+                    onDelete: nil
+                )
+                
+                // Default platforms (TikTok, Instagram, Facebook) - ALL VISIBLE
+                ForEach(defaultPlatforms) { platform in
                     PlatformChip(
-                        platform: .all,
-                        isSelected: viewModel.selectedPlatform == nil,
+                        platform: platform,
+                        isSelected: viewModel.selectedPlatform?.id == platform.id,
                         theme: theme,
-                        onTap: { viewModel.selectedPlatform = nil },
+                        chipWidth: chipWidth,
+                        chipHeight: chipHeight,
+                        onTap: { viewModel.selectedPlatform = platform },
                         onDelete: nil
                     )
-                    
-                    // Default platforms (TikTok, Instagram, Facebook)
-                    ForEach(defaultPlatforms) { platform in
-                        PlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            onTap: { viewModel.selectedPlatform = platform },
-                            onDelete: nil
-                        )
-                    }
-                    
-                    // Custom platforms (scroll to see)
-                    ForEach(customPlatforms) { platform in
-                        PlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            onTap: { viewModel.selectedPlatform = platform },
-                            onDelete: { viewModel.deletePlatform(platform) }
-                        )
+                }
+            }
+            .frame(maxWidth: .infinity) // Center the group
+            
+            // Custom platforms row (only if any exist) - horizontal scroll
+            if !customPlatforms.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: chipSpacing) {
+                        ForEach(customPlatforms) { platform in
+                            PlatformChip(
+                                platform: platform,
+                                isSelected: viewModel.selectedPlatform?.id == platform.id,
+                                theme: theme,
+                                chipWidth: chipWidth,
+                                chipHeight: chipHeight,
+                                onTap: { viewModel.selectedPlatform = platform },
+                                onDelete: { viewModel.deletePlatform(platform) }
+                            )
+                        }
                     }
                 }
-                .padding(.horizontal, 2)
-            }
-            
-            // Scroll indicator dots (only show if custom platforms exist)
-            if !customPlatforms.isEmpty {
+                
+                // Scroll indicator dots
                 HStack {
                     Spacer()
                     HStack(spacing: 4) {
-                        ForEach(0..<min(3, customPlatforms.count + 1), id: \.self) { index in
+                        ForEach(0..<min(3, customPlatforms.count), id: \.self) { index in
                             Circle()
                                 .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.3))
                                 .frame(width: 5, height: 5)
@@ -223,34 +240,32 @@ struct PlatformChip: View {
     let platform: Platform
     let isSelected: Bool
     let theme: AppTheme
+    let chipWidth: CGFloat
+    let chipHeight: CGFloat
     let onTap: () -> Void
     let onDelete: (() -> Void)?
-    
-    // Uniform sizing
-    private let chipWidth: CGFloat = 70
-    private let chipHeight: CGFloat = 36
     
     @State private var showDeleteConfirm = false
     
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 2) {
+            VStack(spacing: 3) {
                 Image(systemName: platform.icon)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: 16, weight: .semibold))
                 
                 Text(platform.name)
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
             }
             .foregroundColor(isSelected ? .white : platform.swiftUIColor)
             .frame(width: chipWidth, height: chipHeight)
             .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? platform.swiftUIColor.opacity(0.8) : Color.black.opacity(0.4))
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? platform.swiftUIColor.opacity(0.85) : Color.black.opacity(0.4))
             )
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .strokeBorder(isSelected ? platform.swiftUIColor : Color.white.opacity(0.2), lineWidth: isSelected ? 2 : 1)
             )
             .overlay(alignment: .topTrailing) {
@@ -259,13 +274,13 @@ struct PlatformChip: View {
                         showDeleteConfirm = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.white.opacity(0.6))
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.7))
                     }
-                    .offset(x: 4, y: -4)
+                    .offset(x: 5, y: -5)
                 }
             }
-            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .scaleEffect(isSelected ? 1.03 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         }
         .buttonStyle(PlainButtonStyle())
