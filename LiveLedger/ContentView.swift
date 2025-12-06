@@ -20,81 +20,75 @@ struct MainContentView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Background Layer - User's wallpaper/theme image (VISIBLE throughout app)
-                ZStack {
-                    // Theme background image - FULL VISIBILITY
-                    Image(theme.backgroundImageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .clipped()
-                    
-                    // Very subtle gradient overlay for readability (optional)
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.1),
-                            Color.clear,
-                            Color.black.opacity(0.15)
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
+        ZStack {
+            // BACKGROUND LAYER - Full screen wallpaper (top to bottom, edge to edge)
+            // This ensures wallpaper covers ENTIRE screen with NO black areas
+            Image(theme.backgroundImageName)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .ignoresSafeArea(.all)  // Extends beyond safe area to all edges
+            
+            // Very subtle overlay for text readability (optional)
+            LinearGradient(
+                colors: [
+                    Color.black.opacity(0.05),
+                    Color.clear,
+                    Color.black.opacity(0.1)
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(.all)
+            
+            // CONTENT LAYER - Semi-transparent containers over visible wallpaper
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 8) {
+                    // HEADER - Semi-transparent (80% opacity)
+                    VStack(spacing: 6) {
+                        HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
+                        PlatformSelectorView(viewModel: viewModel, themeManager: themeManager, localization: localization)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(theme.cardBackground.opacity(0.80))
+                            .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
                     )
-                }
-                .frame(width: geometry.size.width, height: geometry.size.height)
-                .ignoresSafeArea()
-                
-                // Content Layer - Semi-transparent containers over visible wallpaper
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 8) {
-                        // HEADER - Semi-transparent (80% opacity)
-                        VStack(spacing: 6) {
-                            HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
-                            PlatformSelectorView(viewModel: viewModel, themeManager: themeManager, localization: localization)
+                    .padding(.horizontal, 12)
+                    
+                    // Free tier banner (if applicable)
+                    if let user = authManager.currentUser, !user.isPro {
+                        FreeTierBanner(user: user, theme: theme) {
+                            showSubscription = true
                         }
                         .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
+                    }
+                    
+                    // MY PRODUCTS - Semi-transparent (85% opacity)
+                    QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
+                        limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                        showLimitAlert = true
+                    })
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(theme.cardBackground.opacity(0.85))
+                            .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                    )
+                    .padding(.horizontal, 12)
+                    
+                    // ORDERS - Semi-transparent (85% opacity) with wavy bottom
+                    // Wavy bottom reveals wallpaper underneath (not black)
+                    OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
                         .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(theme.cardBackground.opacity(0.80))
-                                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
-                        )
-                        .padding(.horizontal, 12)
-                        
-                        // Free tier banner (if applicable)
-                        if let user = authManager.currentUser, !user.isPro {
-                            FreeTierBanner(user: user, theme: theme) {
-                                showSubscription = true
-                            }
-                            .padding(.horizontal, 12)
-                        }
-                        
-                        // MY PRODUCTS - Semi-transparent (85% opacity)
-                        QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
-                            limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                            showLimitAlert = true
-                        })
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
+                            WavyBottomContainer(cornerRadius: 16, waveHeight: 12)
                                 .fill(theme.cardBackground.opacity(0.85))
                                 .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
                         )
                         .padding(.horizontal, 12)
-                        
-                        // ORDERS - Semi-transparent (85% opacity) with wavy bottom
-                        OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
-                            .background(
-                                WavyBottomContainer(cornerRadius: 16, waveHeight: 12)
-                                    .fill(theme.cardBackground.opacity(0.85))
-                                    .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
-                            )
-                            .padding(.horizontal, 12)
-                            .padding(.bottom, 20)
-                    }
-                    .padding(.top, 8)
+                        .padding(.bottom, 40)  // Extra padding to show wallpaper at bottom
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 8)
             }
         }
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)

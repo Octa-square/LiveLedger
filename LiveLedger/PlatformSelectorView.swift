@@ -128,19 +128,28 @@ struct PlatformSelectorView: View {
     
     private var platformChips: some View {
         VStack(spacing: 6) {
-            // Main row: "Platforms" label | Platform boxes | "Add" button
-            HStack(alignment: .top, spacing: 8) {
-                // "Platforms" label - aligned with TOP of platform boxes
-                Text("Platforms")
+            // Main row: "Platform" label | Platform boxes | "Add" button
+            // Platform aligns with left edge of "All", Add aligns with right edge of "Facebook"
+            HStack(alignment: .top, spacing: 0) {
+                // "Platform" label - aligns with LEFT edge of "All" box
+                Text("Platform")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundColor(theme.textPrimary)
-                    .frame(height: 36, alignment: .top)
-                    .padding(.top, 2)
+                    .padding(.trailing, 8)
                 
-                // Platform boxes - centered group
+                // Platform boxes - All, TikTok, Instagram, Facebook (centered group)
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
-                        // Default platforms ONLY (TikTok, Instagram, Facebook) - NO "All" button
+                        // "All" button - INCLUDED
+                        PlatformChip(
+                            platform: .all,
+                            isSelected: viewModel.selectedPlatform == nil,
+                            theme: theme,
+                            onTap: { viewModel.selectedPlatform = nil },
+                            onDelete: nil
+                        )
+                        
+                        // Default platforms (TikTok, Instagram, Facebook)
                         ForEach(defaultPlatforms) { platform in
                             PlatformChip(
                                 platform: platform,
@@ -151,7 +160,7 @@ struct PlatformSelectorView: View {
                             )
                         }
                         
-                        // Custom platforms - HIDDEN to the right (scroll to see)
+                        // Custom platforms - hidden to the right (scroll to see)
                         ForEach(customPlatforms) { platform in
                             PlatformChip(
                                 platform: platform,
@@ -163,9 +172,8 @@ struct PlatformSelectorView: View {
                         }
                     }
                 }
-                .frame(maxWidth: .infinity)
                 
-                // "Add" button - aligned with BOTTOM of platform boxes
+                // "Add" button - aligns with RIGHT edge of "Facebook" box
                 Button {
                     showingAddPlatform = true
                 } label: {
@@ -186,14 +194,12 @@ struct PlatformSelectorView: View {
                             )
                     )
                 }
-                .frame(height: 36, alignment: .bottom)
-                .padding(.bottom, 2)
+                .padding(.leading, 8)
             }
             
             // Scroll dots - show when custom platforms exist
             if !customPlatforms.isEmpty {
                 HStack(spacing: 6) {
-                    // Page dots
                     ForEach(0..<min(3, customPlatforms.count + 1), id: \.self) { index in
                         Circle()
                             .fill(index == 0 ? theme.accentColor : theme.textMuted.opacity(0.4))
