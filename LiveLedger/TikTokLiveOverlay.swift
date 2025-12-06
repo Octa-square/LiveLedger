@@ -183,7 +183,7 @@ struct TikTokLiveOverlayView: View {
                             Text("L")
                                 .font(.system(size: 16, weight: .black, design: .rounded))
                                 .foregroundColor(.white)
-                            Text("²")
+                            Text("2")
                                 .font(.system(size: 8, weight: .regular, design: .rounded))
                                 .foregroundColor(.white)
                                 .offset(x: 4, y: -1)
@@ -248,7 +248,7 @@ struct TikTokLiveOverlayView: View {
             .padding(.horizontal, 14)
             .padding(.top, 10)
             
-            Text("Pinch to resize • Drag to move")
+            Text("Pinch to resize - Drag to move")
                 .font(.system(size: 8))
                 .foregroundColor(theme.textMuted.opacity(0.6))
             
