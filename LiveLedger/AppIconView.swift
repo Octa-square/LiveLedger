@@ -2,7 +2,7 @@
 //  AppIconView.swift
 //  LiveLedger
 //
-//  LiveLedger - App Icon Design (Logo 10 - L with Signal + Calculator)
+//  LiveLedger - Official L² App Icon Design
 //
 
 import SwiftUI
@@ -11,9 +11,9 @@ struct AppIconView: View {
     let size: CGFloat
     
     // Colors from the design
-    private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41) // #059669
-    private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)   // #047857
-    private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)    // #ef4444
+    private let greenStart = Color(red: 0.05, green: 0.59, blue: 0.41)
+    private let greenEnd = Color(red: 0.04, green: 0.47, blue: 0.34)
+    private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)
     
     init(size: CGFloat = 512) {
         self.size = size
@@ -31,14 +31,11 @@ struct AppIconView: View {
                     )
                 )
             
-            // Main content
-            ZStack {
-                // Signal arcs (top right)
-                signalArcs
-                
-                // Calculator with L stamped on it
-                calculatorWithL
-            }
+            // Signal arcs (top right)
+            signalArcs
+            
+            // L² - Official Logo
+            lSquaredLogo
             
             // LIVE badge (top left)
             liveBadge
@@ -48,85 +45,56 @@ struct AppIconView: View {
     
     // Signal/broadcast arcs
     private var signalArcs: some View {
-        let arcSize = size * 0.35
+        let arcSize = size * 0.30
         return ZStack {
-            // Outer arc (most transparent)
+            // Outer arc
             SignalArc()
-                .stroke(Color.white.opacity(0.4), lineWidth: size * 0.014)
+                .stroke(Color.white.opacity(0.4), lineWidth: size * 0.012)
                 .frame(width: arcSize * 1.4, height: arcSize * 1.4)
             
             // Middle arc
             SignalArc()
-                .stroke(Color.white.opacity(0.7), lineWidth: size * 0.014)
+                .stroke(Color.white.opacity(0.7), lineWidth: size * 0.012)
                 .frame(width: arcSize * 1.0, height: arcSize * 1.0)
             
-            // Inner arc (most visible)
+            // Inner arc
             SignalArc()
-                .stroke(Color.white, lineWidth: size * 0.014)
+                .stroke(Color.white, lineWidth: size * 0.012)
                 .frame(width: arcSize * 0.65, height: arcSize * 0.65)
         }
-        .offset(x: size * 0.12, y: -size * 0.08)
+        .offset(x: size * 0.18, y: -size * 0.15)
     }
     
-    // Calculator with L stamped on it
-    private var calculatorWithL: some View {
-        let calcWidth = size * 0.18
-        let calcHeight = size * 0.24
-        
-        return ZStack {
-            // Calculator body
-            RoundedRectangle(cornerRadius: calcWidth * 0.12)
-                .fill(Color.white)
-                .frame(width: calcWidth, height: calcHeight)
-                .shadow(color: Color.black.opacity(0.2), radius: size * 0.01, y: size * 0.005)
-            
-            // Screen (green display)
-            RoundedRectangle(cornerRadius: calcWidth * 0.05)
-                .fill(greenEnd)
-                .frame(width: calcWidth * 0.8, height: calcHeight * 0.2)
-                .offset(y: -calcHeight * 0.32)
-            
-            // Buttons grid (3x3)
-            VStack(spacing: calcWidth * 0.08) {
-                ForEach(0..<3, id: \.self) { index in
-                    HStack(spacing: calcWidth * 0.08) {
-                        calcButton(w: calcWidth * 0.22, h: calcHeight * 0.12)
-                        calcButton(w: calcWidth * 0.22, h: calcHeight * 0.12)
-                        calcButton(w: calcWidth * 0.22, h: calcHeight * 0.12)
-                    }
-                }
-            }
-            .offset(y: calcHeight * 0.12)
-            
-            // "L" stamped ON the calculator (overlapping)
+    // L² Logo - Official Design
+    private var lSquaredLogo: some View {
+        ZStack(alignment: .topTrailing) {
+            // Large L
             Text("L")
-                .font(.system(size: calcHeight * 0.9, weight: .black, design: .rounded))
+                .font(.system(size: size * 0.45, weight: .black, design: .rounded))
                 .foregroundColor(.white)
-                .shadow(color: greenEnd.opacity(0.5), radius: 2, x: 1, y: 1)
-                .offset(x: calcWidth * 0.35, y: -calcHeight * 0.1)
+            
+            // Superscript ² at top-right corner of L
+            Text("²")
+                .font(.system(size: size * 0.18, weight: .regular, design: .rounded))
+                .foregroundColor(.white)
+                .offset(x: size * 0.08, y: -size * 0.02)
         }
-        .offset(x: -size * 0.12, y: size * 0.12)
-    }
-    
-    private func calcButton(w: CGFloat, h: CGFloat) -> some View {
-        RoundedRectangle(cornerRadius: w * 0.15)
-            .fill(Color(red: 0.8, green: 0.84, blue: 0.88)) // #cbd5e1
-            .frame(width: w, height: h)
+        .offset(y: size * 0.05)
     }
     
     // LIVE badge
     private var liveBadge: some View {
         Text("LIVE")
-            .font(.system(size: size * 0.065, weight: .black, design: .rounded))
+            .font(.system(size: size * 0.055, weight: .black, design: .rounded))
             .foregroundColor(.white)
-            .padding(.horizontal, size * 0.04)
-            .padding(.vertical, size * 0.02)
+            .padding(.horizontal, size * 0.035)
+            .padding(.vertical, size * 0.018)
             .background(
-                RoundedRectangle(cornerRadius: size * 0.025)
+                RoundedRectangle(cornerRadius: size * 0.022)
                     .fill(liveRed)
-                    .shadow(color: liveRed.opacity(0.5), radius: size * 0.02)
+                    .shadow(color: liveRed.opacity(0.5), radius: size * 0.015)
             )
-            .offset(x: -size * 0.25, y: -size * 0.30)
+            .offset(x: -size * 0.28, y: -size * 0.32)
     }
 }
 

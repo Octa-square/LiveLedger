@@ -20,25 +20,30 @@ struct MainContentView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        ZStack {
-            // Background - Theme image with gradient fallback
+        GeometryReader { geometry in
             ZStack {
-                // Gradient fallback
-                LinearGradient(
-                    colors: theme.gradientColors,
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
+                // Background Layer - Fixed, doesn't affect content sizing
+                ZStack {
+                    // Gradient fallback
+                    LinearGradient(
+                        colors: theme.gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                    
+                    // Theme background image
+                    Image(theme.backgroundImageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                        .opacity(0.85)
+                }
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .ignoresSafeArea()
                 
-                // Theme background image (if exists)
-                Image(theme.backgroundImageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .opacity(0.85)  // Slight transparency for better text readability
-            }
-            .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
+                // Content Layer - Properly constrained
+                VStack(spacing: 0) {
                 // FIXED HEADER - X style (~56px height feel)
                 VStack(spacing: 6) {
                     HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
@@ -74,7 +79,9 @@ struct MainContentView: View {
                 .padding(.top, 8)
                 .padding(.bottom, 8) // Same as top
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        }  // Close GeometryReader
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
         // Auto-save listener
         .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { notification in
