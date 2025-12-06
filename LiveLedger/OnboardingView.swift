@@ -57,86 +57,89 @@ struct OnboardingView: View {
     ]
     
     var body: some View {
-        ZStack {
-            // Background
-            LinearGradient(colors: [
-                Color(red: 0.07, green: 0.5, blue: 0.46),
-                Color(red: 0.05, green: 0.35, blue: 0.35)
-            ], startPoint: .topLeading, endPoint: .bottomTrailing)
-            .ignoresSafeArea()
-            
-            VStack(spacing: 0) {
-                // Top bar with Skip button
-                HStack {
-                    Spacer()
-                    Button {
-                        completeOnboarding()
-                    } label: {
-                        Text(localization.localized(.skip))
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white.opacity(0.8))
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.white.opacity(0.15))
-                            .cornerRadius(16)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+        GeometryReader { geometry in
+            ZStack {
+                // Background
+                LinearGradient(colors: [
+                    Color(red: 0.07, green: 0.5, blue: 0.46),
+                    Color(red: 0.05, green: 0.35, blue: 0.35)
+                ], startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
                 
-                // Logo/Welcome Header
-                VStack(spacing: 14) {  // MORE space between logo and text
-                    LiveLedgerLogoMini()
-                        .scaleEffect(2.4)  // 40% larger logo
-                    
-                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.85))
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 0)
-                
-                // Page content
-                TabView(selection: $currentPage) {
-                    ForEach(0..<pages.count, id: \.self) { index in
-                        CompactOnboardingPage(page: pages[index])
-                            .tag(index)
-                    }
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
-                
-                // Page indicators
-                HStack(spacing: 6) {
-                    ForEach(0..<pages.count, id: \.self) { index in
-                        Circle()
-                            .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                            .frame(width: 6, height: 6)
-                            .scaleEffect(currentPage == index ? 1.3 : 1.0)
-                            .animation(.spring(response: 0.3), value: currentPage)
-                    }
-                }
-                .padding(.bottom, 16)
-                
-                // Next/Get Started button
-                Button {
-                    if currentPage < pages.count - 1 {
-                        withAnimation {
-                            currentPage += 1
+                VStack(spacing: 0) {
+                    // Skip button - top right
+                    HStack {
+                        Spacer()
+                        Button {
+                            completeOnboarding()
+                        } label: {
+                            Text(localization.localized(.skip))
+                                .font(.system(size: 14, weight: .medium))
+                                .foregroundColor(.white.opacity(0.8))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.white.opacity(0.15))
+                                .cornerRadius(16)
                         }
-                    } else {
-                        completeOnboarding()
                     }
-                } label: {
-                    Text(currentPage < pages.count - 1 ? localization.localized(.next) : localization.localized(.letsGo))
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(Color.white)
-                        .cornerRadius(10)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
+                    
+                    // === LOGO RECTANGLE: 280pt × 100pt, 20pt from top ===
+                    LiveLedgerLogo(size: 70)
+                        .frame(width: 280, height: 100)
+                        .padding(.top, 12)
+                    
+                    // === "Welcome to LiveLedger": 15pt below logo, 20pt bold ===
+                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.top, 15)
+                    
+                    // === Page Content ===
+                    TabView(selection: $currentPage) {
+                        ForEach(0..<pages.count, id: \.self) { index in
+                            TutorialPageView(page: pages[index])
+                                .tag(index)
+                        }
+                    }
+                    .tabViewStyle(.page(indexDisplayMode: .never))
+                    
+                    Spacer()
+                    
+                    // === BOTTOM NAVIGATION: 280pt × 60pt, 30pt from bottom ===
+                    VStack(spacing: 12) {
+                        // Pagination dots: 6pt diameter, 8pt spacing
+                        HStack(spacing: 8) {
+                            ForEach(0..<pages.count, id: \.self) { index in
+                                Circle()
+                                    .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
+                                    .frame(width: 6, height: 6)
+                            }
+                        }
+                        
+                        // Next button: 16pt font
+                        Button {
+                            if currentPage < pages.count - 1 {
+                                withAnimation {
+                                    currentPage += 1
+                                }
+                            } else {
+                                completeOnboarding()
+                            }
+                        } label: {
+                            Text(currentPage < pages.count - 1 ? localization.localized(.next) : localization.localized(.letsGo))
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
+                                .frame(width: 280)
+                                .padding(.vertical, 14)
+                                .background(Color.white)
+                                .cornerRadius(10)
+                        }
+                    }
+                    .frame(width: 280, height: 60)
+                    .padding(.bottom, 30)
                 }
-                .padding(.horizontal, 32)
-                .padding(.bottom, 24)
             }
         }
     }
@@ -161,46 +164,54 @@ struct TutorialPage {
     let description: String
 }
 
-// MARK: - Compact Onboarding Page (tight spacing below header)
+// MARK: - Tutorial Page View (iPhone measurements)
+struct TutorialPageView: View {
+    let page: TutorialPage
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            // === ICON CIRCLE: 160pt diameter, 30pt below "Welcome" ===
+            ZStack {
+                Circle()
+                    .fill(page.color.opacity(0.2))
+                    .frame(width: 160, height: 160)
+                
+                Circle()
+                    .fill(page.color.opacity(0.3))
+                    .frame(width: 120, height: 120)
+                
+                Image(systemName: page.icon)
+                    .font(.system(size: 50))
+                    .foregroundColor(.white)
+            }
+            .padding(.top, 30)
+            
+            // === HEADING: 20pt below circle, 22pt bold ===
+            Text(page.title)
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.top, 20)
+            
+            // === DESCRIPTION: 12pt below heading, 320pt width, 14pt font, 20pt line height ===
+            Text(page.description)
+                .font(.system(size: 14))
+                .foregroundColor(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .lineSpacing(6)  // 14pt font + 6pt = ~20pt line height
+                .frame(width: 320)
+                .padding(.top, 12)
+            
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Legacy Compact Page (kept for compatibility)
 struct CompactOnboardingPage: View {
     let page: TutorialPage
     
     var body: some View {
-        VStack(spacing: 6) {  // Very tight spacing between elements
-            Spacer(minLength: 4)  // Minimal top space - content starts close to header
-            
-            // Icon - compact size
-            ZStack {
-                Circle()
-                    .fill(page.color.opacity(0.2))
-                    .frame(width: 95, height: 95)
-                
-                Circle()
-                    .fill(page.color.opacity(0.3))
-                    .frame(width: 70, height: 70)
-                
-                Image(systemName: page.icon)
-                    .font(.system(size: 30))
-                    .foregroundColor(.white)
-            }
-            
-            // Title - very close to icon
-            Text(page.title)
-                .font(.system(size: 18, weight: .bold))
-                .foregroundColor(.white)
-                .padding(.top, 2)
-            
-            // Description - compact
-            Text(page.description)
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .lineSpacing(2)
-                .padding(.horizontal, 20)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            Spacer()  // Push content up
-        }
+        TutorialPageView(page: page)
     }
 }
 
