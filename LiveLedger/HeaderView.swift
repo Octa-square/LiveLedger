@@ -1185,18 +1185,19 @@ struct LiveLedgerLogoMini: View {
                 .frame(width: 6, height: 6)
                 .offset(x: 8, y: -8)
             
-            // L² - Bold L with superscript 2 (represents "Live Ledger")
-            HStack(alignment: .top, spacing: -1) {  // Negative spacing for tighter L²
+            // L² - Official LiveLedger Logo (Mini)
+            // "2" positioned at top-right corner of L, nearly touching
+            ZStack(alignment: .topTrailing) {
                 Text("L")
-                    .font(.system(size: 18, weight: .black, design: .rounded))
+                    .font(.system(size: 20, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))  // Larger, same visual weight
+                    .font(.system(size: 10, weight: .regular, design: .rounded))
                     .foregroundColor(.white)
-                    .offset(y: 0)  // Tighter positioning
+                    .offset(x: 5, y: -2)  // Top-right corner position
             }
-            .offset(x: -2, y: 2)
+            .offset(x: -1, y: 2)
             
             // LIVE badge
             Text("LIVE")
