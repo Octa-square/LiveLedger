@@ -19,92 +19,121 @@ struct MainContentView: View {
     
     private var theme: AppTheme { themeManager.currentTheme }
     
+    // Semi-transparent container background - lets wallpaper show through
+    private var containerBackground: some View {
+        RoundedRectangle(cornerRadius: 16)
+            .fill(Color.black.opacity(0.65))
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(.ultraThinMaterial)
+            )
+    }
+    
     var body: some View {
-        ZStack {
-            // BACKGROUND LAYER - Full screen wallpaper (top to bottom, edge to edge)
-            // Gradient fallback ensures NO blank/white screen even if image fails to load
-            LinearGradient(
-                colors: theme.gradientColors,
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea(.all)
-            
-            // Theme background image on top of gradient fallback
-            Image(theme.backgroundImageName)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .ignoresSafeArea(.all)
-            
-            // Very subtle overlay for text readability
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.05),
-                    Color.clear,
-                    Color.black.opacity(0.1)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea(.all)
-            
-            // CONTENT LAYER - Semi-transparent containers over visible wallpaper
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 8) {
-                    // HEADER - Semi-transparent (80% opacity)
-                    VStack(spacing: 6) {
-                        HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
-                        PlatformSelectorView(viewModel: viewModel, themeManager: themeManager, localization: localization)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(theme.cardBackground.opacity(0.80))
-                            .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
-                    )
-                    .padding(.horizontal, 12)
-                    
-                    // Free tier banner (if applicable)
-                    if let user = authManager.currentUser, !user.isPro {
-                        FreeTierBanner(user: user, theme: theme) {
-                            showSubscription = true
+        GeometryReader { geometry in
+            ZStack {
+                // LAYER 1: WALLPAPER - Full screen, visible throughout
+                Image(theme.backgroundImageName)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+                    .ignoresSafeArea(.all)
+                
+                // LAYER 2: Subtle dark overlay for text readability
+                Color.black.opacity(0.15)
+                    .ignoresSafeArea(.all)
+                
+                // LAYER 3: CONTENT - Semi-transparent containers
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        // HEADER SECTION
+                        VStack(spacing: 8) {
+                            HeaderView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                authManager: authManager,
+                                localization: localization,
+                                showSettings: $showSettings,
+                                showSubscription: $showSubscription
+                            )
+                            
+                            PlatformSelectorView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization
+                            )
                         }
-                        .padding(.horizontal, 12)
-                    }
-                    
-                    // MY PRODUCTS - Semi-transparent (85% opacity)
-                    QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
-                        limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                        showLimitAlert = true
-                    })
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(theme.cardBackground.opacity(0.85))
-                            .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
-                    )
-                    .padding(.horizontal, 12)
-                    
-                    // ORDERS - Semi-transparent (85% opacity) with wavy bottom
-                    // Wavy bottom reveals wallpaper underneath (not black)
-                    OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
+                        .padding(12)
                         .background(
-                            WavyBottomContainer(cornerRadius: 16, waveHeight: 12)
-                                .fill(theme.cardBackground.opacity(0.85))
-                                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.black.opacity(0.6))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(.ultraThinMaterial)
+                                )
                         )
                         .padding(.horizontal, 12)
-                        .padding(.bottom, 40)  // Extra padding to show wallpaper at bottom
+                        
+                        // FREE TIER BANNER (if applicable)
+                        if let user = authManager.currentUser, !user.isPro {
+                            FreeTierBanner(user: user, theme: theme) {
+                                showSubscription = true
+                            }
+                            .padding(.horizontal, 12)
+                        }
+                        
+                        // MY PRODUCTS SECTION
+                        QuickAddView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            authManager: authManager,
+                            localization: localization,
+                            onLimitReached: {
+                                limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                showLimitAlert = true
+                            }
+                        )
+                        .padding(12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color.black.opacity(0.6))
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(.ultraThinMaterial)
+                                )
+                        )
+                        .padding(.horizontal, 12)
+                        
+                        // ORDERS SECTION - with wavy bottom
+                        OrdersListView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            localization: localization,
+                            authManager: authManager
+                        )
+                        .padding(12)
+                        .background(
+                            WavyBottomContainer(cornerRadius: 16, waveHeight: 15)
+                                .fill(Color.black.opacity(0.6))
+                                .background(
+                                    WavyBottomContainer(cornerRadius: 16, waveHeight: 15)
+                                        .fill(.ultraThinMaterial)
+                                )
+                        )
+                        .padding(.horizontal, 12)
+                        .padding(.bottom, 50) // Show wallpaper at bottom
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
+                
+                // TikTok Live Overlay (floats above everything)
+                TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
             }
-            
-            // TikTok Live Floating Overlay (draggable, resizable)
-            TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
         }
-        .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
+        .preferredColorScheme(.dark) // Force dark for better contrast
         // Auto-save listener
-        .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { notification in
+        .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { _ in
             viewModel.saveData()
         }
         .confirmationDialog("Clear All Data?", isPresented: $viewModel.showingClearConfirmation, titleVisibility: .visible) {
@@ -123,7 +152,6 @@ struct MainContentView: View {
         }
         .sheet(isPresented: $viewModel.showingExportSheet) {
             if let url = viewModel.csvURL {
-                // Check export limit
                 if let user = authManager.currentUser, !user.isPro && !user.canExport {
                     VStack(spacing: 20) {
                         Image(systemName: "lock.fill")
@@ -169,10 +197,10 @@ struct FreeTierBanner: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Free Plan")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(theme.warningColor)
+                    .foregroundColor(.orange)
                 Text("\(user.remainingFreeOrders) orders • \(user.remainingFreeExports) exports left")
                     .font(.system(size: 11))
-                    .foregroundColor(theme.textSecondary)
+                    .foregroundColor(.white.opacity(0.7))
             }
             
             Spacer()
@@ -187,17 +215,17 @@ struct FreeTierBanner: View {
                 .foregroundColor(.black)
                 .padding(.horizontal, 10)
                 .padding(.vertical, 6)
-                .background(theme.warningColor)
+                .background(Color.orange)
                 .cornerRadius(6)
             }
         }
         .padding(10)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(theme.warningColor.opacity(0.1))
+                .fill(Color.orange.opacity(0.15))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(theme.warningColor.opacity(0.3), lineWidth: 1)
+                        .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
                 )
         )
     }
@@ -216,8 +244,8 @@ struct ShareSheet: UIViewControllerRepresentable {
 // MARK: - Wavy Bottom Container Shape
 struct WavyBottomContainer: Shape {
     var cornerRadius: CGFloat = 16
-    var waveHeight: CGFloat = 12
-    var waveCount: Int = 4
+    var waveHeight: CGFloat = 15
+    var waveCount: Int = 5
     
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -292,7 +320,6 @@ struct ContentView: View {
 }
 
 #Preview {
-    // Create a mock authenticated user to avoid StoreKit initialization issues
     let mockAuthManager = AuthManager()
     mockAuthManager.currentUser = AppUser(
         id: "preview-user",
@@ -301,7 +328,7 @@ struct ContentView: View {
         name: "Preview User",
         companyName: "My Shop",
         currency: "USD ($)",
-        isPro: true, // Set to Pro to avoid subscription checks
+        isPro: true,
         ordersUsed: 5,
         exportsUsed: 2,
         referralCode: "PREVIEW123",

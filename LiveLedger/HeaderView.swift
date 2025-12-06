@@ -136,9 +136,7 @@ struct HeaderView: View {
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
-                                .fill(theme.cardBackground)
-                                .shadow(color: theme.shadowDark.opacity(0.2), radius: 4, x: 2, y: 2)
-                                .shadow(color: theme.shadowLight.opacity(0.5), radius: 4, x: -2, y: -2)
+                                .fill(Color.black.opacity(0.4))
                         )
                 }
             }
@@ -171,9 +169,7 @@ struct HeaderView: View {
         .padding(12)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.2), radius: 6, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.08), radius: 6, x: -3, y: -3)
+                .fill(Color.black.opacity(0.5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .strokeBorder(theme.cardBorder, lineWidth: 1)
@@ -626,9 +622,7 @@ struct StatCard: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.4), radius: 4, x: -3, y: -3)
+                .fill(Color.black.opacity(0.4))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)
@@ -671,9 +665,7 @@ struct StatCardText: View {
         .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 10)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.4), radius: 4, x: -3, y: -3)
+                .fill(Color.black.opacity(0.4))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 10)

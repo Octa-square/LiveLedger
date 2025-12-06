@@ -467,8 +467,7 @@ struct FastProductCard: View {
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(theme.cardBackground)
-                    .shadow(color: theme.shadowDark.opacity(0.15), radius: 3, x: 2, y: 2)
+                    .fill(Color.black.opacity(0.4))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12)

@@ -112,8 +112,7 @@ struct PlatformSelectorView: View {
         .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.1), radius: 2, x: 1, y: 1)
+                .fill(Color.black.opacity(0.4))
         )
     }
     
@@ -294,17 +293,15 @@ struct PlatformChip: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
-            .foregroundColor(platform.swiftUIColor)
+            .foregroundColor(isSelected ? .white : platform.swiftUIColor)
             .frame(width: chipWidth, height: chipHeight)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(isSelected ? platform.swiftUIColor.opacity(0.15) : theme.cardBackground)
-                    .shadow(color: theme.shadowDark.opacity(0.1), radius: 3, x: 2, y: 2)
-                    .shadow(color: theme.shadowLight.opacity(0.2), radius: 3, x: -2, y: -2)
+                    .fill(isSelected ? platform.swiftUIColor.opacity(0.8) : Color.black.opacity(0.4))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .strokeBorder(isSelected ? platform.swiftUIColor : theme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
+                    .strokeBorder(isSelected ? platform.swiftUIColor : Color.white.opacity(0.2), lineWidth: isSelected ? 2 : 1)
             )
             .overlay(alignment: .topTrailing) {
                 // Delete button for custom platforms
