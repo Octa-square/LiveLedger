@@ -411,6 +411,7 @@ struct SettingsView: View {
     @State private var showTutorial = false
     @State private var showLanguagePicker = false
     @State private var showEditProfile = false
+    @State private var showSoundSettings = false
     @State private var editedCompanyName = ""
     @State private var editedUserName = ""
     
@@ -547,6 +548,26 @@ struct SettingsView: View {
                     }
                 } header: {
                     Text(localization.localized(.language))
+                }
+                
+                // Sound Settings Section
+                Section {
+                    Button {
+                        showSoundSettings = true
+                    } label: {
+                        HStack {
+                            Label("Sound Settings", systemImage: "speaker.wave.2.fill")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundColor(.gray)
+                        }
+                    }
+                } header: {
+                    Text("Sounds")
+                } footer: {
+                    Text("Configure timer start and order added sounds")
                 }
                 
                 // Analytics & Tutorial Section
@@ -723,6 +744,9 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showLanguagePicker) {
                 LanguagePickerView(localization: localization)
+            }
+            .sheet(isPresented: $showSoundSettings) {
+                SoundSettingsView()
             }
             .sheet(isPresented: $showEditProfile) {
                 EditProfileView(

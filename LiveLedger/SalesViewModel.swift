@@ -434,6 +434,9 @@ class SalesViewModel: ObservableObject {
         )
         orders.insert(order, at: 0)
         decrementStock(for: product.id, by: quantity)
+        
+        // Play order added sound
+        SoundManager.shared.playOrderAddedSound()
     }
     
     func updateOrder(_ order: Order) {
@@ -555,6 +558,9 @@ class SalesViewModel: ObservableObject {
         lastTimerUpdateDate = Date()
         startTimerLoop()
         saveTimerState()
+        
+        // Play timer start sound
+        SoundManager.shared.playTimerStartSound()
     }
     
     /// Manually pause the timer
