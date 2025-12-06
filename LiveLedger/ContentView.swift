@@ -47,19 +47,23 @@ struct MainContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // LAYER 1: WALLPAPER - Maintains aspect ratio, covers full screen
-                // Uses .scaledToFill() to preserve aspect ratio (NO horizontal stretching)
-                // May crop edges but will NOT distort
+                // LAYER 1: WALLPAPER - Full screen from TOP to BOTTOM (no black cutoff)
+                // Maintains aspect ratio (scaledToFill) - may crop sides but won't stretch
+                // Frame includes extra height to cover bottom safe area
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
-                    .ignoresSafeArea()
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    .ignoresSafeArea(.all, edges: .all)
                 
-                // LAYER 2: Subtle dark overlay for text readability
+                // LAYER 2: Subtle dark overlay for text readability (also full screen)
                 Color.black.opacity(0.15)
-                    .ignoresSafeArea()
+                    .ignoresSafeArea(.all, edges: .all)
                 
                 // LAYER 3: CONTENT - Grid containers with green borders
                 // All containers have IDENTICAL styling: green border, 12px rounded corners ALL FOUR SIDES
@@ -110,7 +114,8 @@ struct MainContentView: View {
                             )
                         }
                         
-                        // CONTAINER 4: Orders Section - SAME STYLE (straight bottom, rounded corners)
+                        // CONTAINER 4: Orders Section - TALLER to show more orders (5-7 orders)
+                        // Height increased: ~150pt → ~220pt (vertical only, no width change)
                         gridContainer {
                             OrdersListView(
                                 viewModel: viewModel,
@@ -118,11 +123,11 @@ struct MainContentView: View {
                                 localization: localization,
                                 authManager: authManager
                             )
-                            .frame(minHeight: max(180, geometry.size.height * 0.28))
+                            .frame(minHeight: max(220, geometry.size.height * 0.32))
                         }
                     }
                     .padding(.top, 8)
-                    .padding(.bottom, 20) // Small gap at bottom to show wallpaper
+                    .padding(.bottom, 16) // Small gap - wallpaper visible at bottom
                 }
                 
                 // TikTok Live Overlay (floats above everything)
