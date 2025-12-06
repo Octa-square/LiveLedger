@@ -217,16 +217,6 @@ struct QuickAddView: View {
             }
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(theme.cardBorder, lineWidth: 1)
-                )
-        )
         .sheet(item: $editingProduct) { product in
             EditProductSheet(
                 product: product,

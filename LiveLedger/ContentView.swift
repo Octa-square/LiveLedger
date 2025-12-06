@@ -22,66 +22,81 @@ struct MainContentView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background Layer - Fixed, doesn't affect content sizing
+                // Background Layer - User's wallpaper/theme image (VISIBLE throughout app)
                 ZStack {
-                    // Gradient fallback
-                    LinearGradient(
-                        colors: theme.gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    
-                    // Theme background image
+                    // Theme background image - FULL VISIBILITY
                     Image(theme.backgroundImageName)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
                         .frame(width: geometry.size.width, height: geometry.size.height)
                         .clipped()
-                        .opacity(0.85)
+                    
+                    // Very subtle gradient overlay for readability (optional)
+                    LinearGradient(
+                        colors: [
+                            Color.black.opacity(0.1),
+                            Color.clear,
+                            Color.black.opacity(0.15)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 }
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .ignoresSafeArea()
                 
-                // Content Layer - Properly constrained
-                VStack(spacing: 0) {
-                // FIXED HEADER - X style (~56px height feel)
-                VStack(spacing: 6) {
-                    HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
-                    PlatformSelectorView(viewModel: viewModel, themeManager: themeManager, localization: localization)
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(
-                    theme.cardBackground
-                        .shadow(color: theme.shadowDark.opacity(0.1), radius: 2, y: 2)
-                )
-                
-                // CONTENT - Products fixed, Orders stretches to bottom
-                VStack(spacing: 8) {
-                    // Free tier banner
-                    if let user = authManager.currentUser, !user.isPro {
-                        FreeTierBanner(user: user, theme: theme) {
-                            showSubscription = true
+                // Content Layer - Semi-transparent containers over visible wallpaper
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 8) {
+                        // HEADER - Semi-transparent (80% opacity)
+                        VStack(spacing: 6) {
+                            HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
+                            PlatformSelectorView(viewModel: viewModel, themeManager: themeManager, localization: localization)
                         }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(theme.cardBackground.opacity(0.80))
+                                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                        )
+                        .padding(.horizontal, 12)
+                        
+                        // Free tier banner (if applicable)
+                        if let user = authManager.currentUser, !user.isPro {
+                            FreeTierBanner(user: user, theme: theme) {
+                                showSubscription = true
+                            }
+                            .padding(.horizontal, 12)
+                        }
+                        
+                        // MY PRODUCTS - Semi-transparent (85% opacity)
+                        QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
+                            limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                            showLimitAlert = true
+                        })
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(theme.cardBackground.opacity(0.85))
+                                .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                        )
+                        .padding(.horizontal, 12)
+                        
+                        // ORDERS - Semi-transparent (85% opacity) with wavy bottom
+                        OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
+                            .background(
+                                WavyBottomContainer(cornerRadius: 16, waveHeight: 12)
+                                    .fill(theme.cardBackground.opacity(0.85))
+                                    .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                            )
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 20)
                     }
-                    
-                    // Products card - fixed size
-                    QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
-                        limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                        showLimitAlert = true
-                    })
-                    
-                    // Orders - stretches all the way down
-                    OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
-                        .frame(maxHeight: .infinity)
+                    .padding(.top, 8)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
-                .padding(.bottom, 8) // Same as top
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        }  // Close GeometryReader
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
         // Auto-save listener
         .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { notification in
@@ -191,6 +206,77 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     
     func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - Wavy Bottom Container Shape
+struct WavyBottomContainer: Shape {
+    var cornerRadius: CGFloat = 16
+    var waveHeight: CGFloat = 12
+    var waveCount: Int = 4
+    
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let width = rect.width
+        let height = rect.height
+        
+        // Start at top-left with rounded corner
+        path.move(to: CGPoint(x: 0, y: cornerRadius))
+        path.addQuadCurve(
+            to: CGPoint(x: cornerRadius, y: 0),
+            control: CGPoint(x: 0, y: 0)
+        )
+        
+        // Top edge
+        path.addLine(to: CGPoint(x: width - cornerRadius, y: 0))
+        
+        // Top-right corner
+        path.addQuadCurve(
+            to: CGPoint(x: width, y: cornerRadius),
+            control: CGPoint(x: width, y: 0)
+        )
+        
+        // Right edge
+        path.addLine(to: CGPoint(x: width, y: height - waveHeight - cornerRadius))
+        
+        // Bottom-right corner transition to wave
+        path.addQuadCurve(
+            to: CGPoint(x: width - cornerRadius, y: height - waveHeight),
+            control: CGPoint(x: width, y: height - waveHeight)
+        )
+        
+        // Wavy bottom edge
+        let waveWidth = (width - cornerRadius * 2) / CGFloat(waveCount)
+        for i in 0..<waveCount {
+            let startX = width - cornerRadius - waveWidth * CGFloat(i)
+            let endX = startX - waveWidth
+            let midX = (startX + endX) / 2
+            
+            if i % 2 == 0 {
+                path.addQuadCurve(
+                    to: CGPoint(x: endX, y: height - waveHeight),
+                    control: CGPoint(x: midX, y: height)
+                )
+            } else {
+                path.addQuadCurve(
+                    to: CGPoint(x: endX, y: height - waveHeight),
+                    control: CGPoint(x: midX, y: height - waveHeight * 2)
+                )
+            }
+        }
+        
+        // Bottom-left corner
+        path.addQuadCurve(
+            to: CGPoint(x: 0, y: height - waveHeight - cornerRadius),
+            control: CGPoint(x: 0, y: height - waveHeight)
+        )
+        
+        // Left edge back to start
+        path.addLine(to: CGPoint(x: 0, y: cornerRadius))
+        
+        path.closeSubpath()
+        return path
+    }
 }
 
 // Keep ContentView for previews

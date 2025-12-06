@@ -27,43 +27,14 @@ struct PlatformSelectorView: View {
     }
     
     // MARK: - Extracted Views
-    private var platformHeader: some View {
-        HStack(spacing: 8) {
-            Text(localization.localized(.platform))
-                .font(.system(size: 15, weight: .bold))
-                .foregroundColor(theme.textPrimary)
-            
+    // Timer view positioned above platforms
+    private var timerSection: some View {
+        HStack {
             Spacer()
-            
-            // Session Timer - centered
             sessionTimerView
-            
             Spacer()
-            
-            // Add platform button
-            Button {
-                showingAddPlatform = true
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 10, weight: .bold))
-                    Text("Add")
-                        .font(.system(size: 10, weight: .semibold))
-                }
-                .foregroundColor(.white)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(
-                    Capsule()
-                        .fill(
-                            LinearGradient(colors: [theme.accentColor, theme.secondaryColor],
-                                          startPoint: .topLeading, endPoint: .bottomTrailing)
-                        )
-                )
-            }
-            .accessibilityLabel("Add new platform")
-            .accessibilityHint("Opens form to add a custom selling platform")
         }
+        .padding(.bottom, 4)
     }
     
     private var sessionTimerView: some View {
@@ -156,78 +127,94 @@ struct PlatformSelectorView: View {
     }
     
     private var platformChips: some View {
-        VStack(spacing: 0) {
-            // All platforms in centered scrollable area
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    // "All" button
-                    PlatformChip(
-                        platform: .all,
-                        isSelected: viewModel.selectedPlatform == nil,
-                        theme: theme,
-                        onTap: { viewModel.selectedPlatform = nil },
-                        onDelete: nil
+        VStack(spacing: 6) {
+            // Main row: "Platforms" label | Platform boxes | "Add" button
+            HStack(alignment: .top, spacing: 8) {
+                // "Platforms" label - aligned with TOP of platform boxes
+                Text("Platforms")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
+                    .frame(height: 36, alignment: .top)
+                    .padding(.top, 2)
+                
+                // Platform boxes - centered group
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        // Default platforms ONLY (TikTok, Instagram, Facebook) - NO "All" button
+                        ForEach(defaultPlatforms) { platform in
+                            PlatformChip(
+                                platform: platform,
+                                isSelected: viewModel.selectedPlatform?.id == platform.id,
+                                theme: theme,
+                                onTap: { viewModel.selectedPlatform = platform },
+                                onDelete: nil
+                            )
+                        }
+                        
+                        // Custom platforms - HIDDEN to the right (scroll to see)
+                        ForEach(customPlatforms) { platform in
+                            PlatformChip(
+                                platform: platform,
+                                isSelected: viewModel.selectedPlatform?.id == platform.id,
+                                theme: theme,
+                                onTap: { viewModel.selectedPlatform = platform },
+                                onDelete: { viewModel.deletePlatform(platform) }
+                            )
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                
+                // "Add" button - aligned with BOTTOM of platform boxes
+                Button {
+                    showingAddPlatform = true
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "plus")
+                            .font(.system(size: 9, weight: .bold))
+                        Text("Add")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
+                    .background(
+                        Capsule()
+                            .fill(
+                                LinearGradient(colors: [theme.accentColor, theme.secondaryColor],
+                                              startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
                     )
-                    
-                    // Default platforms (TikTok, Instagram, Facebook)
-                    ForEach(defaultPlatforms) { platform in
-                        PlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            onTap: { viewModel.selectedPlatform = platform },
-                            onDelete: nil
-                        )
-                    }
-                    
-                    // Custom platforms
-                    ForEach(customPlatforms) { platform in
-                        PlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            onTap: { viewModel.selectedPlatform = platform },
-                            onDelete: { viewModel.deletePlatform(platform) }
-                        )
-                    }
                 }
-                .padding(.horizontal, 4)
+                .frame(height: 36, alignment: .bottom)
+                .padding(.bottom, 2)
             }
-            .scrollIndicators(customPlatforms.isEmpty ? .hidden : .visible)
             
-            // Scroll indicator (shows when custom platforms exist)
+            // Scroll dots - show when custom platforms exist
             if !customPlatforms.isEmpty {
-                HStack(spacing: 4) {
-                    Spacer()
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.system(size: 8))
-                    Text("Scroll for more")
-                        .font(.system(size: 8))
-                    Spacer()
+                HStack(spacing: 6) {
+                    // Page dots
+                    ForEach(0..<min(3, customPlatforms.count + 1), id: \.self) { index in
+                        Circle()
+                            .fill(index == 0 ? theme.accentColor : theme.textMuted.opacity(0.4))
+                            .frame(width: 6, height: 6)
+                    }
                 }
-                .foregroundColor(theme.textMuted.opacity(0.5))
                 .padding(.top, 2)
             }
         }
-        .frame(height: customPlatforms.isEmpty ? 44 : 56)
+        .frame(height: customPlatforms.isEmpty ? 44 : 60)
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            platformHeader
+        VStack(alignment: .leading, spacing: 6) {
+            // Timer section centered above platforms
+            timerSection
+            
+            // Platform chips with label and add button
             platformChips
         }
         .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(theme.cardBackground)
-                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
-                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(theme.cardBorder, lineWidth: 1)
-                )
-        )
         .sheet(isPresented: $showingAddPlatform) {
             AddPlatformSheet(
                 platformName: $newPlatformName,

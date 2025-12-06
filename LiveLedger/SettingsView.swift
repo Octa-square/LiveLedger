@@ -1187,11 +1187,13 @@ struct TermsPrivacyView: View {
 // MARK: - Display Settings View
 struct DisplaySettingsView: View {
     @ObservedObject var themeManager: ThemeManager
+    @ObservedObject var overlayManager = TikTokLiveOverlayManager.shared
     @AppStorage("display_brightness") private var brightness: Double = 1.0
     @AppStorage("display_contrast") private var contrast: Double = 1.0
     @AppStorage("display_bgOpacity") private var bgOpacity: Double = 0.85
     @AppStorage("display_fontSize") private var fontSize: String = "Medium"
     @AppStorage("display_textWeight") private var textWeight: String = "Regular"
+    @AppStorage("tiktokOverlayEnabled") private var overlayEnabled: Bool = true
     @Environment(\.dismiss) var dismiss
     
     let fontSizes = ["Small", "Medium", "Large", "XL"]
@@ -1236,6 +1238,65 @@ struct DisplaySettingsView: View {
                     }
                 } header: {
                     Text("Visual Adjustments")
+                }
+                
+                // TikTok Live Overlay Settings
+                Section {
+                    Toggle("Enable Quick Add Overlay", isOn: $overlayEnabled)
+                        .onChange(of: overlayEnabled) { _, newValue in
+                            if newValue {
+                                overlayManager.showOverlay()
+                            } else {
+                                overlayManager.hideOverlay()
+                            }
+                        }
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text("Overlay Transparency")
+                            Spacer()
+                            Text("\(Int(overlayManager.overlayTransparency * 100))%")
+                                .foregroundColor(.secondary)
+                        }
+                        Slider(value: $overlayManager.overlayTransparency, in: 0.2...1.0)
+                            .tint(.pink)
+                            .onChange(of: overlayManager.overlayTransparency) { _, _ in
+                                overlayManager.saveSettings()
+                            }
+                        
+                        // Transparency preview
+                        HStack(spacing: 16) {
+                            VStack(spacing: 2) {
+                                Text("Light")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.gray.opacity(0.2))
+                                    .frame(width: 50, height: 30)
+                            }
+                            
+                            Image(systemName: "arrow.right")
+                                .font(.system(size: 10))
+                                .foregroundColor(.secondary)
+                            
+                            VStack(spacing: 2) {
+                                Text("Bold")
+                                    .font(.system(size: 9))
+                                    .foregroundColor(.secondary)
+                                RoundedRectangle(cornerRadius: 6)
+                                    .fill(Color.gray)
+                                    .frame(width: 50, height: 30)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 4)
+                    }
+                    .disabled(!overlayEnabled)
+                    .opacity(overlayEnabled ? 1 : 0.5)
+                } header: {
+                    Text("TikTok Live Overlay")
+                } footer: {
+                    Text("The quick add overlay provides easy access to products while streaming. Adjust transparency to balance visibility with content viewing.")
                 }
                 
                 // Text Settings
