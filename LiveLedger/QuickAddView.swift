@@ -28,9 +28,11 @@ struct QuickAddView: View {
     var body: some View {
         ZStack {
             VStack(alignment: .leading, spacing: 8) {
-                // Header with Catalog Dropdown
-                HStack(spacing: 6) {
-                    // Catalog Dropdown - Compact
+                // Header with Catalog Dropdown - FULL WIDTH ALIGNMENT
+                // LEFT EDGE: My Products label aligns with container left
+                // RIGHT EDGE: + button aligns with container right
+                HStack(spacing: 0) {
+                    // Catalog Dropdown - LEFT EDGE ALIGNMENT
                     Menu {
                         // Switch catalogs
                         ForEach(viewModel.catalogs) { catalog in
@@ -67,10 +69,14 @@ struct QuickAddView: View {
                     
                     Spacer()
                     
+                    // Center hint text
                     Text("Tap: Sell • Hold: Edit")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(theme.textMuted)
                     
+                    Spacer()
+                    
+                    // + button - RIGHT EDGE ALIGNMENT
                     Button {
                         let added = viewModel.addNewProduct()
                         if !added {
@@ -84,6 +90,7 @@ struct QuickAddView: View {
                             )
                     }
                 }
+                .frame(maxWidth: .infinity) // Span full container width
                 
                 // Products Grid - TAP TO ADD ORDER WITH BUYER NAME
                 FlexibleProductGrid(

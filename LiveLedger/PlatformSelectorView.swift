@@ -96,11 +96,11 @@ struct PlatformSelectorView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             // ROW 1: "Platform" | Timer (center) | "+ Add"
-            // ALL ON SAME HORIZONTAL LINE
-            // "P" aligns with left edge of "All" box below
-            // Right edge of "Add" aligns with right edge of "Facebook" box below
-            HStack(alignment: .center) {
-                // "Platform" label - aligns with left edge of "All" box
+            // ALL ON SAME HORIZONTAL LINE - FULL WIDTH
+            // LEFT EDGE: "Platform" aligns with container left (and "All" box below)
+            // RIGHT EDGE: "+ Add" aligns with container right (and "Facebook" box below)
+            HStack(alignment: .center, spacing: 0) {
+                // "Platform" label - LEFT EDGE ALIGNMENT
                 Text("Platform")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
@@ -112,7 +112,7 @@ struct PlatformSelectorView: View {
                 
                 Spacer()
                 
-                // "+ Add" button - right edge aligns with right edge of "Facebook" box
+                // "+ Add" button - RIGHT EDGE ALIGNMENT
                 Button {
                     showingAddPlatform = true
                 } label: {
@@ -134,11 +134,12 @@ struct PlatformSelectorView: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity) // Span full container width
             
             // ROW 2: Platform boxes - All 4 MUST be visible: All, TikTok, Instagram, Facebook
-            // Centered group with equal margins
-            HStack(spacing: chipSpacing) {
-                // "All" button
+            // FULL WIDTH: "All" left edge aligns with container left, "Facebook" right edge aligns with container right
+            HStack(spacing: 0) {
+                // "All" button - LEFT EDGE ALIGNMENT
                 PlatformChip(
                     platform: .all,
                     isSelected: viewModel.selectedPlatform == nil,
@@ -149,7 +150,9 @@ struct PlatformSelectorView: View {
                     onDelete: nil
                 )
                 
-                // Default platforms (TikTok, Instagram, Facebook) - ALL VISIBLE
+                Spacer()
+                
+                // Default platforms (TikTok, Instagram, Facebook) - evenly spaced
                 ForEach(defaultPlatforms) { platform in
                     PlatformChip(
                         platform: platform,
@@ -160,9 +163,13 @@ struct PlatformSelectorView: View {
                         onTap: { viewModel.selectedPlatform = platform },
                         onDelete: nil
                     )
+                    
+                    if platform.id != defaultPlatforms.last?.id {
+                        Spacer()
+                    }
                 }
             }
-            .frame(maxWidth: .infinity) // Center the group
+            .frame(maxWidth: .infinity) // Span full container width - edges align
             
             // Custom platforms row (only if any exist) - horizontal scroll
             if !customPlatforms.isEmpty {

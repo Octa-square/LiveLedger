@@ -20,8 +20,11 @@ struct OrdersListView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Header with filters
+            // Header with filters - FULL WIDTH ALIGNMENT
+            // LEFT EDGE: "Orders" label aligns with container left
+            // RIGHT EDGE: Filter dropdowns align with container right
             HStack(spacing: 8) {
+                // Orders label - LEFT EDGE ALIGNMENT
                 Text(localization.localized(.orders))
                     .font(.system(size: 15, weight: .bold))
                     .foregroundColor(theme.textPrimary)
@@ -37,6 +40,8 @@ struct OrdersListView: View {
                 }
                 
                 Spacer()
+                
+                // Filters - RIGHT EDGE ALIGNMENT
                 
                 // Filters - Pro Feature
                 if isPro {

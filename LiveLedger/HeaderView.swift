@@ -141,30 +141,38 @@ struct HeaderView: View {
                 }
             }
             
-            // Stats Row - Total Sales, Top Seller, Stock Left, Orders
+            // Stats Row - Full width, edges align with container edges
+            // Left: Total Sales (left edge aligns with container left)
+            // Right: Total Orders (right edge aligns with container right)
             HStack(spacing: 6) {
                 StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
                 StatCardText(title: "Top Seller", text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
                 StatCard(title: "Stock Left", amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
                 StatCard(title: "Total Orders", amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
             }
+            .frame(maxWidth: .infinity) // Span full container width
             
-            // Action Buttons Row - Centered with equal spacing
-            HStack(spacing: 10) {
-                // Centered group of 3 uniform buttons
+            // Action Buttons Row - Full width, edges align with container edges
+            // Left: Clear (left edge aligns with container left)
+            // Right: Print (right edge aligns with container right)
+            HStack(spacing: 0) {
                 ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
                     showClearOptions = true
                 }
+                
+                Spacer()
                 
                 ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
                     showExportOptions = true
                 }
                 
+                Spacer()
+                
                 ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
                     showPrintOptions = true
                 }
             }
-            .frame(maxWidth: .infinity)  // Center the button group
+            .frame(maxWidth: .infinity) // Span full container width
         }
         .padding(12)
         .background(

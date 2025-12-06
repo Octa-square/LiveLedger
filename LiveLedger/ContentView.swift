@@ -45,9 +45,13 @@ struct MainContentView: View {
                     .ignoresSafeArea(.all)
                 
                 // LAYER 3: CONTENT - Semi-transparent containers
+                // ALIGNMENT: All sections use consistent 11pt outer margin for edge alignment
+                let horizontalMargin: CGFloat = 11
+                let internalPadding: CGFloat = 11
+                
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 10) {
-                        // HEADER SECTION
+                        // HEADER SECTION (Stats, Action Buttons, Platform)
                         VStack(spacing: 8) {
                             HeaderView(
                                 viewModel: viewModel,
@@ -64,7 +68,7 @@ struct MainContentView: View {
                                 localization: localization
                             )
                         }
-                        .padding(12)
+                        .padding(internalPadding)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(Color.black.opacity(0.6))
@@ -73,14 +77,14 @@ struct MainContentView: View {
                                         .fill(.ultraThinMaterial)
                                 )
                         )
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, horizontalMargin)
                         
                         // FREE TIER BANNER (if applicable)
                         if let user = authManager.currentUser, !user.isPro {
                             FreeTierBanner(user: user, theme: theme) {
                                 showSubscription = true
                             }
-                            .padding(.horizontal, 12)
+                            .padding(.horizontal, horizontalMargin)
                         }
                         
                         // MY PRODUCTS SECTION
@@ -94,7 +98,7 @@ struct MainContentView: View {
                                 showLimitAlert = true
                             }
                         )
-                        .padding(12)
+                        .padding(internalPadding)
                         .background(
                             RoundedRectangle(cornerRadius: 16)
                                 .fill(Color.black.opacity(0.6))
@@ -103,10 +107,9 @@ struct MainContentView: View {
                                         .fill(.ultraThinMaterial)
                                 )
                         )
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, horizontalMargin)
                         
                         // ORDERS SECTION - extended down with wavy bottom
-                        // Minimum height ensures it extends toward bottom of screen
                         OrdersListView(
                             viewModel: viewModel,
                             themeManager: themeManager,
@@ -114,7 +117,7 @@ struct MainContentView: View {
                             authManager: authManager
                         )
                         .frame(minHeight: max(200, geometry.size.height * 0.35))
-                        .padding(12)
+                        .padding(internalPadding)
                         .background(
                             WavyBottomContainer(cornerRadius: 16, waveHeight: 25)
                                 .fill(Color.black.opacity(0.6))
@@ -123,7 +126,7 @@ struct MainContentView: View {
                                         .fill(.ultraThinMaterial)
                                 )
                         )
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, horizontalMargin)
                         .padding(.bottom, 30) // Small gap to reveal wallpaper at bottom
                     }
                     .padding(.top, 8)
