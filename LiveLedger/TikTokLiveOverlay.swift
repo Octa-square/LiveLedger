@@ -127,6 +127,7 @@ struct TikTokLiveOverlayView: View {
                     RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
                         .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
                 )
+                .contentShape(RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24))  // Define hit testing area BEFORE gestures
                 .position(
                     x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, maxValue: geometry.size.width),
                     y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, maxValue: geometry.size.height)
@@ -160,7 +161,6 @@ struct TikTokLiveOverlayView: View {
                             overlayManager.saveSettings()
                         }
                 )
-                .contentShape(RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24))  // Ensure hit testing works on the shape
             }
             .transition(.scale.combined(with: .opacity))
         }
