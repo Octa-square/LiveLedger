@@ -2,7 +2,7 @@
 //  TikTokLiveOverlay.swift
 //  LiveLedger
 //
-//  TikTok Live Floating Overlay - Quick access while streaming
+//  TikTok Live Floating Overlay - Draggable, Resizable, Timer-Triggered
 //
 
 import SwiftUI
@@ -16,7 +16,13 @@ class TikTokLiveOverlayManager: ObservableObject {
     @Published var isOverlayVisible: Bool = false
     @Published var overlayPosition: CGPoint = CGPoint(x: 100, y: 200)
     @Published var overlayTransparency: Double = 0.85
+    @Published var overlayScale: CGFloat = 1.0
     @Published var isExpanded: Bool = false
+    @Published var autoShowOnTimerStart: Bool = true
+    
+    // Size constraints
+    let minScale: CGFloat = 0.6
+    let maxScale: CGFloat = 1.5
     
     private init() {
         loadSettings()
@@ -31,12 +37,19 @@ class TikTokLiveOverlayManager: ObservableObject {
         if savedX > 0 && savedY > 0 {
             overlayPosition = CGPoint(x: savedX, y: savedY)
         }
+        
+        let savedScale = UserDefaults.standard.double(forKey: "overlayScale")
+        overlayScale = savedScale > 0 ? CGFloat(savedScale) : 1.0
+        
+        autoShowOnTimerStart = UserDefaults.standard.object(forKey: "autoShowOverlayOnTimer") as? Bool ?? true
     }
     
     func saveSettings() {
         UserDefaults.standard.set(overlayTransparency, forKey: "tiktokOverlayTransparency")
         UserDefaults.standard.set(overlayPosition.x, forKey: "overlayPositionX")
         UserDefaults.standard.set(overlayPosition.y, forKey: "overlayPositionY")
+        UserDefaults.standard.set(Double(overlayScale), forKey: "overlayScale")
+        UserDefaults.standard.set(autoShowOnTimerStart, forKey: "autoShowOverlayOnTimer")
     }
     
     func showOverlay() {
@@ -63,113 +76,169 @@ class TikTokLiveOverlayManager: ObservableObject {
             }
         }
     }
+    
+    // Called when timer starts - auto-shows overlay if enabled
+    func onTimerStart() {
+        if autoShowOnTimerStart {
+            showOverlay()
+        }
+    }
+    
+    // Called when timer stops
+    func onTimerStop() {
+        // Optionally hide overlay when timer stops
+        // For now, keep it visible so user can continue adding orders
+    }
 }
 
 // MARK: - TikTok Live Floating Overlay View
 struct TikTokLiveOverlayView: View {
-    @ObservedObject var overlayManager = TikTokLiveOverlayManager.shared
+    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var themeManager: ThemeManager
     
     @State private var dragOffset: CGSize = .zero
+    @State private var currentScale: CGFloat = 1.0
     @State private var showProductsSheet: Bool = false
     @State private var showPlatformsSheet: Bool = false
     @State private var selectedProduct: Product?
-    @State private var quickOrderQuantity: Int = 1
-    @State private var quickBuyerName: String = ""
     
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
         if overlayManager.isOverlayVisible {
-            ZStack {
-                // Overlay widget
-                VStack(spacing: 0) {
-                    if overlayManager.isExpanded {
-                        expandedView
-                    } else {
-                        compactView
+            GeometryReader { geometry in
+                ZStack {
+                    // Overlay widget
+                    VStack(spacing: 0) {
+                        if overlayManager.isExpanded {
+                            expandedView
+                        } else {
+                            compactView
+                        }
                     }
+                    .scaleEffect(overlayManager.overlayScale * currentScale)
+                    .background(
+                        RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
+                            .fill(theme.cardBackground.opacity(overlayManager.overlayTransparency))
+                            .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
+                            .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
+                    )
+                    .position(
+                        x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, max: geometry.size.width),
+                        y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, max: geometry.size.height)
+                    )
+                    // Drag gesture for moving
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                dragOffset = value.translation
+                            }
+                            .onEnded { value in
+                                overlayManager.overlayPosition.x += value.translation.width
+                                overlayManager.overlayPosition.y += value.translation.height
+                                // Clamp position to screen bounds
+                                overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, max: geometry.size.width)
+                                overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, max: geometry.size.height)
+                                dragOffset = .zero
+                                overlayManager.saveSettings()
+                            }
+                    )
+                    // Pinch gesture for resizing
+                    .simultaneousGesture(
+                        MagnificationGesture()
+                            .onChanged { value in
+                                currentScale = value
+                            }
+                            .onEnded { value in
+                                let newScale = overlayManager.overlayScale * value
+                                overlayManager.overlayScale = min(max(newScale, overlayManager.minScale), overlayManager.maxScale)
+                                currentScale = 1.0
+                                overlayManager.saveSettings()
+                            }
+                    )
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
-                        .fill(theme.cardBackground.opacity(overlayManager.overlayTransparency))
-                        .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
-                        .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
-                )
-                .position(
-                    x: overlayManager.overlayPosition.x + dragOffset.width,
-                    y: overlayManager.overlayPosition.y + dragOffset.height
-                )
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            dragOffset = value.translation
-                        }
-                        .onEnded { value in
-                            overlayManager.overlayPosition.x += value.translation.width
-                            overlayManager.overlayPosition.y += value.translation.height
-                            dragOffset = .zero
-                            overlayManager.saveSettings()
-                        }
-                )
             }
             .transition(.scale.combined(with: .opacity))
         }
     }
     
-    // Compact floating button
+    // Clamp position to keep overlay on screen
+    private func clampPosition(_ value: CGFloat, max: CGFloat) -> CGFloat {
+        let padding: CGFloat = 50
+        return min(max(value, padding), max - padding)
+    }
+    
+    // Compact floating button with close button
     private var compactView: some View {
-        Button {
-            overlayManager.toggleExpanded()
-        } label: {
-            HStack(spacing: 8) {
-                // LiveLedger mini logo
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
+        HStack(spacing: 6) {
+            // Main tap area to expand
+            Button {
+                overlayManager.toggleExpanded()
+            } label: {
+                HStack(spacing: 8) {
+                    // LiveLedger mini logo
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(
+                                LinearGradient(
+                                    colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
                             )
-                        )
-                        .frame(width: 32, height: 32)
+                            .frame(width: 32, height: 32)
+                        
+                        ZStack(alignment: .topTrailing) {
+                            Text("L")
+                                .font(.system(size: 16, weight: .black, design: .rounded))
+                                .foregroundColor(.white)
+                            Text("²")
+                                .font(.system(size: 8, weight: .regular, design: .rounded))
+                                .foregroundColor(.white)
+                                .offset(x: 4, y: -1)
+                        }
+                    }
                     
-                    ZStack(alignment: .topTrailing) {
-                        Text("L")
-                            .font(.system(size: 16, weight: .black, design: .rounded))
-                            .foregroundColor(.white)
-                        Text("²")
-                            .font(.system(size: 8, weight: .regular, design: .rounded))
-                            .foregroundColor(.white)
-                            .offset(x: 4, y: -1)
+                    // Quick info
+                    VStack(alignment: .leading, spacing: 1) {
+                        HStack(spacing: 4) {
+                            Circle()
+                                .fill(Color.red)
+                                .frame(width: 6, height: 6)
+                            Text("LIVE")
+                                .font(.system(size: 8, weight: .heavy))
+                                .foregroundColor(.red)
+                        }
+                        Text("\(viewModel.orders.count) orders")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(theme.textSecondary)
                     }
                 }
-                
-                // Quick info
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("LIVE")
-                        .font(.system(size: 8, weight: .heavy))
-                        .foregroundColor(.red)
-                    Text("\(viewModel.orders.count) orders")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(theme.textSecondary)
-                }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
+            .buttonStyle(PlainButtonStyle())
+            
+            // Close/Hide button
+            Button {
+                overlayManager.hideOverlay()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 18))
+                    .foregroundColor(theme.textMuted.opacity(0.7))
+            }
+            .buttonStyle(PlainButtonStyle())
         }
-        .buttonStyle(PlainButtonStyle())
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
     
     // Expanded quick-add interface
     private var expandedView: some View {
-        VStack(spacing: 12) {
-            // Header with close button
+        VStack(spacing: 10) {
+            // Header with close and hide buttons
             HStack {
                 Text("Quick Add")
                     .font(.system(size: 14, weight: .bold))
@@ -177,20 +246,34 @@ struct TikTokLiveOverlayView: View {
                 
                 Spacer()
                 
+                // Collapse button
                 Button {
                     overlayManager.toggleExpanded()
                 } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 18))
+                        .foregroundColor(theme.textMuted)
+                }
+                
+                // Close/Hide button
+                Button {
+                    overlayManager.hideOverlay()
+                } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: 18))
                         .foregroundColor(theme.textMuted)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
+            .padding(.horizontal, 14)
+            .padding(.top, 10)
+            
+            // Resize hint
+            Text("Pinch to resize • Drag to move")
+                .font(.system(size: 8))
+                .foregroundColor(theme.textMuted.opacity(0.6))
             
             // Quick action buttons
-            HStack(spacing: 12) {
-                // My Products button
+            HStack(spacing: 10) {
                 QuickActionButton(
                     icon: "bag.fill",
                     label: "Products",
@@ -199,7 +282,6 @@ struct TikTokLiveOverlayView: View {
                     showProductsSheet = true
                 }
                 
-                // Platforms button
                 QuickActionButton(
                     icon: "iphone",
                     label: "Platform",
@@ -208,36 +290,36 @@ struct TikTokLiveOverlayView: View {
                     showPlatformsSheet = true
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 14)
             
-            // Quick product grid (top 4 products)
-            VStack(alignment: .leading, spacing: 6) {
+            // Quick product grid
+            VStack(alignment: .leading, spacing: 4) {
                 Text("QUICK SELL")
                     .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(theme.textMuted)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                 
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         ForEach(viewModel.products.filter { !$0.isEmpty && $0.stock > 0 }.prefix(6)) { product in
                             QuickProductChip(product: product, theme: theme) {
                                 selectedProduct = product
                             }
                         }
                     }
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, 14)
                 }
             }
             
             // Current session stats
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 StatBadge(value: "\(viewModel.orders.count)", label: "Orders", color: .blue)
                 StatBadge(value: "$\(Int(viewModel.totalRevenue))", label: "Total", color: .green)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 12)
+            .padding(.horizontal, 14)
+            .padding(.bottom, 10)
         }
-        .frame(width: 260)
+        .frame(width: 240)
         .sheet(isPresented: $showProductsSheet) {
             QuickProductsSheet(viewModel: viewModel, themeManager: themeManager)
                 .presentationDetents([.medium])
@@ -257,6 +339,35 @@ struct TikTokLiveOverlayView: View {
     }
 }
 
+// MARK: - Overlay Control Button (for use in main app)
+struct OverlayControlButton: View {
+    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
+    
+    var body: some View {
+        Button {
+            if overlayManager.isOverlayVisible {
+                overlayManager.hideOverlay()
+            } else {
+                overlayManager.showOverlay()
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: overlayManager.isOverlayVisible ? "pip.exit" : "pip.enter")
+                    .font(.system(size: 12))
+                Text(overlayManager.isOverlayVisible ? "Hide Overlay" : "Show Overlay")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background(
+                Capsule()
+                    .fill(overlayManager.isOverlayVisible ? Color.orange : Color.green)
+            )
+        }
+    }
+}
+
 // MARK: - Quick Action Button
 struct QuickActionButton: View {
     let icon: String
@@ -266,16 +377,16 @@ struct QuickActionButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 4) {
+            VStack(spacing: 3) {
                 Image(systemName: icon)
-                    .font(.system(size: 20))
+                    .font(.system(size: 18))
                     .foregroundColor(.white)
-                    .frame(width: 44, height: 44)
+                    .frame(width: 40, height: 40)
                     .background(color)
-                    .cornerRadius(12)
+                    .cornerRadius(10)
                 
                 Text(label)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(.primary)
             }
         }
@@ -292,21 +403,21 @@ struct QuickProductChip: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 2) {
-                Text(product.name.prefix(8).uppercased())
-                    .font(.system(size: 9, weight: .bold))
+                Text(product.name.prefix(6).uppercased())
+                    .font(.system(size: 8, weight: .bold))
                     .foregroundColor(theme.textPrimary)
                     .lineLimit(1)
                 
                 Text("$\(Int(product.finalPrice))")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
                     .foregroundColor(theme.successColor)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
             .background(theme.cardBackground)
-            .cornerRadius(8)
+            .cornerRadius(6)
             .overlay(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 6)
                     .strokeBorder(theme.cardBorder, lineWidth: 1)
             )
         }
@@ -323,16 +434,16 @@ struct StatBadge: View {
     var body: some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.system(size: 16, weight: .bold, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundColor(color)
             Text(label)
-                .font(.system(size: 9, weight: .medium))
+                .font(.system(size: 8, weight: .medium))
                 .foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
         .background(color.opacity(0.1))
-        .cornerRadius(8)
+        .cornerRadius(6)
     }
 }
 
@@ -601,4 +712,3 @@ struct QuickOrderSheet: View {
         )
     }
 }
-

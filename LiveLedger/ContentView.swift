@@ -22,13 +22,21 @@ struct MainContentView: View {
     var body: some View {
         ZStack {
             // BACKGROUND LAYER - Full screen wallpaper (top to bottom, edge to edge)
-            // This ensures wallpaper covers ENTIRE screen with NO black areas
+            // Gradient fallback ensures NO blank/white screen even if image fails to load
+            LinearGradient(
+                colors: theme.gradientColors,
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea(.all)
+            
+            // Theme background image on top of gradient fallback
             Image(theme.backgroundImageName)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .ignoresSafeArea(.all)  // Extends beyond safe area to all edges
+                .ignoresSafeArea(.all)
             
-            // Very subtle overlay for text readability (optional)
+            // Very subtle overlay for text readability
             LinearGradient(
                 colors: [
                     Color.black.opacity(0.05),
@@ -90,6 +98,9 @@ struct MainContentView: View {
                 }
                 .padding(.top, 8)
             }
+            
+            // TikTok Live Floating Overlay (draggable, resizable)
+            TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
         }
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
         // Auto-save listener
