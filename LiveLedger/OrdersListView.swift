@@ -19,21 +19,21 @@ struct OrdersListView: View {
     private var isPro: Bool { authManager.currentUser?.isPro ?? false }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // Header with filters - Fixed height
+        VStack(alignment: .leading, spacing: 6) {
+            // Header with filters
             HStack(spacing: 8) {
                 Text(localization.localized(.orders))
-                    .font(.system(size: 14, weight: .bold))
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundColor(theme.textPrimary)
                 
                 if !viewModel.filteredOrders.isEmpty {
                     Text("\(viewModel.filteredOrders.count)")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 5)
+                        .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(theme.successColor)
-                        .cornerRadius(5)
+                        .cornerRadius(6)
                 }
                 
                 Spacer()
@@ -42,12 +42,12 @@ struct OrdersListView: View {
                 if isPro {
                     // Platform Filter
                     HStack(spacing: 4) {
-                        Image(systemName: "line.3.horizontal.decrease.circle")
-                            .font(.system(size: 10))
+                        Image(systemName: "iphone")
+                            .font(.system(size: 11))
                             .foregroundColor(.blue)
                         Menu {
                             Button { viewModel.filterPlatform = nil } label: {
-                                Text("All Platforms").font(.system(size: 10))
+                                Text("All Platforms").font(.system(size: 12))
                             }
                             Divider()
                             ForEach(viewModel.platforms) { platform in
@@ -55,60 +55,56 @@ struct OrdersListView: View {
                                     viewModel.filterPlatform = platform
                                 } label: {
                                     Label(platform.name, systemImage: platform.icon)
-                                        .font(.system(size: 10))
+                                        .font(.system(size: 12))
                                 }
                             }
                         } label: {
                             HStack(spacing: 3) {
-                                Text("Platform:")
-                                    .foregroundColor(theme.textMuted)
                                 if let p = viewModel.filterPlatform {
-                                    Circle().fill(p.swiftUIColor).frame(width: 5, height: 5)
+                                    Circle().fill(p.swiftUIColor).frame(width: 6, height: 6)
                                     Text(p.name)
                                 } else {
                                     Text("All")
                                 }
-                                Image(systemName: "chevron.down").font(.system(size: 6))
+                                Image(systemName: "chevron.down").font(.system(size: 7))
                             }
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(theme.textPrimary)
                         }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
                     .background(theme.cardBackground)
                     .cornerRadius(6)
                     
-                    // Price Filter
+                    // Discount Filter
                     HStack(spacing: 4) {
-                        Image(systemName: "tag")
-                            .font(.system(size: 10))
+                        Image(systemName: "dollarsign.circle.fill")
+                            .font(.system(size: 11))
                             .foregroundColor(.green)
                         Menu {
                             Button { viewModel.filterDiscount = .all } label: {
-                                Text("All Prices").font(.system(size: 10))
+                                Text("All Prices").font(.system(size: 12))
                             }
                             Divider()
                             Button { viewModel.filterDiscount = .withDiscount } label: {
-                                Text("Discounted").font(.system(size: 10))
+                                Text("Discounted").font(.system(size: 12))
                             }
                             Button { viewModel.filterDiscount = .withoutDiscount } label: {
-                                Text("Full Price").font(.system(size: 10))
+                                Text("Full Price").font(.system(size: 12))
                             }
                         } label: {
                             HStack(spacing: 3) {
-                                Text("Price:")
-                                    .foregroundColor(theme.textMuted)
                                 Text(viewModel.filterDiscount == .all ? "All" : 
                                      viewModel.filterDiscount == .withDiscount ? "Disc" : "Full")
-                                Image(systemName: "chevron.down").font(.system(size: 6))
+                                Image(systemName: "chevron.down").font(.system(size: 7))
                             }
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 11, weight: .medium))
                             .foregroundColor(theme.textPrimary)
                         }
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 4)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 5)
                     .background(theme.cardBackground)
                     .cornerRadius(6)
                 }
@@ -140,9 +136,9 @@ struct OrdersListView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - compact container with internal scroll
+                // Orders list - native scroll with visible indicators
                 ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 0) {
+                    LazyVStack(spacing: 4) {
                         ForEach(viewModel.filteredOrders) { order in
                             MiniOrderRow(
                                 order: order,
@@ -170,24 +166,16 @@ struct OrdersListView: View {
                 .scrollIndicators(.visible)
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.top, 8)
-        .padding(.bottom, 100) // Extra bottom padding to cut off grid higher
+        .padding(10)
         .background(
-            ZStack {
-                // Semi-transparent background (75-80% opacity)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(theme.cardBackgroundSubtle)
-                // Subtle glass blur effect
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial.opacity(0.2))
-            }
-            .shadow(color: theme.shadowDark.opacity(0.15), radius: 6, x: 3, y: 3)
-            .shadow(color: theme.shadowLight.opacity(0.2), radius: 6, x: -3, y: -3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(theme.cardBorder.opacity(0.6), lineWidth: 1)
-            )
+            RoundedRectangle(cornerRadius: 12)
+                .fill(theme.cardBackground)
+                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
+                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
+                )
         )
         .sheet(item: $editingOrder) { order in
             EditOrderSheet(
@@ -307,10 +295,10 @@ struct MiniOrderRow: View {
             }
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 2)
-        .frame(height: 28)
+        .padding(.vertical, 6)
+        .frame(height: 36)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(theme.cardBackground.opacity(0.5))
         )
         .confirmationDialog("Delete?", isPresented: $showDelete) {

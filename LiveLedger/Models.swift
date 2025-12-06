@@ -93,16 +93,13 @@ struct ProductCatalog: Identifiable, Codable, Equatable {
     var products: [Product]
     
     static let maxProducts = 12
-    static let defaultSlots = 4
     
     init(id: UUID = UUID(), name: String = "My Products", products: [Product] = []) {
         self.id = id
         self.name = name
-        // Start with 4 default slots, can expand to 12 max
+        // Start with 4 empty slots
         if products.isEmpty {
-            self.products = (0..<Self.defaultSlots).map { _ in Product() }
-        } else if products.count > Self.maxProducts {
-            self.products = Array(products.prefix(Self.maxProducts))
+            self.products = [Product(), Product(), Product(), Product()]
         } else {
             self.products = products
         }
@@ -130,7 +127,7 @@ struct Product: Identifiable, Codable, Equatable {
     var barcode: String
     var imageData: Data?
     
-    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 15, criticalStockThreshold: Int = 10, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
+    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 5, criticalStockThreshold: Int = 2, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
         self.id = id
         self.name = name
         self.price = price
@@ -152,12 +149,12 @@ struct Product: Identifiable, Codable, Equatable {
     }
     
     var stockColor: Color {
-        if stock <= criticalStockThreshold { // ≤10 = Critical
-            return .red      // 🔴 Critical - needs immediate attention!
-        } else if stock <= lowStockThreshold { // 11-15 = Low
-            return .orange   // 🟡 Low stock - warning
-        } else { // ≥16 = Normal
-            return .green    // 🟢 Normal - adequate stock
+        if stock <= criticalStockThreshold {
+            return .red      // Critical - needs attention!
+        } else if stock <= lowStockThreshold {
+            return .orange   // Low - warning
+        } else {
+            return .gray     // Plenty - no attention needed
         }
     }
     

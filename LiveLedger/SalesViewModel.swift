@@ -132,6 +132,7 @@ class SalesViewModel: ObservableObject {
         loadData()
         loadTimerState()
         setupAppLifecycleObservers()
+        setupDemoDataObserver()
         
         // Initialize with one default catalog if empty
         if catalogs.isEmpty {
@@ -144,6 +145,106 @@ class SalesViewModel: ObservableObject {
         if isSessionActive && !sessionEnded && !isTimerManuallyPaused {
             resumeTimer()
         }
+    }
+    
+    // MARK: - Demo Mode Setup
+    private func setupDemoDataObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .populateDemoData,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.populateDemoData()
+        }
+    }
+    
+    /// Populates the app with sample demo data for App Store review
+    func populateDemoData() {
+        // Create demo products
+        let demoProducts = [
+            Product(name: "Vintage T-Shirt", price: 29.99, stock: 15, lowStockThreshold: 5, criticalStockThreshold: 2),
+            Product(name: "Handmade Candle", price: 18.50, stock: 25, lowStockThreshold: 8, criticalStockThreshold: 3),
+            Product(name: "Organic Face Cream", price: 45.00, stock: 8, lowStockThreshold: 5, criticalStockThreshold: 2, discountType: .percentage, discountValue: 10),
+            Product(name: "Beaded Bracelet", price: 12.99, stock: 40, lowStockThreshold: 10, criticalStockThreshold: 5),
+            Product(name: "Art Print (Large)", price: 35.00, stock: 12, lowStockThreshold: 4, criticalStockThreshold: 2),
+            Product(name: "Handmade Soap Set", price: 22.00, stock: 3, lowStockThreshold: 5, criticalStockThreshold: 2), // Low stock demo
+        ]
+        
+        // Create demo catalog
+        let demoCatalog = ProductCatalog(name: "Demo Products", products: demoProducts)
+        catalogs = [demoCatalog]
+        selectedCatalogId = demoCatalog.id
+        
+        // Create demo orders with variety of statuses
+        let demoOrders: [Order] = [
+            Order(
+                productId: demoProducts[0].id,
+                productName: demoProducts[0].name,
+                buyerName: "Sarah M.",
+                phoneNumber: "(555) 123-4567",
+                address: "123 Main St, Austin TX",
+                platform: .tiktok,
+                quantity: 2,
+                pricePerUnit: demoProducts[0].price,
+                paymentStatus: .paid,
+                isFulfilled: true,
+                timestamp: Date().addingTimeInterval(-3600) // 1 hour ago
+            ),
+            Order(
+                productId: demoProducts[1].id,
+                productName: demoProducts[1].name,
+                buyerName: "John D.",
+                phoneNumber: "(555) 234-5678",
+                address: "456 Oak Ave, Portland OR",
+                platform: .instagram,
+                quantity: 1,
+                pricePerUnit: demoProducts[1].price,
+                paymentStatus: .paid,
+                isFulfilled: false,
+                timestamp: Date().addingTimeInterval(-1800) // 30 min ago
+            ),
+            Order(
+                productId: demoProducts[2].id,
+                productName: demoProducts[2].name,
+                buyerName: "Emily R.",
+                phoneNumber: "(555) 345-6789",
+                address: "",
+                platform: .facebook,
+                quantity: 1,
+                pricePerUnit: demoProducts[2].finalPrice,
+                wasDiscounted: true,
+                paymentStatus: .pending,
+                isFulfilled: false,
+                timestamp: Date().addingTimeInterval(-900) // 15 min ago
+            ),
+            Order(
+                productId: demoProducts[3].id,
+                productName: demoProducts[3].name,
+                buyerName: "SN-42",
+                platform: .tiktok,
+                quantity: 3,
+                pricePerUnit: demoProducts[3].price,
+                paymentStatus: .unset,
+                timestamp: Date().addingTimeInterval(-300) // 5 min ago
+            ),
+            Order(
+                productId: demoProducts[4].id,
+                productName: demoProducts[4].name,
+                buyerName: "Alex T.",
+                phoneNumber: "(555) 456-7890",
+                platform: .instagram,
+                quantity: 1,
+                pricePerUnit: demoProducts[4].price,
+                paymentStatus: .paid,
+                isFulfilled: true,
+                timestamp: Date().addingTimeInterval(-120) // 2 min ago
+            ),
+        ]
+        
+        orders = demoOrders
+        
+        // Save all demo data
+        saveData()
     }
     
     // MARK: - Persistence
@@ -316,7 +417,7 @@ class SalesViewModel: ObservableObject {
     }
     
     // MARK: - Order Management
-    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1, paymentStatus: PaymentStatus = .unset) {
+    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1) {
         // Timer is now manually controlled - no auto-start
         
         let order = Order(
@@ -329,8 +430,7 @@ class SalesViewModel: ObservableObject {
             platform: platform,
             quantity: quantity,
             pricePerUnit: product.finalPrice,
-            wasDiscounted: product.hasDiscount,
-            paymentStatus: paymentStatus
+            wasDiscounted: product.hasDiscount
         )
         orders.insert(order, at: 0)
         decrementStock(for: product.id, by: quantity)
@@ -402,17 +502,14 @@ class SalesViewModel: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         
-        for (index, order) in filteredOrders.enumerated() {
+        for order in filteredOrders {
             // Convert "SN-1" to just "1" for export
             let buyerDisplay = order.buyerName.hasPrefix("SN-") 
                 ? String(order.buyerName.dropFirst(3))
                 : order.buyerName
             
-            // Use short order ID: ORD-XXX (sequential number)
-            let shortOrderId = "ORD-\(index + 1)"
-            
             let row = [
-                shortOrderId,
+                order.id.uuidString,
                 order.productName.replacingOccurrences(of: ",", with: ";"),
                 buyerDisplay.replacingOccurrences(of: ",", with: ";"),
                 order.phoneNumber.replacingOccurrences(of: ",", with: ";"),
@@ -458,11 +555,6 @@ class SalesViewModel: ObservableObject {
         lastTimerUpdateDate = Date()
         startTimerLoop()
         saveTimerState()
-        
-        // Play timer start sound
-        Task { @MainActor in
-            SoundManager.shared.playTimerStartSound()
-        }
     }
     
     /// Manually pause the timer
@@ -494,11 +586,6 @@ class SalesViewModel: ObservableObject {
         sessionEnded = false
         lastTimerUpdateDate = nil
         saveTimerState()
-        
-        // Reset interval reminders for new session
-        Task { @MainActor in
-            SoundManager.shared.resetTriggeredIntervals()
-        }
     }
     
     /// Check if timer is in paused state
@@ -519,13 +606,7 @@ class SalesViewModel: ObservableObject {
         timerCancellable = Timer.publish(every: 1, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                guard let self = self else { return }
-                self.sessionElapsedTime += 1
-                
-                // Check for interval reminder milestones
-                Task { @MainActor in
-                    SoundManager.shared.checkIntervalMilestone(elapsedSeconds: self.sessionElapsedTime)
-                }
+                self?.sessionElapsedTime += 1
             }
     }
     

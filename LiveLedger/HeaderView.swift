@@ -16,8 +16,6 @@ struct HeaderView: View {
     @Binding var showSubscription: Bool
     @State private var showPrintOptions = false
     @State private var showExportOptions = false
-    @State private var showClearOptions = false
-    @State private var showAnalytics = false
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -57,7 +55,7 @@ struct HeaderView: View {
                     // Seller's account info (smaller, secondary)
                     if let user = authManager.currentUser {
                         HStack(spacing: 4) {
-                            Text(localization.localized(.account) + ":")
+                            Text("Account:")
                                 .font(.system(size: 11, weight: .regular))
                                 .foregroundColor(theme.textMuted)
                             
@@ -114,24 +112,12 @@ struct HeaderView: View {
                     }
                 }
                 
-                // Menu Button (replaces Settings)
-                Menu {
-                    Button {
-                        showAnalytics = true
-                    } label: {
-                        Label("Analytics", systemImage: "chart.bar.fill")
-                    }
-                    
-                    Divider()
-                    
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Label("Settings", systemImage: "gearshape.fill")
-                    }
+                // Settings Button
+                Button {
+                    showSettings = true
                 } label: {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 15, weight: .semibold))
+                    Image(systemName: "gearshape.fill")
+                        .font(.system(size: 15))
                         .foregroundColor(theme.textPrimary)
                         .frame(width: 32, height: 32)
                         .background(
@@ -151,22 +137,24 @@ struct HeaderView: View {
                 StatCard(title: "Total Orders", amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
             }
             
-            // Action Buttons Row - CENTERED with equal spacing
-            HStack(spacing: 6) {
-                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
-                    showClearOptions = true
-                }
-                .frame(maxWidth: .infinity)
+            // Action Buttons Row
+            HStack(spacing: 8) {
+                Spacer()
                 
-                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
-                    showExportOptions = true
+                // Action Buttons - Clear, Export, Print
+                HStack(spacing: 6) {
+                    ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
+                        viewModel.showingClearConfirmation = true
+                    }
+                    
+                    ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
+                        showExportOptions = true
+                    }
+                    
+                    ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
+                        showPrintOptions = true
+                    }
                 }
-                .frame(maxWidth: .infinity)
-                
-                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
-                    showPrintOptions = true
-                }
-                .frame(maxWidth: .infinity)
             }
         }
         .padding(12)
@@ -180,17 +168,11 @@ struct HeaderView: View {
                         .strokeBorder(theme.cardBorder, lineWidth: 1)
                 )
         )
-        .sheet(isPresented: $showClearOptions) {
-            ClearOptionsView(viewModel: viewModel, localization: localization)
-        }
         .sheet(isPresented: $showPrintOptions) {
-            PrintOptionsView(viewModel: viewModel, authManager: authManager, localization: localization, platforms: viewModel.platforms)
+            PrintOptionsView(viewModel: viewModel, authManager: authManager)
         }
         .sheet(isPresented: $showExportOptions) {
-            ExportOptionsView(viewModel: viewModel, localization: localization, platforms: viewModel.platforms)
-        }
-        .fullScreenCover(isPresented: $showAnalytics) {
-            AnalyticsDashboardView(viewModel: viewModel, authManager: authManager, themeManager: themeManager)
+            ExportOptionsView(viewModel: viewModel, platforms: viewModel.platforms)
         }
     }
 }
@@ -198,7 +180,6 @@ struct HeaderView: View {
 // Export Options View - select platforms to export
 struct ExportOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
-    @ObservedObject var localization: LocalizationManager
     let platforms: [Platform]
     @Environment(\.dismiss) private var dismiss
     
@@ -223,7 +204,7 @@ struct ExportOptionsView: View {
                             Image(systemName: selectAll ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 22))
                                 .foregroundColor(selectAll ? .green : .gray)
-                            Text(localization.localized(.allPlatforms))
+                            Text("All Platforms")
                                 .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.primary)
                         }
@@ -387,209 +368,6 @@ struct ExportOptionsView: View {
         } catch {
             print("Failed to export CSV: \(error)")
         }
-    }
-}
-
-// MARK: - Clear Options View
-struct ClearOptionsView: View {
-    @ObservedObject var viewModel: SalesViewModel
-    @ObservedObject var localization: LocalizationManager
-    @Environment(\.dismiss) private var dismiss
-    
-    @State private var clearCustomPlatforms = false
-    @State private var clearProducts = false
-    @State private var clearOrders = false
-    @State private var showConfirmation = false
-    
-    // Custom platforms count
-    private var customPlatformCount: Int {
-        viewModel.platforms.filter { $0.isCustom }.count
-    }
-    
-    // Check if anything is selected
-    private var hasSelection: Bool {
-        clearCustomPlatforms || clearProducts || clearOrders
-    }
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                // Warning icon
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 40))
-                    .foregroundColor(.orange)
-                    .padding(.top, 20)
-                
-                Text(localization.localized(.selectToClear))
-                    .font(.system(size: 16, weight: .semibold))
-                
-                // Options
-                VStack(spacing: 10) {
-                    // Clear Custom Platforms
-                    ClearOptionRow(
-                        title: "Custom Platforms",
-                        subtitle: "\(customPlatformCount) custom platform(s) - Default platforms cannot be deleted",
-                        icon: "square.grid.2x2",
-                        color: .purple,
-                        isSelected: $clearCustomPlatforms,
-                        isDisabled: customPlatformCount == 0
-                    )
-                    
-                    // Clear Products
-                    ClearOptionRow(
-                        title: "My Products",
-                        subtitle: "Clear all product data (12 catalog slots preserved)",
-                        icon: "cube.box",
-                        color: .blue,
-                        isSelected: $clearProducts,
-                        isDisabled: false
-                    )
-                    
-                    // Clear Orders
-                    ClearOptionRow(
-                        title: "Orders",
-                        subtitle: "\(viewModel.orders.count) order(s) from current session",
-                        icon: "bag",
-                        color: .green,
-                        isSelected: $clearOrders,
-                        isDisabled: viewModel.orders.isEmpty
-                    )
-                }
-                .padding(.horizontal)
-                
-                // Select All / Deselect All
-                HStack {
-                    Button {
-                        let shouldSelectAll = !hasSelection
-                        clearCustomPlatforms = customPlatformCount > 0 && shouldSelectAll
-                        clearProducts = shouldSelectAll
-                        clearOrders = !viewModel.orders.isEmpty && shouldSelectAll
-                    } label: {
-                        Text(hasSelection ? "Deselect All" : "Select All")
-                            .font(.system(size: 13))
-                            .foregroundColor(.blue)
-                    }
-                    
-                    Spacer()
-                }
-                .padding(.horizontal, 20)
-                
-                Spacer()
-                
-                // Clear Button
-                Button {
-                    showConfirmation = true
-                } label: {
-                    HStack {
-                        Image(systemName: "trash.fill")
-                        Text(localization.localized(.clearSelected))
-                    }
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(hasSelection ? Color.red : Color.gray)
-                    .cornerRadius(10)
-                }
-                .disabled(!hasSelection)
-                .padding(.horizontal)
-                .padding(.bottom, 20)
-            }
-            .navigationTitle("Clear Data")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .alert("Confirm Clear", isPresented: $showConfirmation) {
-                Button("Cancel", role: .cancel) {}
-                Button("Clear", role: .destructive) {
-                    performClear()
-                    dismiss()
-                }
-            } message: {
-                Text(confirmationMessage)
-            }
-        }
-    }
-    
-    private var confirmationMessage: String {
-        var items: [String] = []
-        if clearCustomPlatforms { items.append("\(customPlatformCount) custom platform(s)") }
-        if clearProducts { items.append("\(viewModel.products.count) product(s)") }
-        if clearOrders { items.append("\(viewModel.orders.count) order(s)") }
-        return "This will permanently delete:\n• " + items.joined(separator: "\n• ") + "\n\nThis cannot be undone."
-    }
-    
-    private func performClear() {
-        if clearCustomPlatforms {
-            viewModel.platforms.removeAll { $0.isCustom }
-        }
-        if clearProducts {
-            // Reset to 12 empty product slots (catalog structure preserved)
-            if let id = viewModel.selectedCatalogId ?? viewModel.catalogs.first?.id,
-               let index = viewModel.catalogs.firstIndex(where: { $0.id == id }) {
-                viewModel.catalogs[index].products = (0..<12).map { _ in Product() }
-            }
-        }
-        if clearOrders {
-            viewModel.orders.removeAll()
-        }
-        viewModel.saveData()
-    }
-}
-
-// MARK: - Clear Option Row
-struct ClearOptionRow: View {
-    let title: String
-    let subtitle: String
-    let icon: String
-    let color: Color
-    @Binding var isSelected: Bool
-    let isDisabled: Bool
-    
-    var body: some View {
-        Button {
-            if !isDisabled {
-                isSelected.toggle()
-            }
-        } label: {
-            HStack(spacing: 12) {
-                // Icon
-                Image(systemName: icon)
-                    .font(.system(size: 18))
-                    .foregroundColor(isDisabled ? .gray : color)
-                    .frame(width: 36, height: 36)
-                    .background((isDisabled ? Color.gray : color).opacity(0.15))
-                    .cornerRadius(8)
-                
-                // Text
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(isDisabled ? .gray : .primary)
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(.gray)
-                }
-                
-                Spacer()
-                
-                // Checkbox
-                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
-                    .font(.system(size: 22))
-                    .foregroundColor(isSelected ? color : (isDisabled ? .gray.opacity(0.3) : .gray))
-            }
-            .padding(12)
-            .background(Color(.systemGray6).opacity(isSelected ? 1 : 0.5))
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? color : Color.clear, lineWidth: 2)
-            )
-        }
-        .disabled(isDisabled)
     }
 }
 
@@ -770,162 +548,35 @@ struct ActionButton: View {
 struct PrintOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var authManager: AuthManager
-    @ObservedObject var localization: LocalizationManager
-    let platforms: [Platform]
     @Environment(\.dismiss) var dismiss
-    
     @State private var showingDailyReport = false
-    @State private var selectedPlatforms: Set<UUID> = []
-    @State private var selectAllPlatforms = true
-    @State private var printType: PrintType = .salesReport
-    
-    enum PrintType: String, CaseIterable {
-        case salesReport = "Sales Report"
-        case allOrders = "All Orders"
-        case individualReceipts = "Individual Receipts"
-    }
     
     var currencySymbol: String {
         authManager.currentUser?.currencySymbol ?? "$"
     }
     
-    // Filtered orders based on platform selection
-    var filteredOrders: [Order] {
-        if selectAllPlatforms {
-            return viewModel.orders
-        }
-        return viewModel.orders.filter { selectedPlatforms.contains($0.platform.id) }
-    }
-    
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    // Print Type Selection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(localization.localized(.printType))
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.gray)
-                        
-                        ForEach(PrintType.allCases, id: \.self) { type in
-                            PrintTypeRow(
-                                type: type,
-                                isSelected: printType == type,
-                                orderCount: type == .individualReceipts ? nil : filteredOrders.count
-                            ) {
-                                printType = type
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    Divider().padding(.horizontal)
-                    
-                    // Platform Filter
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text(localization.localized(.filterByPlatform))
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.gray)
-                            
-                            Spacer()
-                            
-                            Button {
-                                if selectAllPlatforms {
-                                    selectAllPlatforms = false
-                                    selectedPlatforms.removeAll()
-                                } else {
-                                    selectAllPlatforms = true
-                                    selectedPlatforms = Set(platforms.map { $0.id })
-                                }
-                            } label: {
-                                Text(selectAllPlatforms ? "Deselect All" : "Select All")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        
-                        // Platform chips (multi-select)
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
-                            // All option
-                            PlatformFilterChip(
-                                name: "All",
-                                icon: "square.grid.2x2",
-                                color: .blue,
-                                isSelected: selectAllPlatforms,
-                                orderCount: viewModel.orders.count
-                            ) {
-                                selectAllPlatforms = true
-                                selectedPlatforms = Set(platforms.map { $0.id })
-                            }
-                            
-                            // Individual platforms
-                            ForEach(platforms) { platform in
-                                let count = viewModel.orders.filter { $0.platform.id == platform.id }.count
-                                PlatformFilterChip(
-                                    name: platform.name,
-                                    icon: platform.icon,
-                                    color: platform.swiftUIColor,
-                                    isSelected: !selectAllPlatforms && selectedPlatforms.contains(platform.id),
-                                    orderCount: count
-                                ) {
-                                    selectAllPlatforms = false
-                                    if selectedPlatforms.contains(platform.id) {
-                                        selectedPlatforms.remove(platform.id)
-                                    } else {
-                                        selectedPlatforms.insert(platform.id)
-                                    }
-                                    // If all manually selected, switch to selectAll
-                                    if selectedPlatforms.count == platforms.count {
-                                        selectAllPlatforms = true
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Order count summary
-                    HStack {
-                        Image(systemName: "doc.text")
-                            .foregroundColor(.blue)
-                        Text("\(filteredOrders.count) orders will be printed")
-                            .font(.system(size: 13))
-                            .foregroundColor(.gray)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    
-                    Spacer(minLength: 20)
-                    
-                    // Print Button
+            List {
+                Section {
                     Button {
                         showingDailyReport = true
                     } label: {
-                        HStack {
-                            Image(systemName: "printer.fill")
-                            Text("Print \(printType.rawValue)")
-                        }
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(filteredOrders.isEmpty ? Color.gray : Color.green)
-                        .cornerRadius(10)
+                        Label("Print Daily Order Report", systemImage: "doc.text.fill")
                     }
-                    .disabled(filteredOrders.isEmpty)
-                    .padding(.horizontal)
-                    
-                    // Help text for individual receipts
-                    if printType == .individualReceipts {
-                        Text("💡 Tip: You can also tap any order in the list, then tap 'Print Receipt' to print a single receipt")
-                            .font(.system(size: 11))
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
+                } header: {
+                    Text("Reports")
+                } footer: {
+                    Text("Prints all orders with #, product, barcode, qty, amount, discount, buyer details")
                 }
-                .padding(.vertical)
+                
+                Section {
+                    Text("Tap any order in the list, then tap 'Print Receipt' to print an individual POS-style receipt")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                } header: {
+                    Text("Individual Receipts")
+                }
             }
             .navigationTitle("Print Options")
             .navigationBarTitleDisplayMode(.inline)
@@ -935,121 +586,8 @@ struct PrintOptionsView: View {
                 }
             }
             .sheet(isPresented: $showingDailyReport) {
-                DailyOrderReportView(
-                    viewModel: viewModel,
-                    localization: localization,
-                    orders: filteredOrders,
-                    currencySymbol: currencySymbol,
-                    companyName: authManager.currentUser?.companyName ?? "Live Sales",
-                    reportType: printType
-                )
+                DailyOrderReportView(viewModel: viewModel, currencySymbol: currencySymbol, companyName: authManager.currentUser?.companyName ?? "Live Sales")
             }
-            .onAppear {
-                selectedPlatforms = Set(platforms.map { $0.id })
-            }
-        }
-    }
-}
-
-// MARK: - Print Type Row
-struct PrintTypeRow: View {
-    let type: PrintOptionsView.PrintType
-    let isSelected: Bool
-    let orderCount: Int?
-    let onTap: () -> Void
-    
-    private var icon: String {
-        switch type {
-        case .salesReport: return "chart.bar.doc.horizontal"
-        case .allOrders: return "list.bullet.rectangle"
-        case .individualReceipts: return "receipt"
-        }
-    }
-    
-    private var subtitle: String {
-        switch type {
-        case .salesReport: return "Summary with totals by platform"
-        case .allOrders: return "Detailed list of all orders"
-        case .individualReceipts: return "POS-style receipt for each order"
-        }
-    }
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 16))
-                    .foregroundColor(isSelected ? .white : .blue)
-                    .frame(width: 32, height: 32)
-                    .background(isSelected ? Color.blue : Color.blue.opacity(0.15))
-                    .cornerRadius(8)
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(type.rawValue)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(.primary)
-                    Text(subtitle)
-                        .font(.system(size: 10))
-                        .foregroundColor(.gray)
-                }
-                
-                Spacer()
-                
-                if let count = orderCount {
-                    Text("\(count)")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color(.systemGray5))
-                        .cornerRadius(6)
-                }
-                
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 20))
-                    .foregroundColor(isSelected ? .blue : .gray.opacity(0.4))
-            }
-            .padding(10)
-            .background(Color(.systemGray6).opacity(isSelected ? 1 : 0.5))
-            .cornerRadius(10)
-            .overlay(
-                RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? Color.blue : Color.clear, lineWidth: 2)
-            )
-        }
-    }
-}
-
-// MARK: - Platform Filter Chip
-struct PlatformFilterChip: View {
-    let name: String
-    let icon: String
-    let color: Color
-    let isSelected: Bool
-    let orderCount: Int
-    let onTap: () -> Void
-    
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 10))
-                Text(name)
-                    .font(.system(size: 10, weight: .medium))
-                    .lineLimit(1)
-                Text("(\(orderCount))")
-                    .font(.system(size: 9))
-                    .foregroundColor(.gray)
-            }
-            .foregroundColor(isSelected ? .white : color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(isSelected ? color : color.opacity(0.15))
-            .cornerRadius(6)
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(isSelected ? Color.clear : color.opacity(0.3), lineWidth: 1)
-            )
         }
     }
 }
@@ -1057,11 +595,8 @@ struct PlatformFilterChip: View {
 // MARK: - Daily Order Report View
 struct DailyOrderReportView: View {
     @ObservedObject var viewModel: SalesViewModel
-    @ObservedObject var localization: LocalizationManager
-    let orders: [Order]
     let currencySymbol: String
     let companyName: String
-    let reportType: PrintOptionsView.PrintType
     @Environment(\.dismiss) var dismiss
     
     private let dateFormatter: DateFormatter = {
@@ -1071,168 +606,105 @@ struct DailyOrderReportView: View {
         return f
     }()
     
-    // Calculate total for filtered orders
-    private var totalRevenue: Double {
-        orders.reduce(0) { $0 + $1.totalPrice }
-    }
-    
-    private var totalItems: Int {
-        orders.reduce(0) { $0 + $1.quantity }
-    }
-    
-    // Group orders by platform for summary
-    private var ordersByPlatform: [(platform: String, count: Int, revenue: Double)] {
-        var grouped: [String: (count: Int, revenue: Double)] = [:]
-        for order in orders {
-            let name = order.platform.name
-            let existing = grouped[name] ?? (0, 0)
-            grouped[name] = (existing.count + 1, existing.revenue + order.totalPrice)
-        }
-        return grouped.map { (platform: $0.key, count: $0.value.count, revenue: $0.value.revenue) }
-            .sorted { $0.revenue > $1.revenue }
-    }
-    
     var body: some View {
         NavigationStack {
             ScrollView {
-                if reportType == .individualReceipts {
-                    // Individual receipts - one card per order
-                    LazyVStack(spacing: 20) {
-                        ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
-                            IndividualReceiptCard(
-                                localization: localization,
-                                order: order,
-                                orderNumber: index + 1,
-                                companyName: companyName,
-                                currencySymbol: currencySymbol,
-                                dateFormatter: dateFormatter
-                            )
+                VStack(alignment: .leading, spacing: 16) {
+                    // Header
+                    VStack(spacing: 8) {
+                        Text(companyName)
+                            .font(.title2.bold())
+                        Text("Daily Sales Report")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text(dateFormatter.string(from: Date()))
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                        
+                        Divider()
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    // Summary
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("Total Orders: \(viewModel.filteredOrders.count)")
+                            Text("Total Items: \(viewModel.filteredOrders.reduce(0) { $0 + $1.quantity })")
+                        }
+                        Spacer()
+                        VStack(alignment: .trailing) {
+                            Text("Total Sales: \(currencySymbol)\(viewModel.totalRevenue, specifier: "%.2f")")
+                                .fontWeight(.bold)
                         }
                     }
+                    .font(.subheadline)
                     .padding()
-                } else {
-                    // Combined report view
-                    VStack(alignment: .leading, spacing: 16) {
-                        // Header
-                        VStack(spacing: 8) {
-                            Text(companyName)
-                                .font(.title2.bold())
-                            Text(reportType == .salesReport ? "Sales Summary Report" : "Order Report")
-                                .font(.headline)
-                                .foregroundColor(.gray)
-                            Text(dateFormatter.string(from: Date()))
-                                .font(.caption)
-                                .foregroundColor(.gray)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+                    
+                    Divider()
+                    
+                    // Orders Table Header
+                    HStack {
+                        Text("#").frame(width: 25, alignment: .leading)
+                        Text("Product").frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Qty").frame(width: 30)
+                        Text("Price").frame(width: 50, alignment: .trailing)
+                        Text("Total").frame(width: 55, alignment: .trailing)
+                    }
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.gray)
+                    
+                    // Orders
+                    ForEach(Array(viewModel.filteredOrders.enumerated()), id: \.element.id) { index, order in
+                        VStack(alignment: .leading, spacing: 4) {
+                            // Main row
+                            HStack {
+                                Text("\(index + 1)").frame(width: 25, alignment: .leading)
+                                Text(order.productName).frame(maxWidth: .infinity, alignment: .leading)
+                                Text("\(order.quantity)").frame(width: 30)
+                                Text("\(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")").frame(width: 50, alignment: .trailing)
+                                Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")").frame(width: 55, alignment: .trailing)
+                            }
+                            .font(.system(size: 11))
+                            
+                            // Buyer details
+                            VStack(alignment: .leading, spacing: 2) {
+                                // Convert "SN-1" to "#1" for print
+                                Text("Buyer: \(order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName)")
+                                if !order.phoneNumber.isEmpty {
+                                    Text("Phone: \(order.phoneNumber)")
+                                }
+                                if !order.address.isEmpty {
+                                    Text("Address: \(order.address)")
+                                }
+                                Text("Platform: \(order.platform.name) • Status: \(order.paymentStatus.rawValue)")
+                            }
+                            .font(.system(size: 9))
+                            .foregroundColor(.gray)
+                            .padding(.leading, 25)
                             
                             Divider()
                         }
-                        .frame(maxWidth: .infinity)
-                        
-                        // Summary
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text("\(localization.localized(.totalOrders)): \(orders.count)")
-                                Text("\(localization.localized(.items)): \(totalItems)")
-                            }
-                            Spacer()
-                            VStack(alignment: .trailing) {
-                                Text("\(localization.localized(.totalSales)): \(currencySymbol)\(totalRevenue, specifier: "%.2f")")
-                                    .fontWeight(.bold)
-                            }
-                        }
-                        .font(.subheadline)
-                        .padding()
-                        .background(Color.gray.opacity(0.1))
-                        .cornerRadius(8)
-                        
-                        // Platform breakdown (for sales report)
-                        if reportType == .salesReport && ordersByPlatform.count > 1 {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(localization.localized(.byPlatform))
-                                    .font(.system(size: 12, weight: .bold))
-                                    .foregroundColor(.gray)
-                                
-                                ForEach(ordersByPlatform, id: \.platform) { item in
-                                    HStack {
-                                        Text(item.platform)
-                                            .font(.system(size: 12))
-                                        Spacer()
-                                        Text("\(item.count) orders")
-                                            .font(.system(size: 11))
-                                            .foregroundColor(.gray)
-                                        Text("\(currencySymbol)\(item.revenue, specifier: "%.2f")")
-                                            .font(.system(size: 12, weight: .semibold))
-                                    }
-                                }
-                            }
-                            .padding()
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(8)
-                        }
-                        
-                        Divider()
-                        
-                        // Orders Table Header
-                        HStack {
-                            Text("#").frame(width: 25, alignment: .leading)
-                            Text(localization.localized(.product)).frame(maxWidth: .infinity, alignment: .leading)
-                            Text(localization.localized(.quantity)).frame(width: 30)
-                            Text(localization.localized(.price)).frame(width: 50, alignment: .trailing)
-                            Text(localization.localized(.total)).frame(width: 55, alignment: .trailing)
-                        }
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundColor(.gray)
-                        
-                        // Orders
-                        ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
-                            VStack(alignment: .leading, spacing: 4) {
-                                // Main row
-                                HStack {
-                                    Text("\(index + 1)").frame(width: 25, alignment: .leading)
-                                    Text(order.productName).frame(maxWidth: .infinity, alignment: .leading)
-                                    Text("\(order.quantity)").frame(width: 30)
-                                    Text("\(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")").frame(width: 50, alignment: .trailing)
-                                    Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")").frame(width: 55, alignment: .trailing)
-                                }
-                                .font(.system(size: 11))
-                                
-                                // Buyer details
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("Buyer: \(order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName)")
-                                    if !order.phoneNumber.isEmpty {
-                                        Text("Phone: \(order.phoneNumber)")
-                                    }
-                                    if !order.address.isEmpty {
-                                        Text("Address: \(order.address)")
-                                    }
-                                    Text("Platform: \(order.platform.name) • Status: \(order.paymentStatus.rawValue)")
-                                }
-                                .font(.system(size: 9))
-                                .foregroundColor(.gray)
-                                .padding(.leading, 25)
-                                
-                                Divider()
-                            }
-                        }
-                        
-                        // Footer
-                        VStack(spacing: 4) {
-                            Divider()
-                            HStack {
-                                Text("GRAND TOTAL")
-                                    .fontWeight(.bold)
-                                Spacer()
-                                Text("\(currencySymbol)\(totalRevenue, specifier: "%.2f")")
-                                    .fontWeight(.bold)
-                            }
-                            .font(.headline)
-                        }
-                        .padding(.top)
                     }
-                    .padding()
+                    
+                    // Footer
+                    VStack(spacing: 4) {
+                        Divider()
+                        HStack {
+                            Text("GRAND TOTAL")
+                                .fontWeight(.bold)
+                            Spacer()
+                            Text("\(currencySymbol)\(viewModel.totalRevenue, specifier: "%.2f")")
+                                .fontWeight(.bold)
+                        }
+                        .font(.headline)
+                    }
+                    .padding(.top)
                 }
+                .padding()
             }
-            .navigationTitle(reportType.rawValue)
+            .navigationTitle("Daily Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -1250,29 +722,13 @@ struct DailyOrderReportView: View {
     func generateReportText() -> String {
         var report = """
         \(companyName)
-        \(reportType == .salesReport ? "SALES SUMMARY REPORT" : "ORDER REPORT")
+        DAILY SALES REPORT
         \(dateFormatter.string(from: Date()))
         ================================
         
-        Summary:
-        Total Orders: \(orders.count)
-        Total Items: \(totalItems)
-        Total Sales: \(currencySymbol)\(String(format: "%.2f", totalRevenue))
-        
         """
         
-        // Add platform breakdown for sales report
-        if reportType == .salesReport && ordersByPlatform.count > 1 {
-            report += "By Platform:\n"
-            for item in ordersByPlatform {
-                report += "  \(item.platform): \(item.count) orders - \(currencySymbol)\(String(format: "%.2f", item.revenue))\n"
-            }
-            report += "\n"
-        }
-        
-        report += "================================\nORDERS:\n\n"
-        
-        for (index, order) in orders.enumerated() {
+        for (index, order) in viewModel.filteredOrders.enumerated() {
             var orderText = """
             #\(index + 1) \(order.productName)
             """
@@ -1281,6 +737,7 @@ struct DailyOrderReportView: View {
                 orderText += "\nBarcode: \(order.productBarcode)"
             }
             
+            // Convert "SN-1" to "#1" for print
             let buyerDisplay = order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName
             
             orderText += """
@@ -1308,255 +765,98 @@ struct DailyOrderReportView: View {
     }
 }
 
-// MARK: - Individual Receipt Card (POS-style receipt for each order)
-struct IndividualReceiptCard: View {
-    @ObservedObject var localization: LocalizationManager
-    let order: Order
-    let orderNumber: Int
-    let companyName: String
-    let currencySymbol: String
-    let dateFormatter: DateFormatter
-    
-    private let receiptTimeFormatter: DateFormatter = {
-        let f = DateFormatter()
-        f.dateFormat = "MMM d, yyyy • h:mm a"
-        return f
-    }()
-    
-    var body: some View {
-        VStack(spacing: 0) {
-            // Receipt header with torn edge effect
-            Rectangle()
-                .fill(Color.white)
-                .frame(height: 8)
-                .mask(
-                    GeometryReader { geo in
-                        Path { path in
-                            let width = geo.size.width
-                            let height = geo.size.height
-                            path.move(to: .zero)
-                            var x: CGFloat = 0
-                            while x < width {
-                                path.addLine(to: CGPoint(x: x + 4, y: height))
-                                path.addLine(to: CGPoint(x: x + 8, y: 0))
-                                x += 8
-                            }
-                            path.addLine(to: CGPoint(x: width, y: 0))
-                            path.closeSubpath()
-                        }
-                    }
-                )
-            
-            // Main receipt content
-            VStack(spacing: 12) {
-                // Store header
-                VStack(spacing: 4) {
-                    Text(companyName)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundColor(.black)
-                    
-                    Text("RECEIPT #\(orderNumber)")
-                        .font(.system(size: 11, weight: .medium, design: .monospaced))
-                        .foregroundColor(.gray)
-                    
-                    Text(receiptTimeFormatter.string(from: order.timestamp))
-                        .font(.system(size: 10))
-                        .foregroundColor(.gray)
-                }
-                
-                // Dashed divider
-                DashedLine()
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                    .foregroundColor(.gray.opacity(0.5))
-                    .frame(height: 1)
-                
-                // Order details
-                VStack(alignment: .leading, spacing: 8) {
-                    // Product
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(order.productName.uppercased())
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundColor(.black)
-                            
-                            Text("Qty: \(order.quantity) × \(currencySymbol)\(order.pricePerUnit, specifier: "%.0f")")
-                                .font(.system(size: 11))
-                                .foregroundColor(.gray)
-                        }
-                        
-                        Spacer()
-                        
-                        Text("\(currencySymbol)\(order.totalPrice, specifier: "%.0f")")
-                            .font(.system(size: 15, weight: .bold, design: .monospaced))
-                            .foregroundColor(.black)
-                    }
-                    
-                    // Dashed divider
-                    DashedLine()
-                        .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                        .foregroundColor(.gray.opacity(0.5))
-                        .frame(height: 1)
-                    
-                    // Customer info
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: "person.fill")
-                                .font(.system(size: 10))
-                                .foregroundColor(.gray)
-                            Text(order.buyerName.hasPrefix("SN-") ? "Customer #\(String(order.buyerName.dropFirst(3)))" : order.buyerName)
-                                .font(.system(size: 11))
-                                .foregroundColor(.black)
-                        }
-                        
-                        if !order.phoneNumber.isEmpty {
-                            HStack {
-                                Image(systemName: "phone.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.gray)
-                                Text(order.phoneNumber)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.black)
-                            }
-                        }
-                        
-                        if !order.address.isEmpty {
-                            HStack(alignment: .top) {
-                                Image(systemName: "mappin")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.gray)
-                                Text(order.address)
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.black)
-                                    .lineLimit(2)
-                            }
-                        }
-                    }
-                    
-                    // Platform & Status
-                    HStack {
-                        HStack(spacing: 4) {
-                            Circle()
-                                .fill(order.platform.swiftUIColor)
-                                .frame(width: 8, height: 8)
-                            Text(order.platform.name)
-                                .font(.system(size: 10))
-                                .foregroundColor(.gray)
-                        }
-                        
-                        Spacer()
-                        
-                        Text(order.paymentStatus.rawValue)
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(order.paymentStatus == .paid ? .green : .orange)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(order.paymentStatus == .paid ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                            )
-                    }
-                }
-                .padding(.horizontal, 4)
-                
-                // Dashed divider
-                DashedLine()
-                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4, 2]))
-                    .foregroundColor(.gray.opacity(0.5))
-                    .frame(height: 1)
-                
-                // Total
-                HStack {
-                    Text("TOTAL")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundColor(.black)
-                    Spacer()
-                    Text("\(currencySymbol)\(order.totalPrice, specifier: "%.2f")")
-                        .font(.system(size: 18, weight: .bold, design: .monospaced))
-                        .foregroundColor(.black)
-                }
-                
-                // Thank you message
-                Text(localization.localized(.thankYou))
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.gray)
-                    .padding(.top, 4)
-            }
-            .padding(16)
-            .background(Color.white)
-            
-            // Receipt footer with torn edge effect
-            Rectangle()
-                .fill(Color.white)
-                .frame(height: 8)
-                .mask(
-                    GeometryReader { geo in
-                        Path { path in
-                            let width = geo.size.width
-                            let height = geo.size.height
-                            path.move(to: CGPoint(x: 0, y: height))
-                            var x: CGFloat = 0
-                            while x < width {
-                                path.addLine(to: CGPoint(x: x + 4, y: 0))
-                                path.addLine(to: CGPoint(x: x + 8, y: height))
-                                x += 8
-                            }
-                            path.addLine(to: CGPoint(x: width, y: height))
-                            path.closeSubpath()
-                        }
-                    }
-                )
-        }
-        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-    }
-}
-
-// Dashed line shape
-struct DashedLine: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.move(to: CGPoint(x: 0, y: rect.midY))
-        path.addLine(to: CGPoint(x: rect.width, y: rect.midY))
-        return path
-    }
-}
-
-// Mini logo for header (matches auth page logo)
+// Mini logo for header (Logo 10 - Calculator with L stamped + Signal + LIVE)
 struct LiveLedgerLogoMini: View {
-    var size: CGFloat = 40
+    private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41)
+    private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)
+    private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)
+    private let buttonGray = Color(red: 0.8, green: 0.84, blue: 0.88)
     
     var body: some View {
         ZStack {
-            // Green rounded background
-            RoundedRectangle(cornerRadius: size * 0.22)
+            // Green background
+            RoundedRectangle(cornerRadius: 8)
                 .fill(
-                    LinearGradient(
-                        colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
+                    LinearGradient(colors: [greenStart, greenEnd],
+                                  startPoint: .topLeading, endPoint: .bottomTrailing)
                 )
-                .frame(width: size, height: size)
+                .frame(width: 36, height: 36)
             
-            // Big L
-            Text("L")
-                .font(.system(size: size * 0.55, weight: .black, design: .rounded))
-                .foregroundColor(.white)
+            // Signal arcs (top right)
+            MiniSignalArc()
+                .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
+                .frame(width: 16, height: 16)
+                .offset(x: 6, y: -5)
+            
+            MiniSignalArc()
+                .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
+                .frame(width: 11, height: 11)
+                .offset(x: 6, y: -5)
+            
+            MiniSignalArc()
+                .stroke(Color.white, lineWidth: 1.5)
+                .frame(width: 6, height: 6)
+                .offset(x: 6, y: -5)
+            
+            // Calculator body
+            ZStack {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color.white)
+                    .frame(width: 12, height: 16)
+                
+                // Screen
+                RoundedRectangle(cornerRadius: 1)
+                    .fill(greenEnd)
+                    .frame(width: 9, height: 3)
+                    .offset(y: -5)
+                
+                // Buttons (2x3 grid)
+                VStack(spacing: 1) {
+                    HStack(spacing: 1) {
+                        miniButton
+                        miniButton
+                        miniButton
+                    }
+                    HStack(spacing: 1) {
+                        miniButton
+                        miniButton
+                        miniButton
+                    }
+                }
+                .offset(y: 2)
+                
+                // L stamped on calculator
+                Text("L")
+                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .foregroundColor(.white)
+                    .shadow(color: greenEnd, radius: 1, x: 0.5, y: 0.5)
+                    .offset(x: 5, y: -1)
+            }
+            .offset(x: -5, y: 4)
             
             // LIVE badge
             Text("LIVE")
-                .font(.system(size: size * 0.12, weight: .heavy))
+                .font(.system(size: 5, weight: .black, design: .rounded))
                 .foregroundColor(.white)
-                .padding(.horizontal, size * 0.06)
-                .padding(.vertical, size * 0.03)
-                .background(Color.red)
-                .cornerRadius(size * 0.05)
-                .offset(x: -size * 0.22, y: -size * 0.32)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .background(
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(liveRed)
+                )
+                .offset(x: -8, y: -14)
         }
-        .frame(width: size, height: size)
+        .frame(width: 40, height: 40)
+    }
+    
+    private var miniButton: some View {
+        RoundedRectangle(cornerRadius: 0.5)
+            .fill(buttonGray)
+            .frame(width: 2.5, height: 2)
     }
 }
 
-// Mini signal arc for header logo (kept for compatibility)
+// Mini signal arc for header logo
 struct MiniSignalArc: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()

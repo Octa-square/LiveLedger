@@ -26,22 +26,11 @@ struct PlatformSelectorView: View {
         viewModel.platforms.count > 3
     }
     
-    // Default platforms (TikTok, Instagram, Facebook)
-    private var defaultPlatforms: [Platform] {
-        viewModel.platforms.filter { !$0.isCustom }
-    }
-    
-    // Custom platforms added by user
-    private var customPlatforms: [Platform] {
-        viewModel.platforms.filter { $0.isCustom }
-    }
-    
     // MARK: - Extracted Views
     private var platformHeader: some View {
-        HStack(alignment: .center, spacing: 0) {
-            // Platform label - aligned with "All" box
+        HStack(spacing: 8) {
             Text(localization.localized(.platform))
-                .font(.system(size: 14, weight: .bold))
+                .font(.system(size: 15, weight: .bold))
                 .foregroundColor(theme.textPrimary)
             
             Spacer()
@@ -51,19 +40,19 @@ struct PlatformSelectorView: View {
             
             Spacer()
             
-            // Add platform button - aligned with "Facebook" box
+            // Add platform button
             Button {
                 showingAddPlatform = true
             } label: {
-                HStack(spacing: 3) {
+                HStack(spacing: 4) {
                     Image(systemName: "plus")
-                        .font(.system(size: 9, weight: .bold))
+                        .font(.system(size: 10, weight: .bold))
                     Text("Add")
                         .font(.system(size: 10, weight: .semibold))
                 }
                 .foregroundColor(.white)
                 .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.vertical, 5)
                 .background(
                     Capsule()
                         .fill(
@@ -75,7 +64,6 @@ struct PlatformSelectorView: View {
             .accessibilityLabel("Add new platform")
             .accessibilityHint("Opens form to add a custom selling platform")
         }
-        .padding(.bottom, 2) // Space before chips
     }
     
     private var sessionTimerView: some View {
@@ -159,95 +147,50 @@ struct PlatformSelectorView: View {
     }
     
     private var platformChips: some View {
-        GeometryReader { geo in
-            // Calculate chip width: total width minus spacing (3 gaps of 6px each)
-            let totalSpacing: CGFloat = 6 * 3 // 18px for gaps between 4 chips
-            let chipWidth: CGFloat = (geo.size.width - totalSpacing) / 4
-            
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    // "All" button - FIXED WIDTH
-                    FixedPlatformChip(
-                        platform: .all,
-                        isSelected: viewModel.selectedPlatform == nil,
+        ScrollView(.horizontal, showsIndicators: true) {
+            HStack(spacing: 10) {
+                // "All" button
+                PlatformChip(
+                    platform: .all,
+                    isSelected: viewModel.selectedPlatform == nil,
+                    theme: theme,
+                    onTap: { viewModel.selectedPlatform = nil },
+                    onDelete: nil
+                )
+                
+                // Default + Custom platforms
+                ForEach(viewModel.platforms) { platform in
+                    PlatformChip(
+                        platform: platform,
+                        isSelected: viewModel.selectedPlatform?.id == platform.id,
                         theme: theme,
-                        width: chipWidth,
-                        onTap: { viewModel.selectedPlatform = nil }
+                        onTap: { viewModel.selectedPlatform = platform },
+                        onDelete: platform.isCustom ? { viewModel.deletePlatform(platform) } : nil
                     )
-                    
-                    // TikTok, Instagram, Facebook - SAME FIXED WIDTH
-                    ForEach(defaultPlatforms) { platform in
-                        FixedPlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            width: chipWidth,
-                            onTap: { viewModel.selectedPlatform = platform }
-                        )
-                    }
-                    
-                    // Custom platforms - completely hidden until scrolled
-                    ForEach(customPlatforms) { platform in
-                        FixedPlatformChip(
-                            platform: platform,
-                            isSelected: viewModel.selectedPlatform?.id == platform.id,
-                            theme: theme,
-                            width: chipWidth,
-                            onTap: { viewModel.selectedPlatform = platform },
-                            showDelete: true,
-                            onDelete: { viewModel.deletePlatform(platform) }
-                        )
-                    }
                 }
-                .padding(.trailing, 1) // Prevent edge peeking
             }
-            .scrollIndicators(.hidden) // Hide all scroll indicators
-            .scrollDisabled(customPlatforms.isEmpty)
+            .padding(.horizontal, 2)
+            .padding(.bottom, 4) // Space for scroll indicator
         }
-        .frame(height: 46)
-        .clipShape(Rectangle()) // Hard clip to prevent any peeking
-    }
-    
-    // Three-dot indicator for more platforms (centered below grid)
-    private var scrollIndicator: some View {
-        HStack(spacing: 5) {
-            ForEach(0..<3, id: \.self) { _ in
-                Circle()
-                    .fill(theme.textMuted.opacity(0.6))
-                    .frame(width: 6, height: 6)
-            }
-        }
-        .padding(.top, 4)
-        .frame(maxWidth: .infinity) // Center horizontally
+        .frame(height: 50)
+        .scrollIndicators(.visible)
     }
     
     var body: some View {
-        VStack(alignment: .center, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             platformHeader
             platformChips
-            
-            // Three-dot scroll indicator - only shows when custom platforms exist
-            if !customPlatforms.isEmpty {
-                scrollIndicator
-            }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(10)
         .background(
-            ZStack {
-                // Semi-transparent background (85% opacity for platform selector)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(theme.cardBackground)
-                // Subtle glass blur effect
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial.opacity(0.15))
-            }
-            .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
-            .shadow(color: theme.shadowLight.opacity(0.25), radius: 5, x: -3, y: -3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(theme.cardBorder.opacity(0.7), lineWidth: 1)
-            )
+            RoundedRectangle(cornerRadius: 12)
+                .fill(theme.cardBackground)
+                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
+                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
+                )
         )
         .sheet(isPresented: $showingAddPlatform) {
             AddPlatformSheet(
@@ -294,63 +237,6 @@ struct PlatformSelectorView: View {
         
         // Check existing platforms
         return viewModel.platforms.contains { $0.name.lowercased() == lowercaseName }
-    }
-}
-
-// FIXED WIDTH Platform Chip - ALL SAME SIZE
-struct FixedPlatformChip: View {
-    let platform: Platform
-    let isSelected: Bool
-    let theme: AppTheme
-    let width: CGFloat
-    let onTap: () -> Void
-    var showDelete: Bool = false
-    var onDelete: (() -> Void)? = nil
-    
-    @State private var showDeleteConfirm = false
-    
-    var body: some View {
-        Button(action: onTap) {
-            ZStack(alignment: .topTrailing) {
-                VStack(spacing: 2) {
-                    Image(systemName: platform.icon)
-                        .font(.system(size: 14, weight: .semibold))
-                    
-                    Text(platform.name)
-                        .font(.system(size: 10, weight: .bold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                .foregroundColor(platform.swiftUIColor)
-                .frame(width: width, height: 42)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(isSelected ? platform.swiftUIColor.opacity(0.15) : theme.cardBackground)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(isSelected ? platform.swiftUIColor : theme.cardBorder, lineWidth: isSelected ? 2 : 1)
-                )
-                
-                // Delete button for custom platforms
-                if showDelete {
-                    Button {
-                        showDeleteConfirm = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                            .background(Circle().fill(theme.cardBackground))
-                    }
-                    .offset(x: 4, y: -4)
-                }
-            }
-        }
-        .buttonStyle(PlainButtonStyle())
-        .confirmationDialog("Delete \(platform.name)?", isPresented: $showDeleteConfirm) {
-            Button("Delete", role: .destructive) { onDelete?() }
-            Button("Cancel", role: .cancel) {}
-        }
     }
 }
 

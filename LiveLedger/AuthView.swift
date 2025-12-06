@@ -12,8 +12,8 @@ import Combine
 struct AppUser: Codable {
     var id: String
     var email: String
+    var passwordHash: String  // Simple hash for local storage
     var name: String
-    var phone: String
     var companyName: String
     var currency: String
     var isPro: Bool
@@ -102,13 +102,12 @@ class AuthManager: ObservableObject {
         }
     }
     
-    func signUp(email: String, name: String, phone: String = "", password: String, companyName: String, currency: String, referralCode: String) {
-        // In a real app, password would be hashed and sent to a server
+    func signUp(email: String, name: String, password: String, companyName: String, currency: String, referralCode: String) {
         let user = AppUser(
             id: UUID().uuidString,
-            email: email,
+            email: email.lowercased().trimmingCharacters(in: .whitespaces),
+            passwordHash: simpleHash(password),
             name: name,
-            phone: phone,
             companyName: companyName,
             currency: currency,
             isPro: false,
@@ -120,6 +119,40 @@ class AuthManager: ObservableObject {
         currentUser = user
         isAuthenticated = true
         saveUser()
+    }
+    
+    /// Sign in with email and password - returns error message if failed
+    func signIn(email: String, password: String) -> String? {
+        // Load saved user
+        guard let data = UserDefaults.standard.data(forKey: userKey),
+              let savedUser = try? JSONDecoder().decode(AppUser.self, from: data) else {
+            return "No account found. Please sign up first."
+        }
+        
+        // Check email matches
+        let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespaces)
+        guard savedUser.email == normalizedEmail else {
+            return "Email not found. Please check your email or sign up."
+        }
+        
+        // Check password matches
+        guard savedUser.passwordHash == simpleHash(password) else {
+            return "Incorrect password. Please try again."
+        }
+        
+        // Success - log in
+        currentUser = savedUser
+        isAuthenticated = true
+        return nil
+    }
+    
+    /// Simple hash for local password storage (not cryptographically secure, but fine for local-only auth)
+    private func simpleHash(_ string: String) -> String {
+        var hash = 5381
+        for char in string.utf8 {
+            hash = ((hash << 5) &+ hash) &+ Int(char)
+        }
+        return String(format: "%llx", hash)
     }
     
     func incrementOrderCount() {
@@ -137,11 +170,6 @@ class AuthManager: ObservableObject {
         saveUser()
     }
     
-    func downgradeToFree() {
-        currentUser?.isPro = false
-        saveUser()
-    }
-    
     func updateCompanyName(_ name: String) {
         currentUser?.companyName = name
         saveUser()
@@ -149,22 +177,6 @@ class AuthManager: ObservableObject {
     
     func updateUserName(_ name: String) {
         currentUser?.name = name
-        saveUser()
-    }
-    
-    func updateEmail(_ email: String) {
-        currentUser?.email = email
-        saveUser()
-    }
-    
-    func updatePhone(_ phone: String) {
-        currentUser?.phone = phone
-        saveUser()
-    }
-    
-    func updatePassword(_ password: String) {
-        // In a real app, this would hash the password and update on server
-        // For local storage, we just acknowledge the update
         saveUser()
     }
     
@@ -183,6 +195,39 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "livesales_orders")
         UserDefaults.standard.removeObject(forKey: "livesales_platforms")
     }
+    
+    /// Demo mode for App Store review - creates a pre-configured account with sample data
+    func startDemoMode() {
+        // Create demo user with Pro access
+        let demoUser = AppUser(
+            id: "demo-user-\(UUID().uuidString)",
+            email: "demo@liveledger.app",
+            passwordHash: simpleHash("demo123"),
+            name: "Demo User",
+            companyName: "Demo Store",
+            currency: "USD ($)",
+            isPro: true, // Pro access to test all features
+            ordersUsed: 0,
+            exportsUsed: 0,
+            referralCode: "DEMO2024",
+            createdAt: Date()
+        )
+        
+        currentUser = demoUser
+        isAuthenticated = true
+        saveUser()
+        
+        // Skip onboarding for demo
+        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+        
+        // Trigger demo data population
+        NotificationCenter.default.post(name: .populateDemoData, object: nil)
+    }
+}
+
+// Notification for demo data population
+extension Notification.Name {
+    static let populateDemoData = Notification.Name("populateDemoData")
 }
 
 // MARK: - Logo View (Simplified for better rendering)
@@ -221,12 +266,12 @@ struct LiveLedgerLogo: View {
     }
 }
 
-// MARK: - Auth View (Centered, Polished Design)
+// MARK: - Auth View
 struct AuthView: View {
     @ObservedObject var authManager: AuthManager
+    @State private var isLoginMode = false  // Toggle between Login and Sign Up
     @State private var email = ""
     @State private var name = ""
-    @State private var phoneNumber = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var companyName = ""
@@ -235,461 +280,418 @@ struct AuthView: View {
     @State private var agreedToTerms = false
     @State private var showPassword = false
     @State private var showConfirmPassword = false
-    @State private var showPasswordTooltip = false
-    @State private var showValidationError = false
-    @State private var validationErrorMessage = ""
-    @FocusState private var focusedField: Field?
-    
-    enum Field {
-        case name, email, phone, password, confirmPassword, company, referral
-    }
-    
-    // Password validation
-    private var isPasswordValid: Bool {
-        password.count >= 6 &&
-        password.contains(where: { $0.isLetter }) &&
-        password.contains(where: { $0.isNumber || "!@#$%^&*()_+-=[]{}|;':\",./<>?".contains($0) })
-    }
-    
-    // Get validation error message
-    private func getValidationError() -> String? {
-        if name.isEmpty {
-            return "Please enter your name"
-        }
-        if email.isEmpty || !email.contains("@") {
-            return "Please enter a valid email"
-        }
-        if password.isEmpty {
-            return "Please enter a password"
-        }
-        if !isPasswordValid {
-            return "Password must be at least 6 characters with 1 letter and 1 number/symbol"
-        }
-        if password != confirmPassword {
-            return "Passwords do not match"
-        }
-        if !agreedToTerms {
-            return "Please agree to the Terms & Privacy Policy"
-        }
-        return nil
-    }
+    @State private var showErrors = false
+    @State private var loginError: String?
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Background Image
-                Image("AuthBackground")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .ignoresSafeArea()
-                
-                // Semi-transparent overlay
-                LinearGradient(colors: [
-                    Color(red: 0.07, green: 0.5, blue: 0.46).opacity(0.75),
-                    Color(red: 0.05, green: 0.35, blue: 0.35).opacity(0.85)
-                ], startPoint: .topLeading, endPoint: .bottomTrailing)
-                .ignoresSafeArea()
-                
-                // Vertically centered content
-                VStack(spacing: 0) {
-                    Spacer().frame(height: 8)
+        ZStack {
+            // Background - Green theme matching logo
+            LinearGradient(colors: [
+                Color(red: 0.07, green: 0.5, blue: 0.46),
+                Color(red: 0.05, green: 0.35, blue: 0.35)
+            ], startPoint: .topLeading, endPoint: .bottomTrailing)
+            .ignoresSafeArea()
+            
+            ScrollView {
+                VStack(spacing: 30) {
+                    Spacer(minLength: 50)
                     
-                    // Logo Section (Compact)
-                    VStack(spacing: 4) {
-                        LiveLedgerLogo(size: 70)
+                    // Logo
+                    VStack(spacing: 16) {
+                        LiveLedgerLogo(size: 100)
                         
                         Text("LiveLedger")
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
-                        Text("Track Live Sales Like a Pro")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
+                        Text("Track sales in real-time during live streams")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.8))
+                            .multilineTextAlignment(.center)
                     }
                     
-                    Spacer().frame(height: 10)
-                    
-                    // Expanded Features Grid (10 features in 2 columns)
-                    HStack(alignment: .top, spacing: 12) {
-                        // Left Column
-                        VStack(alignment: .leading, spacing: 4) {
-                            FeatureRow(icon: "bolt.fill", text: "Real-time tracking", color: .yellow)
-                            FeatureRow(icon: "square.grid.2x2.fill", text: "Multi-platform", color: .pink)
-                            FeatureRow(icon: "timer", text: "Live session timer", color: .cyan)
-                            FeatureRow(icon: "wifi", text: "Network analyzer", color: .blue)
+                    // Features (only show in sign-up mode)
+                    if !isLoginMode {
+                        VStack(alignment: .leading, spacing: 14) {
+                            FeatureRow(icon: "bolt.fill", color: .yellow, text: "Instant tap-to-add orders")
+                            FeatureRow(icon: "printer.fill", color: .blue, text: "Print receipts & reports")
+                            FeatureRow(icon: "chart.bar.fill", color: .green, text: "Real-time analytics")
+                            FeatureRow(icon: "square.and.arrow.up", color: .purple, text: "Export to CSV")
                         }
-                        
-                        // Right Column
-                        VStack(alignment: .leading, spacing: 4) {
-                            FeatureRow(icon: "chart.bar.fill", text: "Analytics", color: .green)
-                            FeatureRow(icon: "printer.fill", text: "Print & export", color: .orange)
-                            FeatureRow(icon: "speaker.wave.2.fill", text: "Sound alerts", color: .purple)
-                            FeatureRow(icon: "arrow.left.arrow.right", text: "Comparisons", color: .teal)
-                        }
+                        .padding(.vertical, 10)
                     }
-                    .padding(.horizontal, 8)
                     
-                    Spacer().frame(height: 10)
-                    
-                    // Sign Up Form (Compact spacing)
-                    VStack(spacing: 8) {
-                        // Row 1: Name & Email
-                        HStack(spacing: 6) {
-                            AuthInputField(placeholder: "Full Name", text: $name, icon: "person.fill")
-                                .focused($focusedField, equals: .name)
-                            AuthInputField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboard: .emailAddress)
-                                .focused($focusedField, equals: .email)
-                        }
-                        
-                        // Row 2: Phone Number (full width)
-                        AuthInputField(placeholder: "Phone Number", text: $phoneNumber, icon: "phone.fill", keyboard: .phonePad)
-                            .focused($focusedField, equals: .phone)
-                        
-                        // Row 3: Password & Confirm (aligned, same size)
-                        HStack(spacing: 6) {
-                            // Password field
-                            ZStack(alignment: .topTrailing) {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.white.opacity(0.8))
-                                    
-                                    if showPassword {
-                                        TextField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                            .tint(.cyan)
-                                            .focused($focusedField, equals: .password)
-                                    } else {
-                                        SecureField("", text: $password, prompt: Text("Password").foregroundColor(.white.opacity(0.75)))
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.white)
-                                            .tint(.cyan)
-                                            .focused($focusedField, equals: .password)
-                                    }
-                                    
-                                    Button { showPassword.toggle() } label: {
-                                        Image(systemName: showPassword ? "eye.slash" : "eye")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.white.opacity(0.7))
-                                    }
+                    // Form Card
+                    VStack(spacing: 14) {
+                        // Mode Toggle
+                        HStack(spacing: 0) {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isLoginMode = false
+                                    clearForm()
                                 }
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.2))
-                                .cornerRadius(8)
-                                .onChange(of: focusedField) { _, newValue in
-                                    if newValue == .password {
-                                        showPasswordTooltip = true
-                                        // Auto-dismiss after 3 seconds
-                                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                                            showPasswordTooltip = false
-                                        }
-                                    }
-                                }
-                                .onChange(of: password) { _, _ in
-                                    showPasswordTooltip = false
-                                }
-                                
-                                // Auto-dismissing tooltip
-                                if showPasswordTooltip {
-                                    Text("Min 6 chars, 1 letter, 1 symbol")
-                                        .font(.system(size: 9, weight: .medium))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.black.opacity(0.8))
-                                        .cornerRadius(6)
-                                        .offset(y: -35)
-                                        .transition(.opacity.combined(with: .scale))
-                                        .animation(.easeInOut(duration: 0.2), value: showPasswordTooltip)
-                                }
+                            } label: {
+                                Text("Sign Up")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(isLoginMode ? .white.opacity(0.6) : .white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(isLoginMode ? Color.clear : Color.white.opacity(0.2))
+                                    .cornerRadius(8)
                             }
                             
-                            // Confirm Password field (same size)
-                            HStack(spacing: 6) {
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white.opacity(0.8))
-                                
-                                if showConfirmPassword {
-                                    TextField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white)
-                                        .tint(.cyan)
-                                        .focused($focusedField, equals: .confirmPassword)
-                                } else {
-                                    SecureField("", text: $confirmPassword, prompt: Text("Confirm").foregroundColor(.white.opacity(0.75)))
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white)
-                                        .tint(.cyan)
-                                        .focused($focusedField, equals: .confirmPassword)
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    isLoginMode = true
+                                    clearForm()
                                 }
-                                
-                                // Show eye toggle OR match indicator (not blocking input)
-                                Button { showConfirmPassword.toggle() } label: {
-                                    // Only show match status after user finishes typing (both fields have content)
-                                    if !confirmPassword.isEmpty && !password.isEmpty && confirmPassword.count >= password.count {
-                                        Image(systemName: password == confirmPassword ? "checkmark.circle.fill" : "xmark.circle.fill")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(password == confirmPassword ? .green : .red)
-                                    } else {
-                                        Image(systemName: showConfirmPassword ? "eye.slash" : "eye")
-                                            .font(.system(size: 12))
-                                            .foregroundColor(.white.opacity(0.7))
-                                    }
-                                }
+                            } label: {
+                                Text("Log In")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundColor(isLoginMode ? .white : .white.opacity(0.6))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(isLoginMode ? Color.white.opacity(0.2) : Color.clear)
+                                    .cornerRadius(8)
                             }
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 10)
-                            .background(Color.white.opacity(0.2))
-                            .cornerRadius(8)
+                        }
+                        .padding(4)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(10)
+                        
+                        if isLoginMode {
+                            // LOGIN FORM
+                            loginFormContent
+                        } else {
+                            // SIGN UP FORM
+                            signUpFormContent
                         }
                         
-                        // Row 4: Company & Referral
-                        HStack(spacing: 6) {
-                            AuthInputField(placeholder: "Company (optional)", text: $companyName, icon: "building.2.fill")
-                                .focused($focusedField, equals: .company)
-                            AuthInputField(placeholder: "Referral (optional)", text: $referralCode, icon: "gift.fill")
-                                .focused($focusedField, equals: .referral)
-                        }
-                        
-                        // Currency Picker (Compact)
+                        // Divider
                         HStack {
-                            Image(systemName: "dollarsign.circle.fill")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.8))
-                            
-                            Text("Currency:")
-                                .font(.system(size: 12))
-                                .foregroundColor(.white.opacity(0.8))
-                            
-                            Picker("", selection: $selectedCurrency) {
-                                ForEach(AppUser.currencies, id: \.self) { currency in
-                                    Text(currency).tag(currency)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .tint(.white)
-                            
-                            Spacer()
+                            Rectangle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(height: 1)
+                            Text("or")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.6))
+                            Rectangle()
+                                .fill(Color.white.opacity(0.3))
+                                .frame(height: 1)
                         }
-                        .padding(.horizontal, 10)
                         .padding(.vertical, 8)
-                        .background(Color.white.opacity(0.2))
-                        .cornerRadius(8)
                         
-                        // Terms with clickable links (Compact)
-                        HStack(spacing: 4) {
-                            Image(systemName: agreedToTerms ? "checkmark.square.fill" : "square")
-                                .font(.system(size: 16))
-                                .foregroundColor(agreedToTerms ? .green : .white.opacity(0.8))
-                                .onTapGesture { agreedToTerms.toggle() }
-                            
-                            Text("I agree to ")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.9))
-                            
-                            Button {
-                                if let url = URL(string: "https://liveledger.app/terms") {
-                                    UIApplication.shared.open(url)
-                                }
-                            } label: {
-                                Text("Terms")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .underline()
-                            }
-                            
-                            Text(" & ")
-                                .font(.system(size: 11))
-                                .foregroundColor(.white.opacity(0.9))
-                            
-                            Button {
-                                if let url = URL(string: "https://liveledger.app/privacy") {
-                                    UIApplication.shared.open(url)
-                                }
-                            } label: {
-                                Text("Privacy")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.white)
-                                    .underline()
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        
-                        // Sign Up Button (Compact) - Always tappable with feedback
+                        // Demo Mode Button for App Store Review
                         Button {
-                            if let error = getValidationError() {
-                                validationErrorMessage = error
-                                showValidationError = true
-                            } else {
-                                authManager.signUp(
-                                    email: email,
-                                    name: name,
-                                    password: password,
-                                    companyName: companyName.isEmpty ? "My Store" : companyName,
-                                    currency: selectedCurrency,
-                                    referralCode: referralCode
-                                )
-                            }
+                            authManager.startDemoMode()
                         } label: {
-                            Text("Create Free Account")
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(isFormValid ? Color.white : Color.white.opacity(0.7))
-                                .cornerRadius(10)
+                            HStack {
+                                Image(systemName: "play.circle.fill")
+                                Text("Try Demo Mode")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.white.opacity(0.2))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(Color.white.opacity(0.4), lineWidth: 1)
+                            )
                         }
                         
-                        Text("First 20 orders FREE • No credit card required")
-                            .font(.system(size: 10))
-                            .foregroundColor(.white.opacity(0.7))
+                        Text("Explore all features with sample data")
+                            .font(.caption2)
+                            .foregroundColor(.white.opacity(0.6))
                     }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 18)
-                    .background(Color.black.opacity(0.25))
+                    .padding(20)
+                    .background(Color.white.opacity(0.1))
                     .cornerRadius(20)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal)
                     
-                    Spacer()
+                    Spacer(minLength: 50)
                 }
             }
         }
-        .ignoresSafeArea(.keyboard)
-        .alert("Cannot Create Account", isPresented: $showValidationError) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text(validationErrorMessage)
+    }
+    
+    // MARK: - Login Form
+    private var loginFormContent: some View {
+        VStack(spacing: 14) {
+            Text("Welcome Back")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            CustomTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+            
+            // Password field
+            HStack {
+                Image(systemName: "lock.fill")
+                    .foregroundColor(.white.opacity(0.7))
+                if showPassword {
+                    TextField("Password", text: $password)
+                        .foregroundColor(.white)
+                } else {
+                    SecureField("Password", text: $password)
+                        .foregroundColor(.white)
+                }
+                Button {
+                    showPassword.toggle()
+                } label: {
+                    Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                        .foregroundColor(.white.opacity(0.7))
+                }
+            }
+            .padding()
+            .background(Color.white.opacity(0.15))
+            .cornerRadius(12)
+            
+            // Login Error
+            if let error = loginError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundColor(.red)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.2))
+                    .cornerRadius(8)
+            }
+            
+            // Login Button
+            Button {
+                loginError = nil
+                if let error = authManager.signIn(email: email, password: password) {
+                    loginError = error
+                }
+            } label: {
+                Text("Log In")
+                    .font(.headline)
+                    .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(12)
+            }
+            .disabled(email.isEmpty || password.isEmpty)
+            .opacity(email.isEmpty || password.isEmpty ? 0.7 : 1)
+            
+            Text("Don't have an account? Tap Sign Up above")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
         }
+    }
+    
+    // MARK: - Sign Up Form
+    private var signUpFormContent: some View {
+        VStack(spacing: 14) {
+            Text("Create Your Account")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            CustomTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
+            CustomTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+            
+            // Password field
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.white.opacity(0.7))
+                    if showPassword {
+                        TextField("Password (min 6 characters)", text: $password)
+                            .foregroundColor(.white)
+                    } else {
+                        SecureField("Password (min 6 characters)", text: $password)
+                            .foregroundColor(.white)
+                    }
+                    Button {
+                        showPassword.toggle()
+                    } label: {
+                        Image(systemName: showPassword ? "eye.slash.fill" : "eye.fill")
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                .padding()
+                .background(Color.white.opacity(0.15))
+                .cornerRadius(12)
+                
+                if showErrors && !password.isEmpty && password.count < 6 {
+                    Text("⚠️ Password must be at least 6 characters")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+            
+            // Confirm Password field
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: "lock.fill")
+                        .foregroundColor(.white.opacity(0.7))
+                    if showConfirmPassword {
+                        TextField("Confirm Password", text: $confirmPassword)
+                            .foregroundColor(.white)
+                    } else {
+                        SecureField("Confirm Password", text: $confirmPassword)
+                            .foregroundColor(.white)
+                    }
+                    Button {
+                        showConfirmPassword.toggle()
+                    } label: {
+                        Image(systemName: showConfirmPassword ? "eye.slash.fill" : "eye.fill")
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                }
+                .padding()
+                .background(Color.white.opacity(0.15))
+                .cornerRadius(12)
+                
+                if showErrors && !confirmPassword.isEmpty && password != confirmPassword {
+                    Text("⚠️ Passwords do not match")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                } else if showErrors && !confirmPassword.isEmpty && password == confirmPassword {
+                    Text("✓ Passwords match")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                }
+            }
+            
+            CustomTextField(placeholder: "Company/Store Name (optional)", text: $companyName, icon: "building.2.fill")
+            CustomTextField(placeholder: "Referral Code (optional)", text: $referralCode, icon: "gift.fill")
+            
+            // Currency Picker
+            HStack {
+                Image(systemName: "dollarsign.circle.fill")
+                    .foregroundColor(.white.opacity(0.7))
+                
+                Picker("Currency", selection: $selectedCurrency) {
+                    ForEach(AppUser.currencies, id: \.self) { currency in
+                        Text(currency).tag(currency)
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(.white)
+                
+                Spacer()
+            }
+            .padding()
+            .background(Color.white.opacity(0.15))
+            .cornerRadius(12)
+            
+            // Terms
+            Toggle(isOn: $agreedToTerms) {
+                Text("I agree to the Terms of Service and Privacy Policy")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.8))
+            }
+            .toggleStyle(CheckboxToggleStyle())
+            
+            // Error Summary
+            if showErrors && !isFormValid {
+                VStack(alignment: .leading, spacing: 4) {
+                    if name.isEmpty {
+                        Text("• Full name is required")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    if email.isEmpty || !email.contains("@") {
+                        Text("• Valid email is required")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    if password.count < 6 {
+                        Text("• Password must be at least 6 characters")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    if password != confirmPassword {
+                        Text("• Passwords must match")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                    if !agreedToTerms {
+                        Text("• You must agree to the terms")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+                .padding(10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.red.opacity(0.2))
+                .cornerRadius(8)
+            }
+            
+            // Sign Up Button
+            Button {
+                showErrors = true
+                if isFormValid {
+                    authManager.signUp(
+                        email: email,
+                        name: name,
+                        password: password,
+                        companyName: companyName.isEmpty ? "My Store" : companyName,
+                        currency: selectedCurrency,
+                        referralCode: referralCode
+                    )
+                }
+            } label: {
+                Text("Create Free Account")
+                    .font(.headline)
+                    .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(12)
+            }
+            
+            Text("First 20 orders FREE • No credit card required")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.7))
+        }
+    }
+    
+    private func clearForm() {
+        email = ""
+        name = ""
+        password = ""
+        confirmPassword = ""
+        companyName = ""
+        referralCode = ""
+        showErrors = false
+        loginError = nil
+        showPassword = false
+        showConfirmPassword = false
     }
     
     var isFormValid: Bool {
         !name.isEmpty && 
         !email.isEmpty && 
         email.contains("@") &&
-        isPasswordValid &&
+        password.count >= 6 &&
         password == confirmPassword &&
         agreedToTerms
     }
 }
 
-// MARK: - Feature Pill (Compact)
-struct FeaturePill: View {
-    let icon: String
-    let text: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundColor(color)
-            Text(text)
-                .font(.system(size: 10, weight: .medium))
-                .foregroundColor(.white.opacity(0.9))
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.white.opacity(0.15))
-        .cornerRadius(12)
-    }
-}
-
-// MARK: - Feature Row (For 2-column layout)
 struct FeatureRow: View {
     let icon: String
-    let text: String
-    let color: Color
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundColor(color)
-                .frame(width: 14)
-            Text(text)
-                .font(.system(size: 11, weight: .medium))
-                .foregroundColor(.white.opacity(0.95))
-                .lineLimit(1)
-        }
-    }
-}
-
-// MARK: - Auth Input Field (Uniform size, readable placeholder)
-struct AuthInputField: View {
-    let placeholder: String
-    @Binding var text: String
-    let icon: String
-    var keyboard: UIKeyboardType = .default
-    
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.8))
-            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.75)))
-                .font(.system(size: 14))
-                .foregroundColor(.white)
-                .keyboardType(keyboard)
-                .autocapitalization(.none)
-                .tint(.cyan)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .background(Color.white.opacity(0.2))
-        .cornerRadius(10)
-    }
-}
-
-// MARK: - Compact Feature
-struct CompactFeature: View {
-    let icon: String
     let color: Color
     let text: String
     
     var body: some View {
-        VStack(spacing: 4) {
+        HStack(spacing: 12) {
             Image(systemName: icon)
-                .font(.system(size: 14))
+                .font(.system(size: 16))
                 .foregroundColor(color)
-                .frame(width: 28, height: 28)
+                .frame(width: 32, height: 32)
                 .background(color.opacity(0.2))
-                .cornerRadius(6)
+                .cornerRadius(8)
             
             Text(text)
-                .font(.system(size: 10))
-                .foregroundColor(.white.opacity(0.8))
-        }
-    }
-}
-
-// MARK: - Compact Field
-struct CompactField: View {
-    let placeholder: String
-    @Binding var text: String
-    let icon: String
-    var keyboard: UIKeyboardType = .default
-    
-    var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.system(size: 12))
-                .foregroundColor(.white.opacity(0.7))
-            TextField(placeholder, text: $text)
-                .font(.system(size: 13))
+                .font(.subheadline)
                 .foregroundColor(.white)
-                .keyboardType(keyboard)
-                .autocapitalization(.none)
-                .tint(.white)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 10)
-        .background(Color.white.opacity(0.15))
-        .cornerRadius(8)
+        .padding(.horizontal)
     }
 }
 
@@ -707,7 +709,6 @@ struct CustomTextField: View {
                 .foregroundColor(.white)
                 .keyboardType(keyboardType)
                 .autocapitalization(.none)
-                .tint(.white)
         }
         .padding()
         .background(Color.white.opacity(0.15))

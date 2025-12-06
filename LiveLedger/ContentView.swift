@@ -17,33 +17,15 @@ struct MainContentView: View {
     @State private var showLimitAlert = false
     @State private var limitAlertMessage = ""
     
-    // Display settings from AppStorage
-    @AppStorage("app_brightness") private var appBrightness: Double = 1.0
-    @AppStorage("app_contrast") private var appContrast: Double = 1.0
-    @AppStorage("app_bg_opacity") private var appBgOpacity: Double = 0.80
-    
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Background Image
-                Image(theme.backgroundImageName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
-                    .ignoresSafeArea()
-                
-                // Semi-transparent overlay for readability (uses user's bg opacity setting)
-                LinearGradient(
-                    colors: theme.gradientColors.map { $0.opacity(appBgOpacity) },
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+        ZStack {
+            // Background
+            theme.gradientColors[0]
                 .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
+            
+            VStack(spacing: 0) {
                 // FIXED HEADER - X style (~56px height feel)
                 VStack(spacing: 6) {
                     HeaderView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, showSettings: $showSettings, showSubscription: $showSubscription)
@@ -52,36 +34,35 @@ struct MainContentView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 8)
                 .background(
-                    // Semi-transparent header (90% opacity for readability)
-                    ZStack {
-                        theme.cardBackgroundSolid
-                        // Subtle blur effect for glass feel
-                        Rectangle()
-                            .fill(.ultraThinMaterial.opacity(0.3))
-                    }
-                    .shadow(color: theme.shadowDark.opacity(0.15), radius: 4, y: 2)
+                    theme.cardBackground
+                        .shadow(color: theme.shadowDark.opacity(0.1), radius: 2, y: 2)
                 )
                 
                 // CONTENT - Products fixed, Orders stretches to bottom
                 VStack(spacing: 8) {
-                    // Products card - fixed size (more transparent to show background)
+                    // Free tier banner
+                    if let user = authManager.currentUser, !user.isPro {
+                        FreeTierBanner(user: user, theme: theme) {
+                            showSubscription = true
+                        }
+                    }
+                    
+                    // Products card - fixed size
                     QuickAddView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization, onLimitReached: {
                         limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
                         showLimitAlert = true
                     })
                     
-                    // Orders - compact, only takes needed height
+                    // Orders - stretches all the way down
                     OrdersListView(viewModel: viewModel, themeManager: themeManager, localization: localization, authManager: authManager)
+                        .frame(maxHeight: .infinity)
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 80) // Extra bottom padding to keep grid above iPhone bottom
+                .padding(.bottom, 8) // Same as top
             }
         }
         .preferredColorScheme(theme.isDarkTheme ? .dark : .light)
-        // Apply user display settings
-        .brightness(appBrightness - 1.0) // -0.5 to +0.5 range (1.0 is neutral)
-        .contrast(appContrast) // 0.5 to 2.0 range (1.0 is neutral)
         // Auto-save listener
         .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { notification in
             viewModel.saveData()
@@ -129,12 +110,56 @@ struct MainContentView: View {
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(viewModel: viewModel, themeManager: themeManager, authManager: authManager, localization: localization)
+            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization)
         }
         .sheet(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
         }
-        } // GeometryReader
+    }
+}
+
+// Free tier banner
+struct FreeTierBanner: View {
+    let user: AppUser
+    let theme: AppTheme
+    let onUpgrade: () -> Void
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Free Plan")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(theme.warningColor)
+                Text("\(user.remainingFreeOrders) orders • \(user.remainingFreeExports) exports left")
+                    .font(.system(size: 11))
+                    .foregroundColor(theme.textSecondary)
+            }
+            
+            Spacer()
+            
+            Button(action: onUpgrade) {
+                HStack(spacing: 4) {
+                    Image(systemName: "crown.fill")
+                        .font(.system(size: 10))
+                    Text("Upgrade")
+                        .font(.system(size: 11, weight: .semibold))
+                }
+                .foregroundColor(.black)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(theme.warningColor)
+                .cornerRadius(6)
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(theme.warningColor.opacity(0.1))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(theme.warningColor.opacity(0.3), lineWidth: 1)
+                )
+        )
     }
 }
 
@@ -156,32 +181,25 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentViewPreview()
-}
-
-struct ContentViewPreview: View {
-    @StateObject private var authManager = AuthManager()
+    // Create a mock authenticated user to avoid StoreKit initialization issues
+    let mockAuthManager = AuthManager()
+    mockAuthManager.currentUser = AppUser(
+        id: "preview-user",
+        email: "preview@example.com",
+        passwordHash: "preview",
+        name: "Preview User",
+        companyName: "My Shop",
+        currency: "USD ($)",
+        isPro: true, // Set to Pro to avoid subscription checks
+        ordersUsed: 5,
+        exportsUsed: 2,
+        referralCode: "PREVIEW123",
+        createdAt: Date()
+    )
+    mockAuthManager.isAuthenticated = true
     
-    var body: some View {
-        MainContentView(
-            authManager: authManager,
-            localization: LocalizationManager.shared
-        )
-        .onAppear {
-            authManager.currentUser = AppUser(
-                id: "preview-user",
-                email: "preview@example.com",
-                name: "Preview User",
-                phone: "",
-                companyName: "My Shop",
-                currency: "USD ($)",
-                isPro: true,
-                ordersUsed: 5,
-                exportsUsed: 2,
-                referralCode: "PREVIEW123",
-                createdAt: Date()
-            )
-            authManager.isAuthenticated = true
-        }
-    }
+    return MainContentView(
+        authManager: mockAuthManager,
+        localization: LocalizationManager.shared
+    )
 }

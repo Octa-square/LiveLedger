@@ -18,7 +18,6 @@ struct QuickAddView: View {
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
     @State private var showBuyerPopup: Bool = false
-    @State private var selectedPaymentStatus: PaymentStatus? = nil
     @State private var showMaxProductsAlert: Bool = false
     @State private var showCreateCatalogAlert: Bool = false
     @State private var showRenameCatalogAlert: Bool = false
@@ -69,8 +68,8 @@ struct QuickAddView: View {
                     Spacer()
                     
                     Text("Tap sell • Hold edit")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(theme.textSecondary)
+                        .font(.system(size: 8))
+                        .foregroundColor(theme.textMuted)
                     
                     Button {
                         let added = viewModel.addNewProduct()
@@ -131,43 +130,6 @@ struct QuickAddView: View {
                     .background(Color(.systemGray6))
                     .cornerRadius(8)
                     
-                    // Payment Status - Paid/Unpaid toggle buttons
-                    HStack(spacing: 8) {
-                        // Paid button
-                        Button {
-                            selectedPaymentStatus = selectedPaymentStatus == .paid ? nil : .paid
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: selectedPaymentStatus == .paid ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 14))
-                                Text("Paid")
-                                    .font(.system(size: 12, weight: .medium))
-                            }
-                            .foregroundColor(selectedPaymentStatus == .paid ? .white : .green)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selectedPaymentStatus == .paid ? Color.green : Color.green.opacity(0.15))
-                            .cornerRadius(6)
-                        }
-                        
-                        // Unpaid button
-                        Button {
-                            selectedPaymentStatus = selectedPaymentStatus == .pending ? nil : .pending
-                        } label: {
-                            HStack(spacing: 4) {
-                                Image(systemName: selectedPaymentStatus == .pending ? "checkmark.circle.fill" : "circle")
-                                    .font(.system(size: 14))
-                                Text("Unpaid")
-                                    .font(.system(size: 12, weight: .medium))
-                            }
-                            .foregroundColor(selectedPaymentStatus == .pending ? .white : .orange)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(selectedPaymentStatus == .pending ? Color.orange : Color.orange.opacity(0.15))
-                            .cornerRadius(6)
-                        }
-                    }
-                    
                     // Quantity & Amount row
                     HStack(spacing: 12) {
                         Button {
@@ -204,7 +166,6 @@ struct QuickAddView: View {
                             selectedProductForOrder = nil
                             buyerName = ""
                             orderQuantity = 1
-                            selectedPaymentStatus = nil
                         } label: {
                             Text("Cancel")
                                 .font(.system(size: 13, weight: .medium))
@@ -227,19 +188,14 @@ struct QuickAddView: View {
                                 phoneNumber: "",
                                 address: "",
                                 platform: platform,
-                                quantity: orderQuantity,
-                                paymentStatus: selectedPaymentStatus ?? .unset
+                                quantity: orderQuantity
                             )
                             authManager.incrementOrderCount()
-                            
-                            // Play order added sound
-                            SoundManager.shared.playOrderAddedSound()
                             
                             showBuyerPopup = false
                             selectedProductForOrder = nil
                             buyerName = ""
                             orderQuantity = 1
-                            selectedPaymentStatus = nil
                         } label: {
                             Text("Add")
                                 .font(.system(size: 13, weight: .bold))
@@ -262,20 +218,14 @@ struct QuickAddView: View {
         }
         .padding(10)
         .background(
-            ZStack {
-                // Semi-transparent background (75-80% opacity)
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(theme.cardBackgroundSubtle)
-                // Subtle glass blur effect
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(.ultraThinMaterial.opacity(0.2))
-            }
-            .shadow(color: theme.shadowDark.opacity(0.15), radius: 6, x: 3, y: 3)
-            .shadow(color: theme.shadowLight.opacity(0.2), radius: 6, x: -3, y: -3)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(theme.cardBorder.opacity(0.6), lineWidth: 1)
-            )
+            RoundedRectangle(cornerRadius: 12)
+                .fill(theme.cardBackground)
+                .shadow(color: theme.shadowDark.opacity(0.12), radius: 5, x: 3, y: 3)
+                .shadow(color: theme.shadowLight.opacity(0.3), radius: 5, x: -3, y: -3)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
+                )
         )
         .sheet(item: $editingProduct) { product in
             EditProductSheet(
@@ -438,21 +388,21 @@ struct FastProductCard: View {
                     if product.isEmpty {
                         // Empty product state - clean placeholder with ⊕ icon
                         VStack(spacing: 3) {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 22, weight: .medium))
-                                .foregroundColor(theme.textSecondary.opacity(0.7))
+                            Image(systemName: "plus.circle")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(theme.textMuted.opacity(0.5))
                             
                             Text("Hold to add")
-                                .font(.system(size: 9, weight: .bold))
-                                .foregroundColor(theme.textSecondary.opacity(0.75))
+                                .font(.system(size: 8, weight: .semibold))
+                                .foregroundColor(theme.textMuted.opacity(0.5))
                             
                             Text("name, price")
-                                .font(.system(size: 8, weight: .medium))
-                                .foregroundColor(theme.textSecondary.opacity(0.65))
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundColor(theme.textMuted.opacity(0.45))
                             
                             Text("& stock")
-                                .font(.system(size: 8, weight: .medium))
-                                .foregroundColor(theme.textSecondary.opacity(0.65))
+                                .font(.system(size: 7, weight: .medium))
+                                .foregroundColor(theme.textMuted.opacity(0.45))
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
                     } else if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
@@ -696,8 +646,6 @@ struct EditProductSheet: View {
     @State private var showBarcodeScanner = false
     @State private var showProAlert = false
     @State private var showAbbreviateAlert = false
-    @State private var priceHasError = false
-    @State private var stockHasError = false
     
     var body: some View {
         NavigationStack {
@@ -800,57 +748,13 @@ struct EditProductSheet: View {
                             }
                             HStack {
                                 Text("Price $").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $priceText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .keyboardType(.decimalPad)
-                                    .foregroundColor(priceHasError ? .red : .primary)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 5)
-                                            .stroke(priceHasError ? Color.red : Color.clear, lineWidth: 1)
-                                    )
-                                    .onChange(of: priceText) { _, newValue in
-                                        // Filter out non-numeric characters (allow digits and decimal point)
-                                        let filtered = newValue.filter { $0.isNumber || $0 == "." }
-                                        if filtered != newValue {
-                                            priceText = filtered
-                                            priceHasError = true
-                                        } else {
-                                            priceHasError = false
-                                        }
-                                        if let d = Double(filtered) { product.price = d }
-                                    }
-                                if priceHasError {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                        .foregroundColor(.red)
-                                        .font(.system(size: 14))
-                                }
+                                TextField("0", text: $priceText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
+                                    .onChange(of: priceText) { _, v in if let d = Double(v) { product.price = d } }
                             }
                             HStack {
                                 Text("Stock").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $stockText)
-                                    .textFieldStyle(.roundedBorder)
-                                    .keyboardType(.numberPad)
-                                    .foregroundColor(stockHasError ? .red : .primary)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 5)
-                                            .stroke(stockHasError ? Color.red : Color.clear, lineWidth: 1)
-                                    )
-                                    .onChange(of: stockText) { _, newValue in
-                                        // Filter out non-numeric characters (digits only)
-                                        let filtered = newValue.filter { $0.isNumber }
-                                        if filtered != newValue {
-                                            stockText = filtered
-                                            stockHasError = true
-                                        } else {
-                                            stockHasError = false
-                                        }
-                                        if let i = Int(filtered) { product.stock = i }
-                                    }
-                                if stockHasError {
-                                    Image(systemName: "exclamationmark.circle.fill")
-                                        .foregroundColor(.red)
-                                        .font(.system(size: 14))
-                                }
+                                TextField("0", text: $stockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
+                                    .onChange(of: stockText) { _, v in if let i = Int(v) { product.stock = i } }
                             }
                         }
                         .padding()
@@ -1007,164 +911,16 @@ struct EditProductSheet: View {
     }
 }
 
-// MARK: - Product Image Picker - Clean Inline Design
-struct ProductImagePicker: View {
-    let onImageSelected: (UIImage) -> Void
-    @Environment(\.dismiss) var dismiss
-    
-    @State private var selectedImage: UIImage?
-    @State private var showCamera = false
-    @State private var showPhotoLibrary = false
-    
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                Spacer()
-                
-                if let image = selectedImage {
-                    // Preview the selected/cropped image
-                    VStack(spacing: 20) {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 180, height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: 16))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                            )
-                            .shadow(color: .black.opacity(0.3), radius: 8)
-                        
-                        Text("Preview")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(.gray)
-                        
-                        HStack(spacing: 16) {
-                            Button {
-                                selectedImage = nil
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "arrow.counterclockwise")
-                                    Text("Re-select")
-                                }
-                                .font(.system(size: 14, weight: .medium))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(Color.white.opacity(0.15))
-                                .cornerRadius(10)
-                            }
-                            
-                            Button {
-                                onImageSelected(image)
-                                dismiss()
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "checkmark")
-                                    Text("Use Image")
-                                }
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 12)
-                                .background(Color.green)
-                                .cornerRadius(10)
-                            }
-                        }
-                    }
-                } else {
-                    // Source selection buttons
-                    VStack(spacing: 20) {
-                        Image(systemName: "photo.badge.plus")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray.opacity(0.4))
-                        
-                        Text("Choose Image Source")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(.white.opacity(0.9))
-                        
-                        VStack(spacing: 12) {
-                            Button {
-                                showCamera = true
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "camera.fill")
-                                        .font(.system(size: 18))
-                                    Text("Take Photo")
-                                        .font(.system(size: 15, weight: .medium))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.gray)
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 16)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(12)
-                            }
-                            
-                            Button {
-                                showPhotoLibrary = true
-                            } label: {
-                                HStack(spacing: 12) {
-                                    Image(systemName: "photo.on.rectangle")
-                                        .font(.system(size: 18))
-                                    Text("Photo Library")
-                                        .font(.system(size: 15, weight: .medium))
-                                    Spacer()
-                                    Image(systemName: "chevron.right")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(.gray)
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 16)
-                                .background(Color.white.opacity(0.1))
-                                .cornerRadius(12)
-                            }
-                        }
-                        .padding(.horizontal, 40)
-                    }
-                }
-                
-                Spacer()
-            }
-            .navigationTitle("Add Image")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                    .foregroundColor(.white)
-                }
-            }
-            .sheet(isPresented: $showCamera) {
-                DirectImagePicker(sourceType: .camera) { image in
-                    selectedImage = image
-                }
-            }
-            .sheet(isPresented: $showPhotoLibrary) {
-                DirectImagePicker(sourceType: .photoLibrary) { image in
-                    selectedImage = image
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Direct Image Picker (Camera or Library)
-struct DirectImagePicker: UIViewControllerRepresentable {
-    let sourceType: UIImagePickerController.SourceType
+// MARK: - Product Image Picker
+struct ProductImagePicker: UIViewControllerRepresentable {
     let onImageSelected: (UIImage) -> Void
     @Environment(\.dismiss) var dismiss
     
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
         picker.delegate = context.coordinator
-        picker.sourceType = sourceType
-        picker.allowsEditing = true // Built-in iOS crop
+        picker.sourceType = .photoLibrary
+        picker.allowsEditing = true
         return picker
     }
     
@@ -1175,20 +931,17 @@ struct DirectImagePicker: UIViewControllerRepresentable {
     }
     
     class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: DirectImagePicker
+        let parent: ProductImagePicker
         
-        init(_ parent: DirectImagePicker) {
+        init(_ parent: ProductImagePicker) {
             self.parent = parent
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            // Prefer edited (cropped) image
-            if let editedImage = info[.editedImage] as? UIImage {
-                parent.onImageSelected(editedImage)
-            } else if let originalImage = info[.originalImage] as? UIImage {
-                // Crop to square from center
-                let croppedImage = cropToSquare(originalImage)
-                parent.onImageSelected(croppedImage)
+            if let edited = info[.editedImage] as? UIImage {
+                parent.onImageSelected(edited)
+            } else if let original = info[.originalImage] as? UIImage {
+                parent.onImageSelected(original)
             }
             parent.dismiss()
         }
@@ -1196,21 +949,8 @@ struct DirectImagePicker: UIViewControllerRepresentable {
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             parent.dismiss()
         }
-        
-        private func cropToSquare(_ image: UIImage) -> UIImage {
-            let size = min(image.size.width, image.size.height)
-            let x = (image.size.width - size) / 2
-            let y = (image.size.height - size) / 2
-            let cropRect = CGRect(x: x, y: y, width: size, height: size)
-            
-            guard let cgImage = image.cgImage?.cropping(to: cropRect) else {
-                return image
-            }
-            return UIImage(cgImage: cgImage, scale: image.scale, orientation: image.imageOrientation)
-        }
     }
 }
-
 
 #Preview {
     ZStack {
