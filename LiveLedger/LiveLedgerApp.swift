@@ -36,7 +36,8 @@ struct RootView: View {
     var body: some View {
         if authManager.isAuthenticated {
             if hasCompletedOnboarding {
-                MainContentView(authManager: authManager, localization: localization)
+                // Main app with bottom navigation bar (5 tabs)
+                MainTabView(authManager: authManager, localization: localization)
             } else {
                 OnboardingView(localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
             }
