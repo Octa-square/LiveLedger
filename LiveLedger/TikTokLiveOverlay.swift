@@ -106,62 +106,62 @@ struct TikTokLiveOverlayView: View {
     private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
+        // Only render when visible - don't use GeometryReader as wrapper to avoid blocking content
         if overlayManager.isOverlayVisible {
             GeometryReader { geometry in
-                ZStack {
-                    // Overlay widget
-                    VStack(spacing: 0) {
-                        if overlayManager.isExpanded {
-                            expandedView
-                        } else {
-                            compactView
-                        }
+                // Overlay widget - positioned absolutely
+                VStack(spacing: 0) {
+                    if overlayManager.isExpanded {
+                        expandedView
+                    } else {
+                        compactView
                     }
-                    .scaleEffect(overlayManager.overlayScale * currentScale)
-                    .background(
-                        RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
-                            .fill(theme.cardBackground.opacity(overlayManager.overlayTransparency))
-                            .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
-                            .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
-                    )
-                    .position(
-                        x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, maxValue: geometry.size.width),
-                        y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, maxValue: geometry.size.height)
-                    )
-                    // Drag gesture for moving
-                    .gesture(
-                        DragGesture()
-                            .onChanged { value in
-                                dragOffset = value.translation
-                            }
-                            .onEnded { value in
-                                overlayManager.overlayPosition.x += value.translation.width
-                                overlayManager.overlayPosition.y += value.translation.height
-                                // Clamp position to screen bounds
-                                overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, maxValue: geometry.size.width)
-                                overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, maxValue: geometry.size.height)
-                                dragOffset = .zero
-                                overlayManager.saveSettings()
-                            }
-                    )
-                    // Pinch gesture for resizing
-                    .simultaneousGesture(
-                        MagnificationGesture()
-                            .onChanged { value in
-                                currentScale = value
-                            }
-                            .onEnded { value in
-                                let newScale = overlayManager.overlayScale * value
-                                overlayManager.overlayScale = min(max(newScale, overlayManager.minScale), overlayManager.maxScale)
-                                currentScale = 1.0
-                                overlayManager.saveSettings()
-                            }
-                    )
                 }
+                .scaleEffect(overlayManager.overlayScale * currentScale)
+                .background(
+                    RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
+                        .fill(theme.cardBackground.opacity(overlayManager.overlayTransparency))
+                        .shadow(color: .black.opacity(0.3), radius: 10, y: 5)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: overlayManager.isExpanded ? 16 : 24)
+                        .strokeBorder(theme.accentColor.opacity(0.3), lineWidth: 1)
+                )
+                .position(
+                    x: clampPosition(overlayManager.overlayPosition.x + dragOffset.width, maxValue: geometry.size.width),
+                    y: clampPosition(overlayManager.overlayPosition.y + dragOffset.height, maxValue: geometry.size.height)
+                )
+                // Drag gesture for moving
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            dragOffset = value.translation
+                        }
+                        .onEnded { value in
+                            overlayManager.overlayPosition.x += value.translation.width
+                            overlayManager.overlayPosition.y += value.translation.height
+                            // Clamp position to screen bounds
+                            overlayManager.overlayPosition.x = clampPosition(overlayManager.overlayPosition.x, maxValue: geometry.size.width)
+                            overlayManager.overlayPosition.y = clampPosition(overlayManager.overlayPosition.y, maxValue: geometry.size.height)
+                            dragOffset = .zero
+                            overlayManager.saveSettings()
+                        }
+                )
+                // Pinch gesture for resizing
+                .simultaneousGesture(
+                    MagnificationGesture()
+                        .onChanged { value in
+                            currentScale = value
+                        }
+                        .onEnded { value in
+                            let newScale = overlayManager.overlayScale * value
+                            overlayManager.overlayScale = Swift.min(Swift.max(newScale, overlayManager.minScale), overlayManager.maxScale)
+                            currentScale = 1.0
+                            overlayManager.saveSettings()
+                        }
+                )
             }
+            .allowsHitTesting(true)
             .transition(.scale.combined(with: .opacity))
         }
     }
