@@ -586,7 +586,7 @@ class SalesViewModel: ObservableObject {
     func resetTimer() {
         // Play stop sound when timer was active
         if isTimerRunning || isTimerPaused || sessionElapsedTime > 0 {
-            soundManager.playTimerStopSound()
+            SoundManager.shared.playTimerStopSound()
         }
         
         stopTimerLoop()

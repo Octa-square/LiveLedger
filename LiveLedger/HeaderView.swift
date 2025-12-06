@@ -1186,15 +1186,15 @@ struct LiveLedgerLogoMini: View {
                 .offset(x: 8, y: -8)
             
             // L² - Bold L with superscript 2 (represents "Live Ledger")
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: -1) {  // Negative spacing for tighter L²
                 Text("L")
                     .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: 9, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.9))
-                    .offset(y: 1)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))  // Larger, same visual weight
+                    .foregroundColor(.white)
+                    .offset(y: 0)  // Tighter positioning
             }
             .offset(x: -2, y: 2)
             

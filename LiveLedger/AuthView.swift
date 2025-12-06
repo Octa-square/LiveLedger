@@ -265,17 +265,16 @@ struct LiveLedgerLogo: View {
                 .frame(width: size, height: size)
             
             // L² - L with superscript 2 (represents "Live Ledger" - two L's)
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .top, spacing: -size * 0.02) {  // Negative spacing to bring 2 closer
                 Text("L")
                     .font(.system(size: size * 0.48, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: size * 0.22, weight: .bold, design: .rounded))
-                    .foregroundColor(.white.opacity(0.9))
-                    .offset(y: size * 0.05)
+                    .font(.system(size: size * 0.28, weight: .medium, design: .rounded))  // Larger, same visual weight
+                    .foregroundColor(.white)
+                    .offset(y: size * 0.02)  // Tighter to top of L
             }
-            .offset(x: size * 0.02)
             
             // LIVE badge
             Text("LIVE")
