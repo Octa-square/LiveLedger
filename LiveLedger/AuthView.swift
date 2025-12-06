@@ -14,13 +14,17 @@ struct AppUser: Codable {
     var email: String
     var passwordHash: String  // Simple hash for local storage
     var name: String
+    var phoneNumber: String?  // Optional for backwards compatibility
     var companyName: String
+    var storeAddress: String?  // Store address for receipts
+    var businessPhone: String?  // Business phone number
     var currency: String
     var isPro: Bool
     var ordersUsed: Int
     var exportsUsed: Int
     var referralCode: String
     var createdAt: Date
+    var profileImageData: Data?  // Profile picture
     
     static let currencies = [
         "USD ($)", "EUR (€)", "GBP (£)", "NGN (₦)", "CAD ($)", "AUD ($)", 
@@ -102,19 +106,23 @@ class AuthManager: ObservableObject {
         }
     }
     
-    func signUp(email: String, name: String, password: String, companyName: String, currency: String, referralCode: String) {
+    func signUp(email: String, name: String, password: String, companyName: String, currency: String, referralCode: String, phoneNumber: String = "") {
         let user = AppUser(
             id: UUID().uuidString,
             email: email.lowercased().trimmingCharacters(in: .whitespaces),
             passwordHash: simpleHash(password),
             name: name,
+            phoneNumber: phoneNumber.isEmpty ? nil : phoneNumber,
             companyName: companyName,
+            storeAddress: nil,
+            businessPhone: nil,
             currency: currency,
             isPro: false,
             ordersUsed: 0,
             exportsUsed: 0,
             referralCode: referralCode,
-            createdAt: Date()
+            createdAt: Date(),
+            profileImageData: nil
         )
         currentUser = user
         isAuthenticated = true
@@ -196,6 +204,11 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "livesales_platforms")
     }
     
+    func updatePassword(newPassword: String) {
+        currentUser?.passwordHash = simpleHash(newPassword)
+        saveUser()
+    }
+    
     /// Demo mode for App Store review - creates a pre-configured account with sample data
     func startDemoMode() {
         // Create demo user with Pro access
@@ -204,13 +217,17 @@ class AuthManager: ObservableObject {
             email: "demo@liveledger.app",
             passwordHash: simpleHash("demo123"),
             name: "Demo User",
+            phoneNumber: nil,
             companyName: "Demo Store",
+            storeAddress: "123 Demo Street",
+            businessPhone: nil,
             currency: "USD ($)",
             isPro: true, // Pro access to test all features
             ordersUsed: 0,
             exportsUsed: 0,
             referralCode: "DEMO2024",
-            createdAt: Date()
+            createdAt: Date(),
+            profileImageData: nil
         )
         
         currentUser = demoUser
@@ -272,6 +289,7 @@ struct AuthView: View {
     @State private var isLoginMode = false  // Toggle between Login and Sign Up
     @State private var email = ""
     @State private var name = ""
+    @State private var phoneNumber = ""
     @State private var password = ""
     @State private var confirmPassword = ""
     @State private var companyName = ""
@@ -318,9 +336,9 @@ struct AuthView: View {
                     // Top spacing
                     Spacer(minLength: 8)
                     
-                    // Compact Logo
+                    // Logo (30-40% larger)
                     VStack(spacing: 6) {
-                        LiveLedgerLogo(size: isLoginMode ? 70 : 60)
+                        LiveLedgerLogo(size: isLoginMode ? 85 : 80)
                         
                         Text("LiveLedger")
                             .font(.system(size: isLoginMode ? 28 : 24, weight: .bold, design: .rounded))
@@ -428,6 +446,35 @@ struct AuthView: View {
                     )
                     .padding(.horizontal, 24)
                     
+                    // Features List - Compact 2-column grid
+                    if !isLoginMode {
+                        VStack(spacing: 4) {
+                            Text("Why LiveLedger?")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.white.opacity(0.8))
+                            
+                            LazyVGrid(columns: [
+                                GridItem(.flexible(), spacing: 4),
+                                GridItem(.flexible(), spacing: 4)
+                            ], spacing: 3) {
+                                CompactFeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Real-time tracking")
+                                CompactFeatureItem(icon: "apps.iphone", text: "Multi-platform")
+                                CompactFeatureItem(icon: "timer", text: "Live timer")
+                                CompactFeatureItem(icon: "network", text: "Network analyzer")
+                                CompactFeatureItem(icon: "bell.badge", text: "Smart alerts")
+                                CompactFeatureItem(icon: "chart.pie", text: "Analytics")
+                                CompactFeatureItem(icon: "printer", text: "Print & export")
+                                CompactFeatureItem(icon: "speaker.wave.2", text: "Sound notifications")
+                                CompactFeatureItem(icon: "chart.bar.xaxis", text: "Comparisons")
+                                CompactFeatureItem(icon: "photo", text: "Image editing")
+                                CompactFeatureItem(icon: "plus.circle", text: "Custom platforms")
+                                CompactFeatureItem(icon: "line.3.horizontal.decrease", text: "Order filtering")
+                            }
+                        }
+                        .padding(.horizontal, 24)
+                        .padding(.top, 4)
+                    }
+                    
                     // Bottom spacing
                     Spacer(minLength: 8)
                 }
@@ -511,6 +558,9 @@ struct AuthView: View {
                 CompactTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
                 CompactTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
             }
+            
+            // Row 1.5: Phone number
+            CompactTextField(placeholder: "Phone Number (optional)", text: $phoneNumber, icon: "phone.fill", keyboardType: .phonePad)
             
             // Row 2: Password with validation
             VStack(alignment: .leading, spacing: 2) {
@@ -695,7 +745,8 @@ struct AuthView: View {
                         password: password,
                         companyName: companyName.isEmpty ? "My Store" : companyName,
                         currency: selectedCurrency,
-                        referralCode: referralCode
+                        referralCode: referralCode,
+                        phoneNumber: phoneNumber
                     )
                 }
             } label: {
@@ -758,7 +809,7 @@ struct CompactTextField: View {
                 .font(.caption)
                 .foregroundColor(.white.opacity(0.7))
                 .frame(width: 16)
-            TextField(placeholder, text: $text)
+            TextField("", text: $text, prompt: Text(placeholder).foregroundColor(.white.opacity(0.5)))
                 .font(.caption)
                 .foregroundColor(.white)
                 .keyboardType(keyboardType)
@@ -790,6 +841,27 @@ struct FeatureRow: View {
                 .foregroundColor(.white)
         }
         .padding(.horizontal)
+    }
+}
+
+// Compact feature item for signup page grid
+struct CompactFeatureItem: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: icon)
+                .font(.system(size: 9))
+                .foregroundColor(.green)
+            Text(text)
+                .font(.system(size: 9, weight: .medium))
+                .foregroundColor(.white.opacity(0.85))
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
     }
 }
 

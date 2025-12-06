@@ -16,12 +16,44 @@ struct OnboardingView: View {
     // Flag to check if it's being shown from settings (re-tutorial)
     var isReTutorial: Bool = false
     
-    let pages: [(icon: String, color: Color, titleKey: String, descriptionKey: LocalizedKey)] = [
-        ("bag.fill.badge.plus", .green, "Products & Orders", .tutorialProducts),
-        ("list.clipboard.fill", .blue, "Track Everything", .tutorialOrders),
-        ("apps.iphone", .pink, "Multi-Platform", .tutorialPlatforms),
-        ("chart.bar.fill", .purple, "Analytics", .tutorialAnalytics),
-        ("square.and.arrow.up.fill", .orange, "Export & Print", .tutorialExport)
+    // Enhanced tutorial pages with detailed descriptions
+    let pages: [TutorialPage] = [
+        TutorialPage(
+            icon: "bag.fill.badge.plus",
+            color: .green,
+            title: "Products & Orders",
+            description: "Add your products with images and prices. Tap to record a sale instantly, or hold to edit product details. Track every order with timestamps and platform attribution."
+        ),
+        TutorialPage(
+            icon: "apps.iphone",
+            color: .pink,
+            title: "Multi-Platform Sales",
+            description: "Sell across TikTok, Instagram, Facebook, and custom platforms. Filter orders by platform to see which channels perform best. Add unlimited custom platforms for your business."
+        ),
+        TutorialPage(
+            icon: "timer",
+            color: .orange,
+            title: "Live Timer & Sounds",
+            description: "Track your live sessions with the built-in timer. Customize sounds for timer start and order notifications. Stay focused while the app handles the tracking."
+        ),
+        TutorialPage(
+            icon: "network",
+            color: .cyan,
+            title: "Network Analyzer",
+            description: "Monitor your connection quality before going live. Test bandwidth, latency, and get quality assessments. Ensure smooth streaming with real-time network status."
+        ),
+        TutorialPage(
+            icon: "chart.bar.fill",
+            color: .purple,
+            title: "Analytics & Comparisons",
+            description: "View detailed sales analytics with beautiful charts. Compare monthly performance, track top-selling products, and analyze platform breakdowns to grow your business."
+        ),
+        TutorialPage(
+            icon: "square.and.arrow.up.fill",
+            color: .blue,
+            title: "Export & Print",
+            description: "Export orders to Excel/CSV for record keeping. Print daily sales reports or individual receipts. Filter exports by platform and date range."
+        )
     ]
     
     var body: some View {
@@ -34,59 +66,56 @@ struct OnboardingView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Logo/Welcome Header
-                VStack(spacing: 8) {
-                    LiveLedgerLogoMini()
-                        .scaleEffect(1.2)
-                    
-                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .padding(.top, 40)
-                .padding(.bottom, 10)
-                
-                // Skip button
+                // Top bar with Skip button
                 HStack {
                     Spacer()
                     Button {
                         completeOnboarding()
                     } label: {
                         Text(localization.localized(.skip))
-                            .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white.opacity(0.8))
                             .padding(.horizontal, 16)
                             .padding(.vertical, 8)
+                            .background(Color.white.opacity(0.15))
+                            .cornerRadius(16)
                     }
-
                 }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                
+                // Logo/Welcome Header (larger logo)
+                VStack(spacing: 6) {
+                    LiveLedgerLogoMini()
+                        .scaleEffect(1.6)  // 30-40% larger
+                    
+                    Text("\(localization.localized(.welcomeTo)) LiveLedger")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.white)
+                }
+                .padding(.top, 12)
+                .padding(.bottom, 8)
                 
                 // Page content
                 TabView(selection: $currentPage) {
                     ForEach(0..<pages.count, id: \.self) { index in
-                        OnboardingPage(
-                            icon: pages[index].icon,
-                            color: pages[index].color,
-                            title: pages[index].titleKey,
-                            description: localization.localized(pages[index].descriptionKey),
-                            localization: localization
-                        )
+                        CompactOnboardingPage(page: pages[index])
                             .tag(index)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 
                 // Page indicators
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     ForEach(0..<pages.count, id: \.self) { index in
                         Circle()
                             .fill(currentPage == index ? Color.white : Color.white.opacity(0.3))
-                            .frame(width: 8, height: 8)
-                            .scaleEffect(currentPage == index ? 1.2 : 1.0)
+                            .frame(width: 6, height: 6)
+                            .scaleEffect(currentPage == index ? 1.3 : 1.0)
                             .animation(.spring(response: 0.3), value: currentPage)
                     }
                 }
-                .padding(.bottom, 30)
+                .padding(.bottom, 16)
                 
                 // Next/Get Started button
                 Button {
@@ -99,15 +128,15 @@ struct OnboardingView: View {
                     }
                 } label: {
                     Text(currentPage < pages.count - 1 ? localization.localized(.next) : localization.localized(.letsGo))
-                        .font(.headline)
+                        .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 14)
                         .background(Color.white)
-                        .cornerRadius(12)
+                        .cornerRadius(10)
                 }
-                .padding(.horizontal, 40)
-                .padding(.bottom, 40)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 24)
             }
         }
     }
@@ -124,6 +153,57 @@ struct OnboardingView: View {
     }
 }
 
+// MARK: - Tutorial Page Model
+struct TutorialPage {
+    let icon: String
+    let color: Color
+    let title: String
+    let description: String
+}
+
+// MARK: - Compact Onboarding Page (reduced spacing by 40-50%)
+struct CompactOnboardingPage: View {
+    let page: TutorialPage
+    
+    var body: some View {
+        VStack(spacing: 16) {  // Reduced from 30
+            Spacer()
+            
+            // Icon (slightly smaller)
+            ZStack {
+                Circle()
+                    .fill(page.color.opacity(0.2))
+                    .frame(width: 120, height: 120)  // Reduced from 160
+                
+                Circle()
+                    .fill(page.color.opacity(0.3))
+                    .frame(width: 90, height: 90)  // Reduced from 120
+                
+                Image(systemName: page.icon)
+                    .font(.system(size: 40))  // Reduced from 50
+                    .foregroundColor(.white)
+            }
+            
+            // Title
+            Text(page.title)
+                .font(.system(size: 22, weight: .bold))  // Reduced from 28
+                .foregroundColor(.white)
+            
+            // Description (2-3 sentences)
+            Text(page.description)
+                .font(.system(size: 14))  // Smaller font
+                .foregroundColor(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.horizontal, 28)  // Reduced from 40
+                .fixedSize(horizontal: false, vertical: true)
+            
+            Spacer()
+        }
+    }
+}
+
+// Legacy support
 struct OnboardingPage: View {
     let icon: String
     let color: Color
@@ -132,39 +212,7 @@ struct OnboardingPage: View {
     let localization: LocalizationManager
     
     var body: some View {
-        VStack(spacing: 30) {
-            Spacer()
-            
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(color.opacity(0.2))
-                    .frame(width: 160, height: 160)
-                
-                Circle()
-                    .fill(color.opacity(0.3))
-                    .frame(width: 120, height: 120)
-                
-                Image(systemName: icon)
-                    .font(.system(size: 50))
-                    .foregroundColor(.white)
-            }
-            
-            // Title
-            Text(title)
-                .font(.system(size: 28, weight: .bold))
-                .foregroundColor(.white)
-            
-            // Description
-            Text(description)
-                .font(.body)
-                .foregroundColor(.white.opacity(0.8))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            
-            Spacer()
-            Spacer()
-        }
+        CompactOnboardingPage(page: TutorialPage(icon: icon, color: color, title: title, description: description))
     }
 }
 
