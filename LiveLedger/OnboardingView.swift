@@ -84,17 +84,17 @@ struct OnboardingView: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
                 
-                // Logo/Welcome Header (larger logo)
-                VStack(spacing: 6) {
+                // Logo/Welcome Header (larger logo, smaller text)
+                VStack(spacing: 4) {
                     LiveLedgerLogoMini()
-                        .scaleEffect(1.6)  // 30-40% larger
+                        .scaleEffect(2.0)  // Much larger logo
                     
                     Text("\(localization.localized(.welcomeTo)) LiveLedger")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.white)
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.9))
                 }
-                .padding(.top, 12)
-                .padding(.bottom, 8)
+                .padding(.top, 8)
+                .padding(.bottom, 0)  // Remove bottom padding - let content flow closer
                 
                 // Page content
                 TabView(selection: $currentPage) {
@@ -161,44 +161,45 @@ struct TutorialPage {
     let description: String
 }
 
-// MARK: - Compact Onboarding Page (reduced spacing by 40-50%)
+// MARK: - Compact Onboarding Page (tight spacing)
 struct CompactOnboardingPage: View {
     let page: TutorialPage
     
     var body: some View {
-        VStack(spacing: 16) {  // Reduced from 30
-            Spacer()
+        VStack(spacing: 10) {  // Tight spacing
+            Spacer(minLength: 10)  // Small top spacer instead of flexible
             
-            // Icon (slightly smaller)
+            // Icon - compact size
             ZStack {
                 Circle()
                     .fill(page.color.opacity(0.2))
-                    .frame(width: 120, height: 120)  // Reduced from 160
+                    .frame(width: 100, height: 100)
                 
                 Circle()
                     .fill(page.color.opacity(0.3))
-                    .frame(width: 90, height: 90)  // Reduced from 120
+                    .frame(width: 75, height: 75)
                 
                 Image(systemName: page.icon)
-                    .font(.system(size: 40))  // Reduced from 50
+                    .font(.system(size: 32))
                     .foregroundColor(.white)
             }
             
-            // Title
+            // Title - closer to icon
             Text(page.title)
-                .font(.system(size: 22, weight: .bold))  // Reduced from 28
+                .font(.system(size: 20, weight: .bold))
                 .foregroundColor(.white)
+                .padding(.top, 4)
             
-            // Description (2-3 sentences)
+            // Description - compact
             Text(page.description)
-                .font(.system(size: 14))  // Smaller font
+                .font(.system(size: 13))
                 .foregroundColor(.white.opacity(0.85))
                 .multilineTextAlignment(.center)
-                .lineSpacing(3)
-                .padding(.horizontal, 28)  // Reduced from 40
+                .lineSpacing(2)
+                .padding(.horizontal, 24)
                 .fixedSize(horizontal: false, vertical: true)
             
-            Spacer()
+            Spacer()  // Push content up, let bottom have more space
         }
     }
 }
