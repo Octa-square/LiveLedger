@@ -1161,7 +1161,6 @@ struct LiveLedgerLogoMini: View {
     private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41)
     private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)
     private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)
-    private let buttonGray = Color(red: 0.8, green: 0.84, blue: 0.88)
     
     var body: some View {
         ZStack {
@@ -1176,54 +1175,31 @@ struct LiveLedgerLogoMini: View {
             // Signal arcs (top right)
             MiniSignalArc()
                 .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
-                .frame(width: 16, height: 16)
-                .offset(x: 6, y: -5)
+                .frame(width: 14, height: 14)
+                .offset(x: 8, y: -8)
             
             MiniSignalArc()
                 .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
-                .frame(width: 11, height: 11)
-                .offset(x: 6, y: -5)
+                .frame(width: 10, height: 10)
+                .offset(x: 8, y: -8)
             
             MiniSignalArc()
                 .stroke(Color.white, lineWidth: 1.5)
                 .frame(width: 6, height: 6)
-                .offset(x: 6, y: -5)
+                .offset(x: 8, y: -8)
             
-            // Calculator body
-            ZStack {
-                RoundedRectangle(cornerRadius: 2)
-                    .fill(Color.white)
-                    .frame(width: 12, height: 16)
-                
-                // Screen
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(greenEnd)
-                    .frame(width: 9, height: 3)
-                    .offset(y: -5)
-                
-                // Buttons (2x3 grid)
-                VStack(spacing: 1) {
-                    HStack(spacing: 1) {
-                        miniButton
-                        miniButton
-                        miniButton
-                    }
-                    HStack(spacing: 1) {
-                        miniButton
-                        miniButton
-                        miniButton
-                    }
-                }
-                .offset(y: 2)
-                
-                // L stamped on calculator
+            // L² - Bold L with superscript 2 (represents "Live Ledger")
+            HStack(alignment: .top, spacing: 0) {
                 Text("L")
-                    .font(.system(size: 14, weight: .black, design: .rounded))
+                    .font(.system(size: 18, weight: .black, design: .rounded))
                     .foregroundColor(.white)
-                    .shadow(color: greenEnd, radius: 1, x: 0.5, y: 0.5)
-                    .offset(x: 5, y: -1)
+                
+                Text("²")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundColor(.white.opacity(0.9))
+                    .offset(y: 1)
             }
-            .offset(x: -5, y: 4)
+            .offset(x: -2, y: 2)
             
             // LIVE badge
             Text("LIVE")
@@ -1238,12 +1214,6 @@ struct LiveLedgerLogoMini: View {
                 .offset(x: -8, y: -14)
         }
         .frame(width: 40, height: 40)
-    }
-    
-    private var miniButton: some View {
-        RoundedRectangle(cornerRadius: 0.5)
-            .fill(buttonGray)
-            .frame(width: 2.5, height: 2)
     }
 }
 
