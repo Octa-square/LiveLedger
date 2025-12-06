@@ -1608,7 +1608,7 @@ struct ChangePasswordView: View {
     
     private func changePassword() {
         // Verify current password
-        if let error = authManager.signIn(email: authManager.currentUser?.email ?? "", password: currentPassword) {
+        if authManager.signIn(email: authManager.currentUser?.email ?? "", password: currentPassword) != nil {
             errorMessage = "Current password is incorrect"
             return
         }

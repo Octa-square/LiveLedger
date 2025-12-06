@@ -164,7 +164,7 @@ struct OrdersListView: View {
                     }
                     .padding(.vertical, 2)
                 }
-                .scrollIndicators(.always)
+                .scrollIndicators(.visible)
             }
         }
         .padding(10)
