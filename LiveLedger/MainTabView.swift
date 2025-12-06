@@ -294,7 +294,8 @@ struct HomeTabView: View {
                             )
                         }
                         
-                        // Orders Preview (shorter for home tab)
+                        // Orders Container - FULL 270pt HEIGHT (NEVER SHORTENED)
+                        // Bottom nav overlays this area, orders scroll above nav with internal padding
                         gridContainer {
                             OrdersListView(
                                 viewModel: viewModel,
@@ -302,11 +303,12 @@ struct HomeTabView: View {
                                 localization: localization,
                                 authManager: authManager
                             )
-                            .frame(minHeight: max(180, geometry.size.height * 0.25))
+                            .frame(minHeight: max(270, geometry.size.height * 0.38))
                         }
+                        .padding(.bottom, 80) // Internal padding so orders scroll above bottom nav
                     }
                     .padding(.top, 4)
-                    .padding(.bottom, 90) // Space for bottom nav bar
+                    .padding(.bottom, 0) // No extra bottom padding - Orders extends full height
                 }
                 
                 // TikTok Overlay
