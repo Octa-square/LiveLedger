@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Combine
+import PhotosUI
 
 // MARK: - Theme Definitions
 enum AppTheme: String, CaseIterable, Codable {
@@ -1301,6 +1302,7 @@ struct ProfileSettingsView: View {
     @State private var showChangePassword = false
     @State private var showImagePicker = false
     @State private var profileImage: UIImage?
+    @State private var selectedImageItem: PhotosPickerItem?
     
     var body: some View {
         NavigationStack {
@@ -1314,23 +1316,41 @@ struct ProfileSettingsView: View {
                                 Image(uiImage: image)
                                     .resizable()
                                     .scaledToFill()
-                                    .frame(width: 80, height: 80)
+                                    .frame(width: 100, height: 100)
                                     .clipShape(Circle())
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.green.opacity(0.5), lineWidth: 3)
+                                    )
                             } else {
                                 Circle()
                                     .fill(Color.gray.opacity(0.3))
-                                    .frame(width: 80, height: 80)
+                                    .frame(width: 100, height: 100)
                                     .overlay(
                                         Image(systemName: "person.fill")
-                                            .font(.system(size: 32))
+                                            .font(.system(size: 40))
                                             .foregroundColor(.gray)
                                     )
                             }
                             
-                            Button("Change Photo") {
-                                showImagePicker = true
+                            // PhotosPicker for iOS 16+
+                            PhotosPicker(selection: $selectedImageItem, matching: .images) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 12))
+                                    Text("Change Photo")
+                                        .font(.caption)
+                                }
+                                .foregroundColor(.blue)
                             }
-                            .font(.caption)
+                            .onChange(of: selectedImageItem) { _, newItem in
+                                Task {
+                                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                                       let image = UIImage(data: data) {
+                                        profileImage = image
+                                    }
+                                }
+                            }
                         }
                         Spacer()
                     }

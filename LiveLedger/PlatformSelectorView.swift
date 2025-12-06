@@ -156,56 +156,60 @@ struct PlatformSelectorView: View {
     }
     
     private var platformChips: some View {
-        HStack(spacing: 0) {
-            // Fixed centered section: All + 3 defaults (TikTok, Instagram, Facebook)
-            HStack(spacing: 8) {
-                // "All" button
-                PlatformChip(
-                    platform: .all,
-                    isSelected: viewModel.selectedPlatform == nil,
-                    theme: theme,
-                    onTap: { viewModel.selectedPlatform = nil },
-                    onDelete: nil
-                )
-                
-                // Default platforms (TikTok, Instagram, Facebook)
-                ForEach(defaultPlatforms) { platform in
+        VStack(spacing: 0) {
+            // All platforms in centered scrollable area
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // "All" button
                     PlatformChip(
-                        platform: platform,
-                        isSelected: viewModel.selectedPlatform?.id == platform.id,
+                        platform: .all,
+                        isSelected: viewModel.selectedPlatform == nil,
                         theme: theme,
-                        onTap: { viewModel.selectedPlatform = platform },
+                        onTap: { viewModel.selectedPlatform = nil },
                         onDelete: nil
                     )
-                }
-            }
-            
-            // Custom platforms in scrollable area (if any)
-            if !customPlatforms.isEmpty {
-                // Scroll indicator arrow
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(theme.textMuted.opacity(0.5))
-                    .padding(.horizontal, 4)
-                
-                ScrollView(.horizontal, showsIndicators: true) {
-                    HStack(spacing: 8) {
-                        ForEach(customPlatforms) { platform in
-                            PlatformChip(
-                                platform: platform,
-                                isSelected: viewModel.selectedPlatform?.id == platform.id,
-                                theme: theme,
-                                onTap: { viewModel.selectedPlatform = platform },
-                                onDelete: { viewModel.deletePlatform(platform) }
-                            )
-                        }
+                    
+                    // Default platforms (TikTok, Instagram, Facebook)
+                    ForEach(defaultPlatforms) { platform in
+                        PlatformChip(
+                            platform: platform,
+                            isSelected: viewModel.selectedPlatform?.id == platform.id,
+                            theme: theme,
+                            onTap: { viewModel.selectedPlatform = platform },
+                            onDelete: nil
+                        )
                     }
-                    .padding(.trailing, 4)
+                    
+                    // Custom platforms
+                    ForEach(customPlatforms) { platform in
+                        PlatformChip(
+                            platform: platform,
+                            isSelected: viewModel.selectedPlatform?.id == platform.id,
+                            theme: theme,
+                            onTap: { viewModel.selectedPlatform = platform },
+                            onDelete: { viewModel.deletePlatform(platform) }
+                        )
+                    }
                 }
-                .scrollIndicators(.visible)
+                .padding(.horizontal, 4)
+            }
+            .scrollIndicators(customPlatforms.isEmpty ? .hidden : .visible)
+            
+            // Scroll indicator (shows when custom platforms exist)
+            if !customPlatforms.isEmpty {
+                HStack(spacing: 4) {
+                    Spacer()
+                    Image(systemName: "arrow.left.arrow.right")
+                        .font(.system(size: 8))
+                    Text("Scroll for more")
+                        .font(.system(size: 8))
+                    Spacer()
+                }
+                .foregroundColor(theme.textMuted.opacity(0.5))
+                .padding(.top, 2)
             }
         }
-        .frame(height: 50)
+        .frame(height: customPlatforms.isEmpty ? 44 : 56)
     }
     
     var body: some View {
@@ -279,31 +283,26 @@ struct PlatformChip: View {
     let onTap: () -> Void
     let onDelete: (() -> Void)?
     
+    // Uniform sizing for all platform chips
+    private let chipWidth: CGFloat = 70
+    private let chipHeight: CGFloat = 36
+    
     @State private var showDeleteConfirm = false
     
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 4) {
+            VStack(spacing: 2) {
                 // Icon with platform color
                 Image(systemName: platform.icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                 
                 Text(platform.name)
-                    .font(.system(size: 12, weight: .bold))
-                
-                if onDelete != nil {
-                    Button {
-                        showDeleteConfirm = true
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 10))
-                            .foregroundColor(theme.textMuted.opacity(0.6))
-                    }
-                }
+                    .font(.system(size: 9, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundColor(platform.swiftUIColor)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+            .frame(width: chipWidth, height: chipHeight)
             .background(
                 RoundedRectangle(cornerRadius: 8)
                     .fill(isSelected ? platform.swiftUIColor.opacity(0.15) : theme.cardBackground)
@@ -314,6 +313,19 @@ struct PlatformChip: View {
                 RoundedRectangle(cornerRadius: 8)
                     .strokeBorder(isSelected ? platform.swiftUIColor : theme.cardBorder, lineWidth: isSelected ? 1.5 : 1)
             )
+            .overlay(alignment: .topTrailing) {
+                // Delete button for custom platforms
+                if onDelete != nil {
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(theme.textMuted.opacity(0.6))
+                    }
+                    .offset(x: 4, y: -4)
+                }
+            }
             .scaleEffect(isSelected ? 1.02 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
         }

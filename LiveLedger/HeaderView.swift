@@ -151,25 +151,22 @@ struct HeaderView: View {
                 StatCard(title: "Total Orders", amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
             }
             
-            // Action Buttons Row
-            HStack(spacing: 8) {
-                Spacer()
+            // Action Buttons Row - Centered with equal spacing
+            HStack(spacing: 10) {
+                // Centered group of 3 uniform buttons
+                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
+                    showClearOptions = true
+                }
                 
-                // Action Buttons - Clear, Export, Print
-                HStack(spacing: 6) {
-                    ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
-                        showClearOptions = true
-                    }
-                    
-                    ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
-                        showExportOptions = true
-                    }
-                    
-                    ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
-                        showPrintOptions = true
-                    }
+                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
+                    showExportOptions = true
+                }
+                
+                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
+                    showPrintOptions = true
                 }
             }
+            .frame(maxWidth: .infinity)  // Center the button group
         }
         .padding(12)
         .background(
