@@ -19,20 +19,35 @@ struct MainContentView: View {
     
     private var theme: AppTheme { themeManager.currentTheme }
     
-    // Semi-transparent container background - lets wallpaper show through
-    private var containerBackground: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(Color.black.opacity(0.65))
+    // GRID CONTAINER STYLE - Green border, rounded corners, semi-transparent
+    // All containers use IDENTICAL styling
+    private let containerCornerRadius: CGFloat = 12
+    private let containerBorderColor: Color = Color(red: 0, green: 0.8, blue: 0.53) // #00cc88 green
+    private let containerBorderWidth: CGFloat = 2
+    private let containerBackground: Color = Color.black.opacity(0.75)
+    private let horizontalMargin: CGFloat = 11 // 22pt total from edge (11 + 11 padding)
+    private let internalPadding: CGFloat = 12
+    private let containerSpacing: CGFloat = 12
+    
+    // Reusable container modifier
+    private func gridContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        content()
+            .padding(internalPadding)
             .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
+                RoundedRectangle(cornerRadius: containerCornerRadius)
+                    .fill(containerBackground)
             )
+            .overlay(
+                RoundedRectangle(cornerRadius: containerCornerRadius)
+                    .strokeBorder(containerBorderColor, lineWidth: containerBorderWidth)
+            )
+            .padding(.horizontal, horizontalMargin)
     }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // LAYER 1: WALLPAPER - Full screen, visible throughout
+                // LAYER 1: WALLPAPER - Full screen, visible throughout (NO BLACK AT BOTTOM)
                 Image(theme.backgroundImageName)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
@@ -44,15 +59,12 @@ struct MainContentView: View {
                 Color.black.opacity(0.15)
                     .ignoresSafeArea(.all)
                 
-                // LAYER 3: CONTENT - Semi-transparent containers
-                // ALIGNMENT: All sections use consistent 11pt outer margin for edge alignment
-                let horizontalMargin: CGFloat = 11
-                let internalPadding: CGFloat = 11
-                
+                // LAYER 3: CONTENT - Grid containers with green borders
+                // All containers have IDENTICAL styling: green border, 12px rounded corners ALL FOUR SIDES
                 ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: 10) {
-                        // HEADER SECTION (Stats, Action Buttons, Platform)
-                        VStack(spacing: 8) {
+                    VStack(spacing: containerSpacing) {
+                        // CONTAINER 1: Header + Stats + Action Buttons
+                        gridContainer {
                             HeaderView(
                                 viewModel: viewModel,
                                 themeManager: themeManager,
@@ -61,75 +73,53 @@ struct MainContentView: View {
                                 showSettings: $showSettings,
                                 showSubscription: $showSubscription
                             )
-                            
+                        }
+                        
+                        // CONTAINER 2: Platform Section
+                        gridContainer {
                             PlatformSelectorView(
                                 viewModel: viewModel,
                                 themeManager: themeManager,
                                 localization: localization
                             )
                         }
-                        .padding(internalPadding)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.black.opacity(0.6))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(.ultraThinMaterial)
-                                )
-                        )
-                        .padding(.horizontal, horizontalMargin)
                         
-                        // FREE TIER BANNER (if applicable)
+                        // FREE TIER BANNER (if applicable) - same styling
                         if let user = authManager.currentUser, !user.isPro {
-                            FreeTierBanner(user: user, theme: theme) {
-                                showSubscription = true
+                            gridContainer {
+                                FreeTierBannerContent(user: user, theme: theme) {
+                                    showSubscription = true
+                                }
                             }
-                            .padding(.horizontal, horizontalMargin)
                         }
                         
-                        // MY PRODUCTS SECTION
-                        QuickAddView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            authManager: authManager,
-                            localization: localization,
-                            onLimitReached: {
-                                limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                                showLimitAlert = true
-                            }
-                        )
-                        .padding(internalPadding)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color.black.opacity(0.6))
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(.ultraThinMaterial)
-                                )
-                        )
-                        .padding(.horizontal, horizontalMargin)
+                        // CONTAINER 3: My Products Section
+                        gridContainer {
+                            QuickAddView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                authManager: authManager,
+                                localization: localization,
+                                onLimitReached: {
+                                    limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                    showLimitAlert = true
+                                }
+                            )
+                        }
                         
-                        // ORDERS SECTION - extended down with wavy bottom
-                        OrdersListView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            localization: localization,
-                            authManager: authManager
-                        )
-                        .frame(minHeight: max(200, geometry.size.height * 0.35))
-                        .padding(internalPadding)
-                        .background(
-                            WavyBottomContainer(cornerRadius: 16, waveHeight: 25)
-                                .fill(Color.black.opacity(0.6))
-                                .background(
-                                    WavyBottomContainer(cornerRadius: 16, waveHeight: 25)
-                                        .fill(.ultraThinMaterial)
-                                )
-                        )
-                        .padding(.horizontal, horizontalMargin)
-                        .padding(.bottom, 30) // Small gap to reveal wallpaper at bottom
+                        // CONTAINER 4: Orders Section - SAME STYLE (straight bottom, rounded corners)
+                        gridContainer {
+                            OrdersListView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization,
+                                authManager: authManager
+                            )
+                            .frame(minHeight: max(180, geometry.size.height * 0.28))
+                        }
                     }
                     .padding(.top, 8)
+                    .padding(.bottom, 20) // Small gap at bottom to show wallpaper
                 }
                 
                 // TikTok Live Overlay (floats above everything)
@@ -191,8 +181,8 @@ struct MainContentView: View {
     }
 }
 
-// Free tier banner
-struct FreeTierBanner: View {
+// Free tier banner content (without container - container applied by gridContainer)
+struct FreeTierBannerContent: View {
     let user: AppUser
     let theme: AppTheme
     let onUpgrade: () -> Void
@@ -224,15 +214,26 @@ struct FreeTierBanner: View {
                 .cornerRadius(6)
             }
         }
-        .padding(10)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color.orange.opacity(0.15))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
-                )
-        )
+    }
+}
+
+// Legacy FreeTierBanner for backwards compatibility
+struct FreeTierBanner: View {
+    let user: AppUser
+    let theme: AppTheme
+    let onUpgrade: () -> Void
+    
+    var body: some View {
+        FreeTierBannerContent(user: user, theme: theme, onUpgrade: onUpgrade)
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.orange.opacity(0.15))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(Color.orange.opacity(0.3), lineWidth: 1)
+                    )
+            )
     }
 }
 

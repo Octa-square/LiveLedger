@@ -265,16 +265,16 @@ struct LiveLedgerLogo: View {
                 .frame(width: size, height: size)
             
             // L² - Official LiveLedger Logo
-            // "2" positioned at top-right corner of L, nearly touching
-            ZStack(alignment: .topTrailing) {
+            // Large L with superscript 2, close together, larger "2" font
+            HStack(alignment: .top, spacing: -size * 0.04) {
                 Text("L")
                     .font(.system(size: size * 0.52, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: size * 0.24, weight: .regular, design: .rounded))
+                    .font(.system(size: size * 0.28, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
-                    .offset(x: size * 0.12, y: -size * 0.02)  // Top-right corner position
+                    .baselineOffset(size * 0.26) // Superscript positioning
             }
             
             // LIVE badge

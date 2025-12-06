@@ -174,15 +174,7 @@ struct HeaderView: View {
             }
             .frame(maxWidth: .infinity) // Span full container width
         }
-        .padding(12)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color.black.opacity(0.5))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .strokeBorder(theme.cardBorder, lineWidth: 1)
-                )
-        )
+        // No internal background - container styling handled by parent gridContainer
         .sheet(isPresented: $showPrintOptions) {
             PrintOptionsView(viewModel: viewModel, authManager: authManager, platforms: viewModel.platforms)
         }
@@ -1153,7 +1145,7 @@ struct DailyOrderReportView: View {
     }
 }
 
-// Mini logo for header (Logo 10 - Calculator with L stamped + Signal + LIVE)
+// Mini logo for header - L² (L Squared) Official LiveLedger Logo
 struct LiveLedgerLogoMini: View {
     private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41)
     private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)
@@ -1185,19 +1177,19 @@ struct LiveLedgerLogoMini: View {
                 .frame(width: 6, height: 6)
                 .offset(x: 8, y: -8)
             
-            // L² - Official LiveLedger Logo (Mini)
-            // "2" positioned at top-right corner of L, nearly touching
-            ZStack(alignment: .topTrailing) {
+            // L² - Official LiveLedger Logo
+            // Large L with superscript 2 at top-right, close to L, larger font
+            HStack(alignment: .top, spacing: -2) {
                 Text("L")
                     .font(.system(size: 20, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: 10, weight: .regular, design: .rounded))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
-                    .offset(x: 5, y: -2)  // Top-right corner position
+                    .baselineOffset(10) // Superscript positioning
             }
-            .offset(x: -1, y: 2)
+            .offset(x: 0, y: 2)
             
             // LIVE badge
             Text("LIVE")
