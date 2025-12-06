@@ -17,6 +17,7 @@ struct HeaderView: View {
     @State private var showPrintOptions = false
     @State private var showExportOptions = false
     @State private var showClearOptions = false
+    @State private var showAnalytics = false
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -113,12 +114,24 @@ struct HeaderView: View {
                     }
                 }
                 
-                // Settings Button
-                Button {
-                    showSettings = true
+                // Menu Button (replaces Settings)
+                Menu {
+                    // Analytics Option
+                    Button {
+                        showAnalytics = true
+                    } label: {
+                        Label("Analytics", systemImage: "chart.bar.fill")
+                    }
+                    
+                    // Settings Option
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape.fill")
+                    }
                 } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 15))
+                    Image(systemName: "line.3.horizontal")
+                        .font(.system(size: 15, weight: .medium))
                         .foregroundColor(theme.textPrimary)
                         .frame(width: 32, height: 32)
                         .background(
@@ -177,6 +190,11 @@ struct HeaderView: View {
         }
         .sheet(isPresented: $showClearOptions) {
             ClearOptionsView(viewModel: viewModel)
+        }
+        .sheet(isPresented: $showAnalytics) {
+            NavigationStack {
+                AnalyticsView(localization: localization)
+            }
         }
     }
 }
