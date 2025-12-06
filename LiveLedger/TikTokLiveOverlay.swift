@@ -7,10 +7,10 @@
 
 import SwiftUI
 import AVKit
+import Combine
 
 // MARK: - TikTok Live Overlay Manager
-@MainActor
-final class TikTokLiveOverlayManager: ObservableObject {
+class TikTokLiveOverlayManager: ObservableObject {
     static let shared = TikTokLiveOverlayManager()
     
     @Published var isOverlayVisible: Bool = false
@@ -23,8 +23,8 @@ final class TikTokLiveOverlayManager: ObservableObject {
     }
     
     func loadSettings() {
-        overlayTransparency = UserDefaults.standard.double(forKey: "tiktokOverlayTransparency")
-        if overlayTransparency == 0 { overlayTransparency = 0.85 }
+        let savedTransparency = UserDefaults.standard.double(forKey: "tiktokOverlayTransparency")
+        overlayTransparency = savedTransparency > 0 ? savedTransparency : 0.85
         
         let savedX = UserDefaults.standard.double(forKey: "overlayPositionX")
         let savedY = UserDefaults.standard.double(forKey: "overlayPositionY")
@@ -40,21 +40,27 @@ final class TikTokLiveOverlayManager: ObservableObject {
     }
     
     func showOverlay() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isOverlayVisible = true
+        DispatchQueue.main.async {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isOverlayVisible = true
+            }
         }
     }
     
     func hideOverlay() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isOverlayVisible = false
-            isExpanded = false
+        DispatchQueue.main.async {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isOverlayVisible = false
+                self.isExpanded = false
+            }
         }
     }
     
     func toggleExpanded() {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-            isExpanded.toggle()
+        DispatchQueue.main.async {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                self.isExpanded.toggle()
+            }
         }
     }
 }

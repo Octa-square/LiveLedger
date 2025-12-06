@@ -1187,7 +1187,7 @@ struct TermsPrivacyView: View {
 // MARK: - Display Settings View
 struct DisplaySettingsView: View {
     @ObservedObject var themeManager: ThemeManager
-    @ObservedObject var overlayManager = TikTokLiveOverlayManager.shared
+    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
     @AppStorage("display_brightness") private var brightness: Double = 1.0
     @AppStorage("display_contrast") private var contrast: Double = 1.0
     @AppStorage("display_bgOpacity") private var bgOpacity: Double = 0.85
