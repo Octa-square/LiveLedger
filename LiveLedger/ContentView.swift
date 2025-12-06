@@ -244,8 +244,8 @@ struct ShareSheet: UIViewControllerRepresentable {
 // MARK: - Wavy Bottom Container Shape
 struct WavyBottomContainer: Shape {
     var cornerRadius: CGFloat = 16
-    var waveHeight: CGFloat = 15
-    var waveCount: Int = 5
+    var waveHeight: CGFloat = 20
+    var waveCount: Int = 4
     
     func path(in rect: CGRect) -> Path {
         var path = Path()
@@ -269,40 +269,27 @@ struct WavyBottomContainer: Shape {
             control: CGPoint(x: width, y: 0)
         )
         
-        // Right edge
-        path.addLine(to: CGPoint(x: width, y: height - waveHeight - cornerRadius))
+        // Right edge - stop before wave starts
+        path.addLine(to: CGPoint(x: width, y: height - waveHeight * 2))
         
-        // Bottom-right corner transition to wave
-        path.addQuadCurve(
-            to: CGPoint(x: width - cornerRadius, y: height - waveHeight),
-            control: CGPoint(x: width, y: height - waveHeight)
-        )
+        // Smooth organic wave at bottom - curved scallop pattern
+        let segmentWidth = width / CGFloat(waveCount)
         
-        // Wavy bottom edge
-        let waveWidth = (width - cornerRadius * 2) / CGFloat(waveCount)
         for i in 0..<waveCount {
-            let startX = width - cornerRadius - waveWidth * CGFloat(i)
-            let endX = startX - waveWidth
-            let midX = (startX + endX) / 2
+            let segmentStart = width - segmentWidth * CGFloat(i)
+            let segmentEnd = segmentStart - segmentWidth
+            let midPoint = (segmentStart + segmentEnd) / 2
             
-            if i % 2 == 0 {
-                path.addQuadCurve(
-                    to: CGPoint(x: endX, y: height - waveHeight),
-                    control: CGPoint(x: midX, y: height)
-                )
-            } else {
-                path.addQuadCurve(
-                    to: CGPoint(x: endX, y: height - waveHeight),
-                    control: CGPoint(x: midX, y: height - waveHeight * 2)
-                )
-            }
+            // Create scalloped curves
+            path.addQuadCurve(
+                to: CGPoint(x: midPoint, y: height - waveHeight),
+                control: CGPoint(x: segmentStart - segmentWidth * 0.25, y: height - waveHeight * 2)
+            )
+            path.addQuadCurve(
+                to: CGPoint(x: segmentEnd, y: height - waveHeight * 2),
+                control: CGPoint(x: midPoint - segmentWidth * 0.25, y: height)
+            )
         }
-        
-        // Bottom-left corner
-        path.addQuadCurve(
-            to: CGPoint(x: 0, y: height - waveHeight - cornerRadius),
-            control: CGPoint(x: 0, y: height - waveHeight)
-        )
         
         // Left edge back to start
         path.addLine(to: CGPoint(x: 0, y: cornerRadius))
