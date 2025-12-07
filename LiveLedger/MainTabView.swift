@@ -202,7 +202,7 @@ struct BottomNavItem: View {
     }
 }
 
-// MARK: - Home Tab (Existing Main Content)
+// MARK: - Home Tab (STATIC GRID LAYOUT - Fixed Positions)
 struct HomeTabView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var themeManager: ThemeManager
@@ -215,14 +215,32 @@ struct HomeTabView: View {
     
     private var theme: AppTheme { themeManager.currentTheme }
     
-    // Grid container styling
+    // Grid container styling - STATIC LAYOUT
     private let containerCornerRadius: CGFloat = 12
     private let containerBorderColor: Color = Color(red: 0, green: 0.8, blue: 0.53)
     private let containerBorderWidth: CGFloat = 2
     private let containerBackground: Color = Color.black.opacity(0.75)
     private let horizontalMargin: CGFloat = 11
     private let internalPadding: CGFloat = 10
-    private let containerSpacing: CGFloat = 8
+    
+    // FIXED HEIGHTS for containers
+    private let headerHeight: CGFloat = 130  // Header + Stats + Actions
+    private let platformHeight: CGFloat = 95 // Platform section
+    private let productsMinHeight: CGFloat = 100 // My Products minimum (1 row + header)
+    private let productsMaxHeight: CGFloat = 220 // My Products maximum (3 rows + header)
+    private let ordersHeight: CGFloat = 260 // Orders - FIXED height, internal scroll
+    
+    // Calculate products height based on product count (max 12)
+    private var productsHeight: CGFloat {
+        let productCount = min(viewModel.products.count, 12)
+        let rows = max(1, Int(ceil(Double(productCount) / 4.0)))
+        let rowHeight: CGFloat = 65
+        let headerPadding: CGFloat = 45
+        return min(productsMaxHeight, headerPadding + (CGFloat(rows) * rowHeight))
+    }
+    
+    // Spacing between containers
+    private let containerGap: CGFloat = 8
     
     private func gridContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
@@ -235,13 +253,21 @@ struct HomeTabView: View {
                 RoundedRectangle(cornerRadius: containerCornerRadius)
                     .strokeBorder(containerBorderColor, lineWidth: containerBorderWidth)
             )
-            .padding(.horizontal, horizontalMargin)
     }
     
     var body: some View {
         GeometryReader { geometry in
-            ZStack {
-                // Wallpaper
+            let safeWidth = geometry.size.width - (horizontalMargin * 2)
+            let topPadding: CGFloat = 8
+            
+            // Calculate fixed Y positions
+            let headerY: CGFloat = topPadding
+            let platformY: CGFloat = headerY + headerHeight + containerGap
+            let productsY: CGFloat = platformY + platformHeight + containerGap
+            let ordersY: CGFloat = productsY + productsHeight + containerGap
+            
+            ZStack(alignment: .topLeading) {
+                // Wallpaper - FULL SCREEN
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
@@ -256,68 +282,72 @@ struct HomeTabView: View {
                 Color.black.opacity(0.15)
                     .ignoresSafeArea(.all, edges: .all)
                 
-                // Content
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(spacing: containerSpacing) {
-                        // Header + Stats + Actions
-                        gridContainer {
-                            HeaderView(
-                                viewModel: viewModel,
-                                themeManager: themeManager,
-                                authManager: authManager,
-                                localization: localization,
-                                showSettings: $showSettings,
-                                showSubscription: $showSubscription
-                            )
-                        }
-                        
-                        // Platform Section
-                        gridContainer {
-                            PlatformSelectorView(
-                                viewModel: viewModel,
-                                themeManager: themeManager,
-                                localization: localization
-                            )
-                        }
-                        
-                        // Free Tier Banner
-                        if let user = authManager.currentUser, !user.isPro {
-                            gridContainer {
-                                FreeTierBannerContent(user: user, theme: theme) {
-                                    showSubscription = true
-                                }
-                            }
-                        }
-                        
-                        // My Products
-                        gridContainer {
-                            QuickAddView(
-                                viewModel: viewModel,
-                                themeManager: themeManager,
-                                authManager: authManager,
-                                localization: localization,
-                                onLimitReached: {
-                                    limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                                    showLimitAlert = true
-                                }
-                            )
-                        }
-                        
-                        // Orders Container - FULL 270pt HEIGHT (NEVER SHORTENED)
-                        // Bottom nav overlays this area, orders scroll above nav with internal padding
-                        gridContainer {
-                            OrdersListView(
-                                viewModel: viewModel,
-                                themeManager: themeManager,
-                                localization: localization,
-                                authManager: authManager
-                            )
-                            .frame(minHeight: max(270, geometry.size.height * 0.38))
-                        }
-                        .padding(.bottom, 80) // Internal padding so orders scroll above bottom nav
+                // STATIC GRID LAYOUT - Fixed Positions
+                VStack(spacing: 0) {
+                    // === CONTAINER 1: Header + Stats + Actions ===
+                    // FIXED at top, FIXED height: 130pt
+                    gridContainer {
+                        HeaderView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            authManager: authManager,
+                            localization: localization,
+                            showSettings: $showSettings,
+                            showSubscription: $showSubscription
+                        )
                     }
-                    .padding(.top, 4)
-                    .padding(.bottom, 0) // No extra bottom padding - Orders extends full height
+                    .frame(width: safeWidth, height: headerHeight)
+                    .padding(.horizontal, horizontalMargin)
+                    .padding(.top, topPadding)
+                    
+                    // === CONTAINER 2: Platform Section ===
+                    // FIXED position, FIXED height: 95pt
+                    gridContainer {
+                        PlatformSelectorView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            localization: localization
+                        )
+                    }
+                    .frame(width: safeWidth, height: platformHeight)
+                    .padding(.horizontal, horizontalMargin)
+                    .padding(.top, containerGap)
+                    
+                    // === CONTAINER 3: My Products ===
+                    // FIXED position, DYNAMIC height (70-200pt based on products, MAX 12)
+                    gridContainer {
+                        QuickAddView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            authManager: authManager,
+                            localization: localization,
+                            onLimitReached: {
+                                limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                showLimitAlert = true
+                            }
+                        )
+                    }
+                    .frame(width: safeWidth, height: productsHeight)
+                    .padding(.horizontal, horizontalMargin)
+                    .padding(.top, containerGap)
+                    .clipped() // Prevent overflow
+                    
+                    // === CONTAINER 4: Orders ===
+                    // FIXED height: 260pt, INTERNAL SCROLL ONLY (scrollbar on right)
+                    gridContainer {
+                        OrdersListView(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            localization: localization,
+                            authManager: authManager
+                        )
+                    }
+                    .frame(width: safeWidth, height: ordersHeight)
+                    .padding(.horizontal, horizontalMargin)
+                    .padding(.top, containerGap)
+                    .clipped() // Prevent overflow - orders scroll INSIDE only
+                    
+                    Spacer(minLength: 90) // Space for bottom nav
                 }
                 
                 // TikTok Overlay
