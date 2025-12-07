@@ -133,11 +133,15 @@ struct HeaderView: View {
                 } label: {
                     Image(systemName: "line.3.horizontal")
                         .font(.system(size: 15, weight: .medium))
-                        .foregroundColor(theme.textPrimary)
+                        .foregroundColor(theme.iconColor) // Adapts to theme
                         .frame(width: 32, height: 32)
                         .background(
                             Circle()
-                                .fill(Color.black.opacity(0.4))
+                                .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
+                        )
+                        .overlay(
+                            Circle()
+                                .strokeBorder(theme.cardBorder, lineWidth: 1)
                         )
                 }
             }
@@ -707,7 +711,7 @@ struct ActionButton: View {
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
             }
-            .foregroundColor(.white)
+            .foregroundColor(theme.buttonTextColor) // Adapts to theme
             .frame(maxWidth: .infinity)
             .padding(.vertical, 9)
             .background(

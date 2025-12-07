@@ -206,6 +206,32 @@ enum AppTheme: String, CaseIterable, Codable {
         Color(hex: "F87171")
     }
     
+    // MARK: - Icon Color (adapts to theme background)
+    var iconColor: Color {
+        switch self {
+        case .minimalistLight: return Color(hex: "111111") // Dark icons on light background
+        case .minimalistDark: return Color(hex: "FFFFFF")
+        case .emeraldGreen: return Color(hex: "FFFFFF")
+        case .glassmorphism: return Color(hex: "FFFFFF")
+        case .boldFuturistic: return Color(hex: "00F5A0") // Neon green
+        case .motionRich: return Color(hex: "FFFFFF")
+        case .sunsetOrange: return Color(hex: "FFFFFF")
+        }
+    }
+    
+    // MARK: - Button Text Color (for buttons with accent background)
+    var buttonTextColor: Color {
+        switch self {
+        case .minimalistLight: return Color(hex: "FFFFFF") // White text on colored buttons
+        case .minimalistDark: return Color(hex: "000000")
+        case .emeraldGreen: return Color(hex: "000000")
+        case .glassmorphism: return Color(hex: "FFFFFF")
+        case .boldFuturistic: return Color(hex: "000000")
+        case .motionRich: return Color(hex: "FFFFFF")
+        case .sunsetOrange: return Color(hex: "FFFFFF")
+        }
+    }
+    
     // MARK: - Icons
     var icon: String {
         switch self {

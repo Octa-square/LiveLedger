@@ -89,7 +89,7 @@ struct PlatformSelectorView: View {
         .padding(.vertical, 5)
         .background(
             RoundedRectangle(cornerRadius: 8)
-                .fill(Color.black.opacity(0.4))
+                .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
         )
     }
     
@@ -269,11 +269,11 @@ struct PlatformChip: View {
             .frame(width: chipWidth, height: chipHeight)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? platform.swiftUIColor.opacity(0.85) : Color.black.opacity(0.4))
+                    .fill(isSelected ? platform.swiftUIColor.opacity(0.85) : theme.cardBackgroundWithOpacity(0.4))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .strokeBorder(isSelected ? platform.swiftUIColor : Color.white.opacity(0.2), lineWidth: isSelected ? 2 : 1)
+                    .strokeBorder(isSelected ? platform.swiftUIColor : theme.cardBorder, lineWidth: isSelected ? 2 : 1)
             )
             .overlay(alignment: .topTrailing) {
                 if onDelete != nil {

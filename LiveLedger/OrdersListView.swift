@@ -73,7 +73,7 @@ struct OrdersListView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(Color.black.opacity(0.4))
+                .background(theme.cardBackgroundWithOpacity(0.4))
                 .cornerRadius(6)
                 
                 // Price Filter - "All ▼"
@@ -101,7 +101,7 @@ struct OrdersListView: View {
                 }
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(Color.black.opacity(0.4))
+                .background(theme.cardBackgroundWithOpacity(0.4))
                 .cornerRadius(6)
             }
             
