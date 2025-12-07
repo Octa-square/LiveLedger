@@ -69,12 +69,11 @@ struct QuickAddView: View {
                     
                     Spacer()
                     
-                    // Center hint text
+                    // Hint text - positioned close to + button
                     Text("Tap: Sell • Hold: Edit")
                         .font(.system(size: 10, weight: .medium))
                         .foregroundColor(theme.textMuted)
-                    
-                    Spacer()
+                        .padding(.trailing, 8)
                     
                     // + button - RIGHT EDGE ALIGNMENT
                     Button {
