@@ -31,38 +31,13 @@ struct AppIconView: View {
                     )
                 )
             
-            // Signal arcs (top right)
-            signalArcs
-            
-            // L² - Official Logo
+            // L² - Official Logo (centered)
             lSquaredLogo
             
             // LIVE badge (top left)
             liveBadge
         }
         .frame(width: size, height: size)
-    }
-    
-    // Signal/broadcast arcs
-    private var signalArcs: some View {
-        let arcSize = size * 0.30
-        return ZStack {
-            // Outer arc
-            SignalArc()
-                .stroke(Color.white.opacity(0.4), lineWidth: size * 0.012)
-                .frame(width: arcSize * 1.4, height: arcSize * 1.4)
-            
-            // Middle arc
-            SignalArc()
-                .stroke(Color.white.opacity(0.7), lineWidth: size * 0.012)
-                .frame(width: arcSize * 1.0, height: arcSize * 1.0)
-            
-            // Inner arc
-            SignalArc()
-                .stroke(Color.white, lineWidth: size * 0.012)
-                .frame(width: arcSize * 0.65, height: arcSize * 0.65)
-        }
-        .offset(x: size * 0.18, y: -size * 0.15)
     }
     
     // L² Logo - Official Design (² CLOSE to L, larger font)
@@ -98,20 +73,6 @@ struct AppIconView: View {
     }
 }
 
-// Signal arc shape (quarter circle, top-right corner)
-struct SignalArc: Shape {
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.addArc(
-            center: CGPoint(x: 0, y: rect.height),
-            radius: rect.width,
-            startAngle: .degrees(-90),
-            endAngle: .degrees(0),
-            clockwise: false
-        )
-        return path
-    }
-}
 
 // MARK: - Icon Export View (Run on device/simulator, not preview)
 struct IconExportView: View {
