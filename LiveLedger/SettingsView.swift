@@ -753,6 +753,13 @@ struct SettingsView: View {
                     } label: {
                         Label("Terms & Privacy", systemImage: "doc.text.fill")
                     }
+                    
+                    // Export App Icons (Developer tool)
+                    NavigationLink {
+                        IconExportView()
+                    } label: {
+                        Label("Export App Icons", systemImage: "square.and.arrow.up.fill")
+                    }
                 } header: {
                     Text(localization.localized(.about))
                 }
