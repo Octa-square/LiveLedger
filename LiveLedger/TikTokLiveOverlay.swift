@@ -19,7 +19,6 @@ class TikTokLiveOverlayManager: ObservableObject {
     @Published var overlayOpacity: Double = 0.95
     
     private init() {
-        // Load saved preferences
         loadPreferences()
     }
     
@@ -70,20 +69,16 @@ struct TikTokLiveOverlayView: View {
     @ObservedObject var themeManager: ThemeManager
     @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
     
-    // Order entry state
     @State private var selectedProduct: Product?
     @State private var showOrderPopup = false
     @State private var buyerName = ""
     @State private var orderQuantity = 1
-    
-    // Drag state
     @State private var dragOffset: CGSize = .zero
     
     var body: some View {
         if overlayManager.isOverlayVisible {
             GeometryReader { geometry in
                 ZStack {
-                    // Main overlay content
                     overlayContent
                         .position(
                             x: overlayManager.overlayPosition.x + dragOffset.width,
@@ -102,7 +97,6 @@ struct TikTokLiveOverlayView: View {
                                 }
                         )
                     
-                    // Order entry popup
                     if showOrderPopup, let product = selectedProduct {
                         orderEntryPopup(product: product)
                     }
@@ -115,7 +109,7 @@ struct TikTokLiveOverlayView: View {
     // MARK: - Overlay Content
     private var overlayContent: some View {
         VStack(spacing: 0) {
-            // Header with close button
+            // Header
             HStack {
                 Text("Quick Add")
                     .font(.system(size: 14, weight: .bold))
@@ -123,7 +117,6 @@ struct TikTokLiveOverlayView: View {
                 
                 Spacer()
                 
-                // Close button
                 Button {
                     overlayManager.hideOverlay()
                 } label: {
@@ -145,13 +138,11 @@ struct TikTokLiveOverlayView: View {
                 ], spacing: 8) {
                     ForEach(viewModel.products.filter { !$0.isEmpty }) { product in
                         ProductOverlayCard(product: product) {
-                            // Tap to add order - same as main app
                             selectedProduct = product
                             buyerName = ""
                             orderQuantity = 1
                             showOrderPopup = true
                             
-                            // Haptic feedback
                             let impact = UIImpactFeedbackGenerator(style: .light)
                             impact.impactOccurred()
                         }
@@ -160,7 +151,7 @@ struct TikTokLiveOverlayView: View {
                 .padding(8)
             }
             
-            // Quick stats
+            // Stats
             HStack {
                 Text("Orders: \(viewModel.orderCount)")
                     .font(.system(size: 11, weight: .medium))
@@ -189,21 +180,16 @@ struct TikTokLiveOverlayView: View {
         .shadow(color: .black.opacity(0.5), radius: 10)
     }
     
-    // MARK: - Order Entry Popup (Same as main app)
+    // MARK: - Order Entry Popup
     private func orderEntryPopup(product: Product) -> some View {
         ZStack {
-            // Dimmed background
             Color.black.opacity(0.6)
                 .ignoresSafeArea()
-                .onTapGesture {
-                    showOrderPopup = false
-                }
+                .onTapGesture { showOrderPopup = false }
             
-            // Popup content
             VStack(spacing: 16) {
                 // Product info
                 HStack(spacing: 12) {
-                    // Product image or placeholder
                     if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
                         Image(uiImage: uiImage)
                             .resizable()
@@ -238,10 +224,9 @@ struct TikTokLiveOverlayView: View {
                     Spacer()
                 }
                 
-                Divider()
-                    .background(Color.gray.opacity(0.3))
+                Divider().background(Color.gray.opacity(0.3))
                 
-                // Buyer name input
+                // Buyer name
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Buyer Name (Optional)")
                         .font(.system(size: 12, weight: .medium))
@@ -255,16 +240,14 @@ struct TikTokLiveOverlayView: View {
                         .foregroundColor(.white)
                 }
                 
-                // Quantity selector
+                // Quantity
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Quantity")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.gray)
                     
                     HStack {
-                        Button {
-                            if orderQuantity > 1 { orderQuantity -= 1 }
-                        } label: {
+                        Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
                             Image(systemName: "minus.circle.fill")
                                 .font(.system(size: 28))
                                 .foregroundColor(.red)
@@ -275,9 +258,7 @@ struct TikTokLiveOverlayView: View {
                             .foregroundColor(.white)
                             .frame(minWidth: 50)
                         
-                        Button {
-                            if orderQuantity < product.stock { orderQuantity += 1 }
-                        } label: {
+                        Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 28))
                                 .foregroundColor(.green)
@@ -297,11 +278,9 @@ struct TikTokLiveOverlayView: View {
                         .foregroundColor(.green)
                 }
                 
-                // Action buttons
+                // Buttons
                 HStack(spacing: 12) {
-                    Button {
-                        showOrderPopup = false
-                    } label: {
+                    Button { showOrderPopup = false } label: {
                         Text("Cancel")
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundColor(.white)
@@ -311,9 +290,7 @@ struct TikTokLiveOverlayView: View {
                             .cornerRadius(8)
                     }
                     
-                    Button {
-                        addOrder(product: product)
-                    } label: {
+                    Button { addOrder(product: product) } label: {
                         Text("Add Order")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.black)
@@ -325,42 +302,26 @@ struct TikTokLiveOverlayView: View {
                 }
             }
             .padding(20)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(white: 0.15))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(Color.green.opacity(0.3), lineWidth: 1)
-            )
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(white: 0.15)))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.green.opacity(0.3), lineWidth: 1))
             .frame(width: 300)
             .shadow(color: .black.opacity(0.5), radius: 20)
         }
     }
     
-    // MARK: - Add Order Function
     private func addOrder(product: Product) {
-        // Add order to viewModel (same as main app)
-        viewModel.addOrder(
-            product: product,
-            quantity: orderQuantity,
-            buyerName: buyerName.isEmpty ? nil : buyerName
-        )
-        
-        // Play sound
+        viewModel.addOrder(product: product, quantity: orderQuantity, buyerName: buyerName.isEmpty ? nil : buyerName)
         SoundManager.shared.playOrderAddedSound()
         
-        // Success haptic
         let notification = UINotificationFeedbackGenerator()
         notification.notificationOccurred(.success)
         
-        // Close popup
         showOrderPopup = false
         selectedProduct = nil
     }
 }
 
-// MARK: - Product Card for Overlay
+// MARK: - Product Card
 struct ProductOverlayCard: View {
     let product: Product
     let onTap: () -> Void
@@ -368,7 +329,6 @@ struct ProductOverlayCard: View {
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 4) {
-                // Product image or placeholder
                 if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
                     Image(uiImage: uiImage)
                         .resizable()
@@ -386,13 +346,11 @@ struct ProductOverlayCard: View {
                         )
                 }
                 
-                // Product name
                 Text(product.name)
                     .font(.system(size: 10, weight: .medium))
                     .foregroundColor(.white)
                     .lineLimit(1)
                 
-                // Price
                 Text("$\(product.price, specifier: "%.0f")")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.green)
@@ -406,11 +364,3 @@ struct ProductOverlayCard: View {
     }
 }
 
-// MARK: - Preview
-#Preview {
-    TikTokLiveOverlayView(
-        viewModel: SalesViewModel(),
-        themeManager: ThemeManager()
-    )
-    .background(Color.gray)
-}
