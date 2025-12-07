@@ -49,7 +49,7 @@ struct MainTabView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main Content Area - BELOW bottom nav (content scrolls UNDER the nav)
+            // Layer 1: Main Content Area - BELOW bottom nav (content scrolls UNDER the nav)
             TabContent(
                 selectedTab: selectedTab,
                 viewModel: viewModel,
@@ -57,15 +57,16 @@ struct MainTabView: View {
                 authManager: authManager,
                 localization: localization
             )
-            .zIndex(0) // Content layer - underneath
+            .zIndex(1) // Content layer - lower z-index
             
-            // Bottom Navigation Bar - ALWAYS ON TOP (content disappears under this)
+            // Layer 2: Bottom Navigation Bar - ALWAYS ON TOP (z-index 9999)
+            // Content MUST scroll UNDER this - the nav NEVER gets covered
             BottomNavBar(
                 selectedTab: $selectedTab,
                 isTimerRunning: viewModel.isTimerRunning,
                 accentColor: accentGreen
             )
-            .zIndex(100) // Nav bar layer - on top of everything
+            .zIndex(9999) // HIGHEST z-index - always on top
         }
         .ignoresSafeArea(.keyboard)
     }
@@ -148,11 +149,14 @@ struct BottomNavBar: View {
             .padding(.top, 8)
             .padding(.bottom, 20) // Safe area for home indicator
         }
+        .frame(maxWidth: .infinity)
         .background(
-            // SOLID black background - content disappears UNDER this
+            // SOLID BLACK background - content scrolls UNDER this and disappears
             Color.black
-                .shadow(color: .black.opacity(0.5), radius: 10, y: -5)
+                .ignoresSafeArea(.all, edges: .bottom) // Extend to absolute bottom
         )
+        .compositingGroup() // Create new compositing layer
+        .shadow(color: .black.opacity(0.8), radius: 15, y: -5) // Strong shadow for depth
     }
 }
 
