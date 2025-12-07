@@ -53,7 +53,7 @@ struct HomeScreenView: View {
     // Status bar: ~44pt, Safe area bottom: ~34pt
     // Available content height: ~589pt (iPhone 8) or ~766pt (iPhone 14)
     
-    private let containerGap: CGFloat = 8  // Gap between containers
+    private let containerGap: CGFloat = 10  // Gap between containers (10pt each)
     
     private func gridContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
@@ -81,17 +81,21 @@ struct HomeScreenView: View {
             // Orders fills remaining space (no fixed height - uses Spacer)
             
             ZStack {
-                // Wallpaper - FULL SCREEN (no green line at bottom)
+                // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
                 Image(theme.backgroundImageName)
                     .resizable()
-                    .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .aspectRatio(contentMode: .fill) // Stretch to fill
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
-                    .ignoresSafeArea(.all)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    .ignoresSafeArea(.all, edges: .all)
                 
                 // Dark overlay for readability
                 Color.black.opacity(0.15)
-                    .ignoresSafeArea(.all)
+                    .ignoresSafeArea(.all, edges: .all)
                 
                 // STATIC LAYOUT - All containers fit on one screen
                 // NO page scrolling - only Orders has internal scroll
@@ -157,8 +161,8 @@ struct HomeScreenView: View {
                     .padding(.horizontal, horizontalMargin)
                     .clipped()
                 }
-                .padding(.top, 8)
-                .padding(.bottom, 20) // 20pt from bottom edge (no bottom nav)
+                .padding(.top, 10) // 10pt from top
+                .padding(.bottom, 15) // 15pt from bottom (black area starts after Orders)
                 
                 // TikTok Overlay (floating widget - separate from layout)
                 TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)

@@ -41,78 +41,68 @@ struct OrdersListView: View {
                 
                 Spacer()
                 
-                // Filters - RIGHT EDGE ALIGNMENT
-                
-                // Filters - Pro Feature
-                if isPro {
-                    // Platform Filter
-                    HStack(spacing: 4) {
-                        Image(systemName: "iphone")
-                            .font(.system(size: 11))
-                            .foregroundColor(.blue)
-                        Menu {
-                            Button { viewModel.filterPlatform = nil } label: {
-                                Text("All Platforms").font(.system(size: 12))
-                            }
-                            Divider()
-                            ForEach(viewModel.platforms) { platform in
-                                Button {
-                                    viewModel.filterPlatform = platform
-                                } label: {
-                                    Label(platform.name, systemImage: platform.icon)
-                                        .font(.system(size: 12))
-                                }
-                            }
-                        } label: {
-                            HStack(spacing: 3) {
-                                if let p = viewModel.filterPlatform {
-                                    Circle().fill(p.swiftUIColor).frame(width: 6, height: 6)
-                                    Text(p.name)
-                                } else {
-                                    Text("All")
-                                }
-                                Image(systemName: "chevron.down").font(.system(size: 7))
-                            }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(theme.textPrimary)
+                // Filters - RIGHT EDGE ALIGNMENT (VISIBLE FOR ALL USERS)
+                // Platform Filter - "All ▼"
+                HStack(spacing: 4) {
+                    Menu {
+                        Button { viewModel.filterPlatform = nil } label: {
+                            Text("All Platforms").font(.system(size: 12))
                         }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(theme.cardBackground)
-                    .cornerRadius(6)
-                    
-                    // Discount Filter
-                    HStack(spacing: 4) {
-                        Image(systemName: "dollarsign.circle.fill")
-                            .font(.system(size: 11))
-                            .foregroundColor(.green)
-                        Menu {
-                            Button { viewModel.filterDiscount = .all } label: {
-                                Text("All Prices").font(.system(size: 12))
+                        Divider()
+                        ForEach(viewModel.platforms) { platform in
+                            Button {
+                                viewModel.filterPlatform = platform
+                            } label: {
+                                Label(platform.name, systemImage: platform.icon)
+                                    .font(.system(size: 12))
                             }
-                            Divider()
-                            Button { viewModel.filterDiscount = .withDiscount } label: {
-                                Text("Discounted").font(.system(size: 12))
-                            }
-                            Button { viewModel.filterDiscount = .withoutDiscount } label: {
-                                Text("Full Price").font(.system(size: 12))
-                            }
-                        } label: {
-                            HStack(spacing: 3) {
-                                Text(viewModel.filterDiscount == .all ? "All" : 
-                                     viewModel.filterDiscount == .withDiscount ? "Disc" : "Full")
-                                Image(systemName: "chevron.down").font(.system(size: 7))
-                            }
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(theme.textPrimary)
                         }
+                    } label: {
+                        HStack(spacing: 3) {
+                            if let p = viewModel.filterPlatform {
+                                Circle().fill(p.swiftUIColor).frame(width: 6, height: 6)
+                                Text(p.name)
+                            } else {
+                                Text("All")
+                            }
+                            Image(systemName: "chevron.down").font(.system(size: 7))
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.textPrimary)
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(theme.cardBackground)
-                    .cornerRadius(6)
                 }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.black.opacity(0.4))
+                .cornerRadius(6)
+                
+                // Price Filter - "All ▼"
+                HStack(spacing: 4) {
+                    Menu {
+                        Button { viewModel.filterDiscount = .all } label: {
+                            Text("All Prices").font(.system(size: 12))
+                        }
+                        Divider()
+                        Button { viewModel.filterDiscount = .withDiscount } label: {
+                            Text("Discounted").font(.system(size: 12))
+                        }
+                        Button { viewModel.filterDiscount = .withoutDiscount } label: {
+                            Text("Full Price").font(.system(size: 12))
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(viewModel.filterDiscount == .all ? "All" : 
+                                 viewModel.filterDiscount == .withDiscount ? "Disc" : "Full")
+                            Image(systemName: "chevron.down").font(.system(size: 7))
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.textPrimary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(Color.black.opacity(0.4))
+                .cornerRadius(6)
             }
             
             if viewModel.filteredOrders.isEmpty {
