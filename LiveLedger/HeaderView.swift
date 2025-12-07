@@ -47,27 +47,28 @@ struct HeaderView: View {
                 // LiveLedger logo - always shows app branding
                 LiveLedgerLogoMini()
                 
-                VStack(alignment: .leading, spacing: 1) {
+                // App Info: LiveLedger + Store Name (both fit within logo height ~40pt)
+                VStack(alignment: .leading, spacing: 2) {
                     // App name - LiveLedger branding
                     Text("LiveLedger")
-                        .font(.system(size: 17, weight: .bold, design: .rounded))
-                        .foregroundColor(theme.textPrimary)
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .foregroundColor(theme.successColor) // Green accent color
                         .lineLimit(1)
                     
-                    // Seller's account info (smaller, secondary)
+                    // Store name (directly below, no "Account:" prefix)
                     if let user = authManager.currentUser {
-                        HStack(spacing: 4) {
-                            Text("Account:")
-                                .font(.system(size: 11, weight: .regular))
-                                .foregroundColor(theme.textMuted)
-                            
-                            Text(user.companyName)
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(theme.textSecondary)
-                                .lineLimit(1)
-                        }
+                        Text(user.companyName.isEmpty ? "My Shop" : user.companyName)
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(theme.textPrimary.opacity(0.9))
+                            .lineLimit(1)
+                    } else {
+                        Text("My Shop")
+                            .font(.system(size: 13, weight: .medium))
+                            .foregroundColor(theme.textPrimary.opacity(0.9))
+                            .lineLimit(1)
                     }
                 }
+                .frame(maxHeight: 40) // Constrain to logo height
                 
                 Spacer()
                 

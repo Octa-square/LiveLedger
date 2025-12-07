@@ -161,7 +161,7 @@ struct HomeScreenView: View {
                     .padding(.horizontal, horizontalMargin)
                     .clipped()
                 }
-                .padding(.top, 10) // 10pt from top
+                .padding(.top, 6) // Reduced - move header UP for equal gaps
                 .padding(.bottom, 15) // 15pt from bottom (black area starts after Orders)
                 
                 // TikTok Overlay (floating widget - separate from layout)

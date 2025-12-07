@@ -520,55 +520,7 @@ struct SettingsView: View {
                     }
                 }
                 
-                // Themes Section
-                Section {
-                    ForEach(AppTheme.allCases, id: \.self) { theme in
-                        Button {
-                            withAnimation {
-                                themeManager.currentTheme = theme
-                            }
-                        } label: {
-                            HStack(spacing: 12) {
-                                // Theme color preview
-                                ZStack {
-                                    Circle()
-                                        .fill(
-                                            LinearGradient(colors: [theme.primaryColor, theme.secondaryColor],
-                                                          startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        )
-                                        .frame(width: 36, height: 36)
-                                    
-                                    Image(systemName: theme.icon)
-                                        .font(.system(size: 14))
-                                        .foregroundColor(.white)
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(theme.rawValue)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundColor(.primary)
-                                    
-                                    Text(themeDescription(theme))
-                                        .font(.system(size: 11))
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                Spacer()
-                                
-                                if themeManager.currentTheme == theme {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(theme.primaryColor)
-                                        .font(.system(size: 20))
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                } header: {
-                    Text(localization.localized(.themes))
-                }
-                
-                // Language Section
+                // Language Section (Themes moved to Display Settings only)
                 Section {
                     Button {
                         showLanguagePicker = true
@@ -625,14 +577,8 @@ struct SettingsView: View {
                     Text("Adjust brightness, contrast, and text size")
                 }
                 
-                // Analytics & Tutorial Section
+                // Tutorial Section (Sales Analytics removed - access via main Menu only)
                 Section {
-                    NavigationLink {
-                        AnalyticsView(viewModel: SalesViewModel(), localization: localization)
-                    } label: {
-                        Label(localization.localized(.salesAnalytics), systemImage: "chart.bar.fill")
-                    }
-                    
                     Button {
                         showTutorial = true
                     } label: {
