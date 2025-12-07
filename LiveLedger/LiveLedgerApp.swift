@@ -60,6 +60,7 @@ struct PlanSelectionView: View {
     @State private var selectedPlan: PlanType = .pro
     @State private var isProcessing = false
     @State private var showSuccess = false
+    @State private var showSubscribeConfirmation = false
     
     enum PlanType {
         case basic, pro
@@ -68,12 +69,12 @@ struct PlanSelectionView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
-                    // Header
-                    VStack(spacing: 12) {
-                        // L² Logo
+                VStack(spacing: 14) {
+                    // Header - Compact
+                    VStack(spacing: 8) {
+                        // L² Logo - Smaller
                         ZStack {
-                            RoundedRectangle(cornerRadius: 20)
+                            RoundedRectangle(cornerRadius: 14)
                                 .fill(
                                     LinearGradient(
                                         colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
@@ -81,31 +82,31 @@ struct PlanSelectionView: View {
                                         endPoint: .bottomTrailing
                                     )
                                 )
-                                .frame(width: 80, height: 80)
+                                .frame(width: 56, height: 56)
                             
-                            HStack(alignment: .top, spacing: -3) {
+                            HStack(alignment: .top, spacing: -2) {
                                 Text("L")
-                                    .font(.system(size: 42, weight: .black, design: .rounded))
+                                    .font(.system(size: 30, weight: .black, design: .rounded))
                                     .foregroundColor(.white)
                                 
                                 Text("²")
-                                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                                    .font(.system(size: 16, weight: .bold, design: .rounded))
                                     .foregroundColor(.white)
-                                    .baselineOffset(20)
+                                    .baselineOffset(14)
                             }
                         }
                         
                         Text("Choose Your Plan")
-                            .font(.system(size: 28, weight: .bold))
+                            .font(.system(size: 22, weight: .bold))
                         
                         Text("Select how you want to use LiveLedger")
-                            .font(.subheadline)
+                            .font(.caption)
                             .foregroundColor(.gray)
                     }
-                    .padding(.top, 20)
+                    .padding(.top, 10)
                     
-                    // Plan Cards
-                    VStack(spacing: 16) {
+                    // Plan Cards - Compact
+                    VStack(spacing: 10) {
                         // Basic Plan Card
                         SelectablePlanCard(
                             title: "Basic",
@@ -202,25 +203,121 @@ struct PlanSelectionView: View {
             } message: {
                 Text("Your Pro subscription is now active. Enjoy unlimited orders and all premium features!")
             }
+            .sheet(isPresented: $showSubscribeConfirmation) {
+                subscriptionConfirmationSheet
+            }
+        }
+    }
+    
+    // MARK: - Subscription Confirmation Sheet
+    private var subscriptionConfirmationSheet: some View {
+        VStack(spacing: 20) {
+            // Header
+            VStack(spacing: 8) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 50))
+                    .foregroundColor(.yellow)
+                
+                Text("Upgrade to Pro")
+                    .font(.title2.bold())
+                
+                Text("$49.99/month")
+                    .font(.title3)
+                    .foregroundColor(.orange)
+            }
+            .padding(.top, 30)
+            
+            // Benefits
+            VStack(alignment: .leading, spacing: 10) {
+                benefitRow(icon: "infinity", text: "Unlimited orders")
+                benefitRow(icon: "photo.fill", text: "Product images")
+                benefitRow(icon: "chart.bar.fill", text: "Advanced analytics")
+                benefitRow(icon: "arrow.down.doc.fill", text: "Unlimited exports")
+                benefitRow(icon: "star.fill", text: "Priority support")
+            }
+            .padding()
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(12)
+            .padding(.horizontal)
+            
+            Spacer()
+            
+            // Subscribe Button
+            Button {
+                Task {
+                    await processSubscription()
+                }
+            } label: {
+                HStack {
+                    if isProcessing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                    } else {
+                        Image(systemName: "creditcard.fill")
+                        Text("Subscribe Now")
+                            .fontWeight(.bold)
+                    }
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
+                )
+                .cornerRadius(12)
+            }
+            .disabled(isProcessing)
+            .padding(.horizontal)
+            
+            // Cancel Button
+            Button {
+                showSubscribeConfirmation = false
+            } label: {
+                Text("Maybe Later")
+                    .foregroundColor(.gray)
+            }
+            .disabled(isProcessing)
+            .padding(.bottom, 30)
+        }
+        .presentationDetents([.medium])
+    }
+    
+    private func benefitRow(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 16))
+                .foregroundColor(.green)
+                .frame(width: 24)
+            
+            Text(text)
+                .font(.subheadline)
         }
     }
     
     private func selectPlan() async {
+        if selectedPlan == .basic {
+            // Continue with Basic - no subscription needed
+            completePlanSelection()
+        } else {
+            // Show subscription confirmation for Pro
+            showSubscribeConfirmation = true
+        }
+    }
+    
+    private func processSubscription() async {
         isProcessing = true
         
-        // Simulate brief processing
-        try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+        // Simulate subscription processing
+        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
         
-        if selectedPlan == .pro {
-            // Upgrade to Pro
-            authManager.upgradeToPro()
-            isProcessing = false
-            showSuccess = true
-        } else {
-            // Continue with Basic
-            isProcessing = false
-            completePlanSelection()
-        }
+        // Upgrade to Pro
+        authManager.upgradeToPro()
+        
+        // Play success sound
+        SoundManager.shared.playOrderAddedSound()
+        
+        isProcessing = false
+        showSuccess = true
     }
     
     private func completePlanSelection() {
@@ -242,69 +339,69 @@ struct SelectablePlanCard: View {
     let onSelect: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
+        VStack(alignment: .leading, spacing: 8) {
+            // Header - Compact
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(title)
-                            .font(.title2.bold())
+                            .font(.system(size: 18, weight: .bold))
                         
                         if isPro {
-                            Text("RECOMMENDED")
-                                .font(.system(size: 9, weight: .bold))
+                            Text("BEST")
+                                .font(.system(size: 8, weight: .bold))
                                 .foregroundColor(.black)
-                                .padding(.horizontal, 6)
-                                .padding(.vertical, 3)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
                                 .background(Color.yellow)
-                                .cornerRadius(4)
+                                .cornerRadius(3)
                         }
                     }
                     
                     Text(description)
-                        .font(.caption)
+                        .font(.system(size: 10))
                         .foregroundColor(.gray)
                 }
                 
                 Spacer()
                 
                 VStack(alignment: .trailing) {
-                    HStack(alignment: .bottom, spacing: 2) {
+                    HStack(alignment: .bottom, spacing: 1) {
                         Text(price)
-                            .font(.system(size: 24, weight: .bold))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundColor(isPro ? .orange : .primary)
                         Text(period)
-                            .font(.caption)
+                            .font(.system(size: 9))
                             .foregroundColor(.gray)
-                            .padding(.bottom, 3)
+                            .padding(.bottom, 2)
                     }
                 }
             }
             
             Divider()
             
-            // Features
-            VStack(alignment: .leading, spacing: 6) {
+            // Features - Compact
+            VStack(alignment: .leading, spacing: 3) {
                 ForEach(features, id: \.self) { feature in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
+                            .font(.system(size: 11))
                             .foregroundColor(.green)
                         
                         Text(feature)
-                            .font(.subheadline)
+                            .font(.system(size: 11))
                     }
                 }
                 
                 // Limitations (for Basic)
                 ForEach(limitations, id: \.self) { limitation in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
+                            .font(.system(size: 11))
                             .foregroundColor(.gray.opacity(0.5))
                         
                         Text(limitation)
-                            .font(.subheadline)
+                            .font(.system(size: 11))
                             .foregroundColor(.gray.opacity(0.7))
                     }
                 }
