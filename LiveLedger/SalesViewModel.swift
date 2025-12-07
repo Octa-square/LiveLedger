@@ -417,6 +417,19 @@ class SalesViewModel: ObservableObject {
     }
     
     // MARK: - Order Management
+    
+    /// Convenience method for quick order entry (used by overlay)
+    func addOrder(product: Product, quantity: Int, buyerName: String?) {
+        createOrder(
+            product: product,
+            buyerName: buyerName ?? "Customer",
+            phoneNumber: "",
+            address: "",
+            platform: selectedPlatform,
+            quantity: quantity
+        )
+    }
+    
     func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1) {
         // Timer is now manually controlled - no auto-start
         
