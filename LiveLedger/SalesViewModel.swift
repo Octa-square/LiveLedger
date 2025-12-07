@@ -425,7 +425,7 @@ class SalesViewModel: ObservableObject {
             buyerName: buyerName ?? "Customer",
             phoneNumber: "",
             address: "",
-            platform: selectedPlatform,
+            platform: selectedPlatform ?? platforms.first ?? Platform(name: "TikTok", icon: "music.note"),
             quantity: quantity
         )
     }
