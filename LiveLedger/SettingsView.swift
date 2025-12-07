@@ -628,7 +628,7 @@ struct SettingsView: View {
                 // Analytics & Tutorial Section
                 Section {
                     NavigationLink {
-                        AnalyticsView(localization: localization)
+                        AnalyticsView(viewModel: SalesViewModel(), localization: localization)
                     } label: {
                         Label(localization.localized(.salesAnalytics), systemImage: "chart.bar.fill")
                     }

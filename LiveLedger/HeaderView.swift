@@ -186,7 +186,7 @@ struct HeaderView: View {
         }
         .sheet(isPresented: $showAnalytics) {
             NavigationStack {
-                AnalyticsView(localization: localization)
+                AnalyticsView(viewModel: viewModel, localization: localization)
             }
         }
     }
