@@ -145,37 +145,11 @@ struct TikTokLiveOverlayView: View {
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.8))
         }
-        .frame(
-            width: max(200, overlayManager.overlaySize.width + resizeOffset.width),
-            height: max(200, overlayManager.overlaySize.height + resizeOffset.height)
-        )
+        .frame(width: overlayManager.overlaySize.width, height: overlayManager.overlaySize.height)
         .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(overlayManager.overlayOpacity)))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.green.opacity(0.5), lineWidth: 2))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.5), radius: 10)
-        .overlay(
-            // Resize handle (bottom-right corner)
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.system(size: 12, weight: .bold))
-                .foregroundColor(.white.opacity(0.6))
-                .padding(6)
-                .background(Color.green.opacity(0.3))
-                .clipShape(Circle())
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            resizeOffset = value.translation
-                        }
-                        .onEnded { value in
-                            overlayManager.overlaySize.width = max(200, overlayManager.overlaySize.width + value.translation.width)
-                            overlayManager.overlaySize.height = max(200, overlayManager.overlaySize.height + value.translation.height)
-                            resizeOffset = .zero
-                            overlayManager.savePreferences()
-                        }
-                )
-                .padding(8),
-            alignment: .bottomTrailing
-        )
     }
     
     private func orderEntryPopup(product: Product) -> some View {

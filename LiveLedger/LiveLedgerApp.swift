@@ -33,22 +33,42 @@ struct RootView: View {
     @ObservedObject var localization: LocalizationManager
     @State private var hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
     @State private var hasSelectedPlan = UserDefaults.standard.bool(forKey: "hasSelectedPlan")
+    @State private var showWelcome = false
     
     var body: some View {
-        if authManager.isAuthenticated {
-            if hasCompletedOnboarding {
-                if hasSelectedPlan || authManager.currentUser?.isPro == true {
-                    // Main app - user has selected a plan or is already Pro (demo)
-                    MainTabView(authManager: authManager, localization: localization)
+        Group {
+            if authManager.isAuthenticated {
+                if hasCompletedOnboarding {
+                    if hasSelectedPlan || authManager.currentUser?.isPro == true {
+                        // Main app - user has selected a plan or is already Pro (demo)
+                        MainTabView(authManager: authManager, localization: localization)
+                    } else {
+                        // Plan selection screen - shown after onboarding, before main app
+                        PlanSelectionView(authManager: authManager, hasSelectedPlan: $hasSelectedPlan)
+                    }
                 } else {
-                    // Plan selection screen - shown after onboarding, before main app
-                    PlanSelectionView(authManager: authManager, hasSelectedPlan: $hasSelectedPlan)
+                    OnboardingView(localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
                 }
             } else {
-                OnboardingView(localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
+                AuthView(authManager: authManager)
             }
-        } else {
-            AuthView(authManager: authManager)
+        }
+        .onChange(of: authManager.isAuthenticated) { _, isAuth in
+            if isAuth {
+                // Refresh flags when user authenticates
+                hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+                hasSelectedPlan = UserDefaults.standard.bool(forKey: "hasSelectedPlan")
+                
+                // Show welcome for new users
+                if !hasCompletedOnboarding {
+                    showWelcome = true
+                }
+            }
+        }
+        .alert("Welcome to LiveLedger! 🎉", isPresented: $showWelcome) {
+            Button("Let's Get Started!") { }
+        } message: {
+            Text("Thanks for joining! Let us show you around the app.")
         }
     }
 }

@@ -228,6 +228,10 @@ class AuthManager: ObservableObject {
         currentUser = user
         isAuthenticated = true
         saveUser()
+        
+        // Reset onboarding and plan selection for new users
+        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+        UserDefaults.standard.set(false, forKey: "hasSelectedPlan")
     }
     
     // Legacy signup without security questions (for backwards compatibility)
