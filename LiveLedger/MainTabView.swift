@@ -342,20 +342,24 @@ struct AnalyticsTabView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Wallpaper
+                // Wallpaper - FULL SCREEN (no black cutoff)
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .ignoresSafeArea(.all, edges: .all)
                 
                 Color.black.opacity(0.15)
                     .ignoresSafeArea(.all, edges: .all)
                 
-                // Analytics Content
+                // Analytics Content - DYNAMIC with real viewModel data
                 NavigationStack {
-                    AnalyticsView(localization: localization)
+                    AnalyticsView(viewModel: viewModel, localization: localization)
                         .padding(.bottom, 80) // Space for bottom nav
                 }
             }
@@ -375,12 +379,16 @@ struct TimerTabView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Wallpaper
+                // Wallpaper - FULL SCREEN (no black cutoff)
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .ignoresSafeArea(.all, edges: .all)
                 
                 Color.black.opacity(0.3)
@@ -514,12 +522,16 @@ struct OrdersTabView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Wallpaper
+                // Wallpaper - FULL SCREEN (no black cutoff)
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .ignoresSafeArea(.all, edges: .all)
                 
                 Color.black.opacity(0.2)
@@ -632,12 +644,16 @@ struct MoreTabView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Wallpaper
+                // Wallpaper - FULL SCREEN (no black cutoff)
                 Image(theme.backgroundImageName)
                     .resizable()
                     .scaledToFill()
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .frame(
+                        width: geometry.size.width,
+                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                    )
                     .clipped()
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .ignoresSafeArea(.all, edges: .all)
                 
                 Color.black.opacity(0.3)
