@@ -65,21 +65,21 @@ struct AppIconView: View {
         .offset(x: size * 0.18, y: -size * 0.15)
     }
     
-    // L² Logo - Official Design
+    // L² Logo - Official Design (² CLOSE to L, larger font)
     private var lSquaredLogo: some View {
-        ZStack(alignment: .topTrailing) {
+        HStack(alignment: .top, spacing: -size * 0.03) {
             // Large L
             Text("L")
-                .font(.system(size: size * 0.45, weight: .black, design: .rounded))
+                .font(.system(size: size * 0.52, weight: .black, design: .rounded))
                 .foregroundColor(.white)
             
-            // Superscript ² at top-right corner of L
+            // Superscript ² - CLOSE to L, larger and bolder
             Text("²")
-                .font(.system(size: size * 0.18, weight: .regular, design: .rounded))
+                .font(.system(size: size * 0.28, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
-                .offset(x: size * 0.08, y: -size * 0.02)
+                .baselineOffset(size * 0.22) // Superscript positioning
         }
-        .offset(y: size * 0.05)
+        .offset(y: size * 0.02)
     }
     
     // LIVE badge
