@@ -49,7 +49,7 @@ struct MainTabView: View {
     
     var body: some View {
         ZStack(alignment: .bottom) {
-            // Main Content Area
+            // Main Content Area - BELOW bottom nav (content scrolls UNDER the nav)
             TabContent(
                 selectedTab: selectedTab,
                 viewModel: viewModel,
@@ -57,13 +57,15 @@ struct MainTabView: View {
                 authManager: authManager,
                 localization: localization
             )
+            .zIndex(0) // Content layer - underneath
             
-            // Bottom Navigation Bar
+            // Bottom Navigation Bar - ALWAYS ON TOP (content disappears under this)
             BottomNavBar(
                 selectedTab: $selectedTab,
                 isTimerRunning: viewModel.isTimerRunning,
                 accentColor: accentGreen
             )
+            .zIndex(100) // Nav bar layer - on top of everything
         }
         .ignoresSafeArea(.keyboard)
     }
@@ -122,31 +124,34 @@ struct BottomNavBar: View {
     let accentColor: Color
     
     var body: some View {
-        HStack(spacing: 0) {
-            ForEach(AppTab.allCases, id: \.rawValue) { tab in
-                BottomNavItem(
-                    tab: tab,
-                    isSelected: selectedTab == tab,
-                    isTimerRunning: tab == .timer && isTimerRunning,
-                    accentColor: accentColor
-                ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        selectedTab = tab
+        VStack(spacing: 0) {
+            // Green accent line at top
+            Rectangle()
+                .fill(accentColor)
+                .frame(height: 2)
+            
+            // Nav items
+            HStack(spacing: 0) {
+                ForEach(AppTab.allCases, id: \.rawValue) { tab in
+                    BottomNavItem(
+                        tab: tab,
+                        isSelected: selectedTab == tab,
+                        isTimerRunning: tab == .timer && isTimerRunning,
+                        accentColor: accentColor
+                    ) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            selectedTab = tab
+                        }
                     }
                 }
             }
+            .padding(.top, 8)
+            .padding(.bottom, 20) // Safe area for home indicator
         }
-        .padding(.top, 8)
-        .padding(.bottom, 20) // Safe area for home indicator
         .background(
-            Rectangle()
-                .fill(Color.black.opacity(0.95))
-                .overlay(
-                    Rectangle()
-                        .fill(accentColor)
-                        .frame(height: 2),
-                    alignment: .top
-                )
+            // SOLID black background - content disappears UNDER this
+            Color.black
+                .shadow(color: .black.opacity(0.5), radius: 10, y: -5)
         )
     }
 }
