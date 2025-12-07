@@ -562,8 +562,8 @@ class SalesViewModel: ObservableObject {
         // Play timer start sound
         SoundManager.shared.playTimerStartSound()
         
-        // Show overlay when timer starts (if enabled)
-        TikTokLiveOverlayManager.shared.onTimerStart()
+        // Show overlay when timer starts
+        TikTokLiveOverlayManager.shared.showOverlay()
     }
     
     /// Manually pause the timer
