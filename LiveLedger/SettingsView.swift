@@ -600,7 +600,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Display")
                 } footer: {
-                    Text("Adjust brightness, contrast, and text size")
+                    Text("Theme and overlay settings")
                 }
                 
                 // Tutorial Section (Sales Analytics removed - access via main Menu only)
@@ -1167,56 +1167,32 @@ struct TermsPrivacyView: View {
 struct DisplaySettingsView: View {
     @ObservedObject var themeManager: ThemeManager
     @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
-    @AppStorage("display_brightness") private var brightness: Double = 1.0
-    @AppStorage("display_contrast") private var contrast: Double = 1.0
-    @AppStorage("display_bgOpacity") private var bgOpacity: Double = 0.85
-    @AppStorage("display_fontSize") private var fontSize: String = "Medium"
-    @AppStorage("display_textWeight") private var textWeight: String = "Regular"
     @AppStorage("tiktokOverlayEnabled") private var overlayEnabled: Bool = true
     @Environment(\.dismiss) var dismiss
-    
-    let fontSizes = ["Small", "Medium", "Large", "XL"]
-    let textWeights = ["Regular", "Semi-Bold", "Bold"]
     
     var body: some View {
         NavigationStack {
             List {
-                // Visual Adjustments
+                // System Brightness Tip
                 Section {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Brightness")
-                            Spacer()
-                            Text("\(Int(brightness * 100))%")
+                    HStack(spacing: 12) {
+                        Image(systemName: "sun.max.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(.yellow)
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Screen Brightness")
+                                .font(.subheadline.weight(.medium))
+                            Text("Use iPhone Control Center to adjust brightness")
+                                .font(.caption)
                                 .foregroundColor(.secondary)
                         }
-                        Slider(value: $brightness, in: 0.5...1.0)
-                            .tint(.yellow)
                     }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Contrast")
-                            Spacer()
-                            Text("\(Int(contrast * 100))%")
-                                .foregroundColor(.secondary)
-                        }
-                        Slider(value: $contrast, in: 0.5...2.0)
-                            .tint(.blue)
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack {
-                            Text("Background Visibility")
-                            Spacer()
-                            Text("\(Int(bgOpacity * 100))%")
-                                .foregroundColor(.secondary)
-                        }
-                        Slider(value: $bgOpacity, in: 0.5...0.95)
-                            .tint(.green)
-                    }
+                    .padding(.vertical, 4)
                 } header: {
-                    Text("Visual Adjustments")
+                    Text("Display")
+                } footer: {
+                    Text("Swipe down from top-right corner to access Control Center")
                 }
                 
                 // TikTok Live Overlay Settings
@@ -1278,23 +1254,6 @@ struct DisplaySettingsView: View {
                     Text("The quick add overlay provides easy access to products while streaming. Adjust transparency to balance visibility with content viewing.")
                 }
                 
-                // Text Settings
-                Section {
-                    Picker("Font Size", selection: $fontSize) {
-                        ForEach(fontSizes, id: \.self) { size in
-                            Text(size).tag(size)
-                        }
-                    }
-                    
-                    Picker("Text Style", selection: $textWeight) {
-                        ForEach(textWeights, id: \.self) { weight in
-                            Text(weight).tag(weight)
-                        }
-                    }
-                } header: {
-                    Text("Text Settings")
-                }
-                
                 // Theme Selection
                 Section {
                     ForEach(AppTheme.allCases, id: \.self) { theme in
@@ -1324,11 +1283,9 @@ struct DisplaySettingsView: View {
                 // Reset
                 Section {
                     Button(role: .destructive) {
-                        brightness = 1.0
-                        contrast = 1.0
-                        bgOpacity = 0.85
-                        fontSize = "Medium"
-                        textWeight = "Regular"
+                        themeManager.currentTheme = .motionRich
+                        overlayManager.overlayOpacity = 0.95
+                        overlayEnabled = true
                     } label: {
                         Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
                     }
