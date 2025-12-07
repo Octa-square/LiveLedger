@@ -260,12 +260,6 @@ struct HomeTabView: View {
             let safeWidth = geometry.size.width - (horizontalMargin * 2)
             let topPadding: CGFloat = 8
             
-            // Calculate fixed Y positions
-            let headerY: CGFloat = topPadding
-            let platformY: CGFloat = headerY + headerHeight + containerGap
-            let productsY: CGFloat = platformY + platformHeight + containerGap
-            let ordersY: CGFloat = productsY + productsHeight + containerGap
-            
             ZStack(alignment: .topLeading) {
                 // Wallpaper - FULL SCREEN
                 Image(theme.backgroundImageName)
