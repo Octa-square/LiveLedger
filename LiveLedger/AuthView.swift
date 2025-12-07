@@ -501,6 +501,9 @@ class AuthManager: ObservableObject {
         // Skip onboarding for demo
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         
+        // Skip plan selection for demo (already Pro)
+        UserDefaults.standard.set(true, forKey: "hasSelectedPlan")
+        
         // Trigger demo data population
         NotificationCenter.default.post(name: .populateDemoData, object: nil)
     }
