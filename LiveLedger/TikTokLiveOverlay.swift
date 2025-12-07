@@ -146,8 +146,8 @@ struct TikTokLiveOverlayView: View {
             .background(Color.black.opacity(0.8))
         }
         .frame(width: overlayManager.overlaySize.width, height: overlayManager.overlaySize.height)
-        .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(overlayManager.overlayOpacity)))
-        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.green.opacity(0.5), lineWidth: 2))
+        .background(RoundedRectangle(cornerRadius: 16).fill(Color(white: 0.12).opacity(overlayManager.overlayOpacity)))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.green.opacity(0.6), lineWidth: 2))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.5), radius: 10)
     }
