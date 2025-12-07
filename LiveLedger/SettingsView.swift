@@ -425,7 +425,7 @@ class ThemeManager: ObservableObject {
            let theme = try? JSONDecoder().decode(AppTheme.self, from: data) {
             currentTheme = theme
         } else {
-            currentTheme = .minimalistDark
+            currentTheme = .motionRich // Default theme: Motion Rich (purple flow)
         }
     }
 }
