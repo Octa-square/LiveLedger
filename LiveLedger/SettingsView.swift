@@ -1234,13 +1234,13 @@ struct DisplaySettingsView: View {
                         HStack {
                             Text("Overlay Transparency")
                             Spacer()
-                            Text("\(Int(overlayManager.overlayTransparency * 100))%")
+                            Text("\(Int(overlayManager.overlayOpacity * 100))%")
                                 .foregroundColor(.secondary)
                         }
-                        Slider(value: $overlayManager.overlayTransparency, in: 0.2...1.0)
+                        Slider(value: $overlayManager.overlayOpacity, in: 0.2...1.0)
                             .tint(.pink)
-                            .onChange(of: overlayManager.overlayTransparency) { _, _ in
-                                overlayManager.saveSettings()
+                            .onChange(of: overlayManager.overlayOpacity) { _, _ in
+                                overlayManager.savePreferences()
                             }
                         
                         // Transparency preview
