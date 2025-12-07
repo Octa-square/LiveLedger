@@ -594,6 +594,7 @@ struct AuthView: View {
     @State private var securityAnswer2 = ""
     @State private var securityAnswer3 = ""
     @State private var showSecurityQuestionsModal = false
+    @State private var signupStep = 1 // 1 = Basic info, 2 = Security questions
     @State private var pendingAccount: AppUser?
     @State private var verifyAnswer1 = ""
     @State private var verifyAnswer2 = ""
@@ -1062,38 +1063,47 @@ struct AuthView: View {
                 .cornerRadius(8)
             }
             
-            // Security Questions Section
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: "shield.checkered")
-                        .foregroundColor(.green)
-                    Text("Security Questions")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.white)
+            // Security Questions Section (Step 2 only)
+            if signupStep == 2 {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Button {
+                            withAnimation { signupStep = 1 }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        
+                        Image(systemName: "shield.checkered")
+                            .foregroundColor(.green)
+                        Text("Security Questions")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Text("Answer these to recover your account if you forget your password")
+                        .font(.system(size: 9))
+                        .foregroundColor(.white.opacity(0.6))
+                    
+                    SecurityQuestionField(
+                        question: "What city were you born in?",
+                        answer: $securityAnswer1
+                    )
+                    
+                    SecurityQuestionField(
+                        question: "What is the name of your first pet?",
+                        answer: $securityAnswer2
+                    )
+                    
+                    SecurityQuestionField(
+                        question: "What is your mother's maiden name?",
+                        answer: $securityAnswer3
+                    )
                 }
-                
-                Text("Answer these to recover your account")
-                    .font(.system(size: 9))
-                    .foregroundColor(.white.opacity(0.6))
-                
-                SecurityQuestionField(
-                    question: "What city were you born in?",
-                    answer: $securityAnswer1
-                )
-                
-                SecurityQuestionField(
-                    question: "What is the name of your first pet?",
-                    answer: $securityAnswer2
-                )
-                
-                SecurityQuestionField(
-                    question: "What is your mother's maiden name?",
-                    answer: $securityAnswer3
-                )
+                .padding(10)
+                .background(Color.white.opacity(0.08))
+                .cornerRadius(10)
             }
-            .padding(10)
-            .background(Color.white.opacity(0.08))
-            .cornerRadius(10)
             
             // Terms
             HStack(spacing: 4) {
