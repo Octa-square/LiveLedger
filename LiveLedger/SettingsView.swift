@@ -641,7 +641,7 @@ struct SettingsView: View {
                 Section {
                     Button {
                         // Open WhatsApp with pre-filled message
-                        let phoneNumber = "+1234567890" // Replace with your WhatsApp business number
+                        let phoneNumber = "13477855007" // LiveLedger WhatsApp Support: 347-785-5007
                         let message = "Hi, I need help with LiveLedger app"
                         let urlString = "https://wa.me/\(phoneNumber)?text=\(message.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
                         if let url = URL(string: urlString) {
@@ -678,8 +678,8 @@ struct SettingsView: View {
                     }
                     
                     Button {
-                        // Send email for support
-                        if let url = URL(string: "mailto:support@liveledger.app?subject=LiveLedger%20Support%20Request") {
+                        // Send email for support to admin@octasquare.com
+                        if let url = URL(string: "mailto:admin@octasquare.com?subject=LiveLedger%20Support%20Request") {
                             UIApplication.shared.open(url)
                         }
                     } label: {
