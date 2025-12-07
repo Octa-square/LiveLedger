@@ -662,6 +662,7 @@ struct AuthView: View {
                                 Button {
                                     withAnimation(.easeInOut(duration: 0.2)) {
                                         isLoginMode = false
+                                        signupStep = 1
                                         clearForm()
                                     }
                                 } label: {
@@ -938,14 +939,27 @@ struct AuthView: View {
     // MARK: - Sign Up Form with Security Questions
     private var signUpFormContent: some View {
         VStack(spacing: 6) {
-            // Row 1: Name & Email
-            HStack(spacing: 8) {
-                CompactTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
-                CompactTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+            // Step indicator
+            if signupStep == 2 {
+                HStack {
+                    Text("Step 2 of 2: Security Questions")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.8))
+                    Spacer()
+                }
+                .padding(.bottom, 4)
             }
             
-            // Phone number
-            CompactTextField(placeholder: "Phone Number (optional)", text: $phoneNumber, icon: "phone.fill", keyboardType: .phonePad)
+            // Basic info fields (Step 1 only)
+            if signupStep == 1 {
+                // Row 1: Name & Email
+                HStack(spacing: 8) {
+                    CompactTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
+                    CompactTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+                }
+                
+                // Phone number
+                CompactTextField(placeholder: "Phone Number (optional)", text: $phoneNumber, icon: "phone.fill", keyboardType: .phonePad)
             
             // Password
             VStack(alignment: .leading, spacing: 2) {
@@ -1062,6 +1076,7 @@ struct AuthView: View {
                 .background(Color.white.opacity(0.15))
                 .cornerRadius(8)
             }
+            } // End of signupStep == 1
             
             // Security Questions Section (Step 2 only)
             if signupStep == 2 {
@@ -1145,15 +1160,20 @@ struct AuthView: View {
             .padding(.vertical, 4)
             
             // Error Summary
-            if showErrors && !isFormValid {
+            if showErrors {
                 VStack(alignment: .leading, spacing: 2) {
-                    if name.isEmpty { errorText("Full name required") }
-                    if email.isEmpty || !email.contains("@") { errorText("Valid email required") }
-                    if authManager.emailExists(email) { errorText("Email already registered") }
-                    if !isPasswordValid { errorText("Password needs letter + symbol") }
-                    if password != confirmPassword { errorText("Passwords must match") }
-                    if !areSecurityQuestionsAnswered { errorText("Answer all security questions") }
-                    if !agreedToTerms { errorText("Accept terms to continue") }
+                    if signupStep == 1 {
+                        // Step 1 validation errors
+                        if name.isEmpty { errorText("Full name required") }
+                        if email.isEmpty || !email.contains("@") { errorText("Valid email required") }
+                        if authManager.emailExists(email) { errorText("Email already registered") }
+                        if !isPasswordValid { errorText("Password needs letter + symbol") }
+                        if password != confirmPassword { errorText("Passwords must match") }
+                        if !agreedToTerms { errorText("Accept terms to continue") }
+                    } else {
+                        // Step 2 validation errors
+                        if !areSecurityQuestionsAnswered { errorText("Answer all security questions") }
+                    }
                 }
                 .padding(8)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -1161,30 +1181,48 @@ struct AuthView: View {
                 .cornerRadius(6)
             }
             
-            // Sign Up Button
+            // Sign Up Button - Changes based on step
             Button {
                 showErrors = true
                 passwordFieldTouched = true
-                if isFormValid {
-                    let questions = [
-                        SecurityQuestion(id: "q1", question: "What city were you born in?", answer: securityAnswer1.lowercased().trimmingCharacters(in: .whitespaces)),
-                        SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: securityAnswer2.lowercased().trimmingCharacters(in: .whitespaces)),
-                        SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: securityAnswer3.lowercased().trimmingCharacters(in: .whitespaces))
-                    ]
-                    
-                    authManager.signUp(
-                        email: email,
-                        name: name,
-                        password: password,
-                        companyName: companyName.isEmpty ? "My Store" : companyName,
-                        currency: selectedCurrency,
-                        referralCode: referralCode,
-                        phoneNumber: phoneNumber,
-                        securityQuestions: questions
-                    )
+                
+                if signupStep == 1 {
+                    // Step 1: Validate basic info, then go to step 2
+                    let step1Valid = !name.isEmpty && 
+                                     !email.isEmpty && email.contains("@") && 
+                                     !authManager.emailExists(email) &&
+                                     isPasswordValid && 
+                                     password == confirmPassword && 
+                                     agreedToTerms
+                    if step1Valid {
+                        withAnimation {
+                            signupStep = 2
+                            showErrors = false
+                        }
+                    }
+                } else {
+                    // Step 2: Validate security questions, then create account
+                    if areSecurityQuestionsAnswered {
+                        let questions = [
+                            SecurityQuestion(id: "q1", question: "What city were you born in?", answer: securityAnswer1.lowercased().trimmingCharacters(in: .whitespaces)),
+                            SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: securityAnswer2.lowercased().trimmingCharacters(in: .whitespaces)),
+                            SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: securityAnswer3.lowercased().trimmingCharacters(in: .whitespaces))
+                        ]
+                        
+                        authManager.signUp(
+                            email: email,
+                            name: name,
+                            password: password,
+                            companyName: companyName.isEmpty ? "My Store" : companyName,
+                            currency: selectedCurrency,
+                            referralCode: referralCode,
+                            phoneNumber: phoneNumber,
+                            securityQuestions: questions
+                        )
+                    }
                 }
             } label: {
-                Text("Create Free Account")
+                Text(signupStep == 1 ? "Continue" : "Create Free Account")
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(Color(red: 0.07, green: 0.4, blue: 0.36))
                     .frame(maxWidth: .infinity)
