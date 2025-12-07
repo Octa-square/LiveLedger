@@ -3,13 +3,12 @@
 //  LiveLedger
 //
 //  Floating overlay for quick order entry during live streams
-//  Shows only products - tap to add order (same as main app behavior)
 //
 
 import SwiftUI
 import Combine
 
-// MARK: - Overlay Manager (Singleton)
+// MARK: - Overlay Manager
 class TikTokLiveOverlayManager: ObservableObject {
     static let shared = TikTokLiveOverlayManager()
     
@@ -23,21 +22,15 @@ class TikTokLiveOverlayManager: ObservableObject {
     }
     
     func showOverlay() {
-        DispatchQueue.main.async {
-            self.isOverlayVisible = true
-        }
+        DispatchQueue.main.async { self.isOverlayVisible = true }
     }
     
     func hideOverlay() {
-        DispatchQueue.main.async {
-            self.isOverlayVisible = false
-        }
+        DispatchQueue.main.async { self.isOverlayVisible = false }
     }
     
     func toggleOverlay() {
-        DispatchQueue.main.async {
-            self.isOverlayVisible.toggle()
-        }
+        DispatchQueue.main.async { self.isOverlayVisible.toggle() }
     }
     
     func savePreferences() {
@@ -63,7 +56,7 @@ class TikTokLiveOverlayManager: ObservableObject {
     }
 }
 
-// MARK: - Main Overlay View
+// MARK: - Overlay View
 struct TikTokLiveOverlayView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var themeManager: ThemeManager
@@ -84,17 +77,14 @@ struct TikTokLiveOverlayView: View {
                             x: overlayManager.overlayPosition.x + dragOffset.width,
                             y: overlayManager.overlayPosition.y + dragOffset.height
                         )
-                        .gesture(
-                            DragGesture()
-                                .onChanged { value in
-                                    dragOffset = value.translation
-                                }
-                                .onEnded { value in
-                                    overlayManager.overlayPosition.x += value.translation.width
-                                    overlayManager.overlayPosition.y += value.translation.height
-                                    dragOffset = .zero
-                                    overlayManager.savePreferences()
-                                }
+                        .gesture(DragGesture()
+                            .onChanged { dragOffset = $0.translation }
+                            .onEnded { value in
+                                overlayManager.overlayPosition.x += value.translation.width
+                                overlayManager.overlayPosition.y += value.translation.height
+                                dragOffset = .zero
+                                overlayManager.savePreferences()
+                            }
                         )
                     
                     if showOrderPopup, let product = selectedProduct {
@@ -106,20 +96,14 @@ struct TikTokLiveOverlayView: View {
         }
     }
     
-    // MARK: - Overlay Content
     private var overlayContent: some View {
         VStack(spacing: 0) {
-            // Header
             HStack {
                 Text("Quick Add")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundColor(.white)
-                
                 Spacer()
-                
-                Button {
-                    overlayManager.hideOverlay()
-                } label: {
+                Button { overlayManager.hideOverlay() } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.system(size: 20))
                         .foregroundColor(.white.opacity(0.7))
@@ -129,7 +113,6 @@ struct TikTokLiveOverlayView: View {
             .padding(.vertical, 8)
             .background(Color.black.opacity(0.8))
             
-            // Products Grid
             ScrollView {
                 LazyVGrid(columns: [
                     GridItem(.flexible(), spacing: 8),
@@ -142,23 +125,18 @@ struct TikTokLiveOverlayView: View {
                             buyerName = ""
                             orderQuantity = 1
                             showOrderPopup = true
-                            
-                            let impact = UIImpactFeedbackGenerator(style: .light)
-                            impact.impactOccurred()
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
                         }
                     }
                 }
                 .padding(8)
             }
             
-            // Stats
             HStack {
                 Text("Orders: \(viewModel.orderCount)")
                     .font(.system(size: 11, weight: .medium))
                     .foregroundColor(.white.opacity(0.7))
-                
                 Spacer()
-                
                 Text("$\(viewModel.totalRevenue, specifier: "%.2f")")
                     .font(.system(size: 11, weight: .bold))
                     .foregroundColor(.green)
@@ -168,136 +146,70 @@ struct TikTokLiveOverlayView: View {
             .background(Color.black.opacity(0.8))
         }
         .frame(width: overlayManager.overlaySize.width, height: overlayManager.overlaySize.height)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color.black.opacity(overlayManager.overlayOpacity))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(Color.green.opacity(0.5), lineWidth: 2)
-        )
+        .background(RoundedRectangle(cornerRadius: 16).fill(Color.black.opacity(overlayManager.overlayOpacity)))
+        .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.green.opacity(0.5), lineWidth: 2))
         .clipShape(RoundedRectangle(cornerRadius: 16))
         .shadow(color: .black.opacity(0.5), radius: 10)
     }
     
-    // MARK: - Order Entry Popup
     private func orderEntryPopup(product: Product) -> some View {
         ZStack {
-            Color.black.opacity(0.6)
-                .ignoresSafeArea()
-                .onTapGesture { showOrderPopup = false }
+            Color.black.opacity(0.6).ignoresSafeArea().onTapGesture { showOrderPopup = false }
             
             VStack(spacing: 16) {
-                // Product info
                 HStack(spacing: 12) {
                     if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 50, height: 50)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                        Image(uiImage: uiImage).resizable().scaledToFill()
+                            .frame(width: 50, height: 50).clipShape(RoundedRectangle(cornerRadius: 8))
                     } else {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.green.opacity(0.3))
+                        RoundedRectangle(cornerRadius: 8).fill(Color.green.opacity(0.3))
                             .frame(width: 50, height: 50)
-                            .overlay(
-                                Text(String(product.name.prefix(1)))
-                                    .font(.system(size: 20, weight: .bold))
-                                    .foregroundColor(.green)
-                            )
+                            .overlay(Text(String(product.name.prefix(1))).font(.system(size: 20, weight: .bold)).foregroundColor(.green))
                     }
-                    
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(product.name)
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.white)
-                        
-                        Text("$\(product.price, specifier: "%.2f")")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.green)
-                        
-                        Text("Stock: \(product.stock)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
+                        Text(product.name).font(.system(size: 16, weight: .bold)).foregroundColor(.white)
+                        Text("$\(product.price, specifier: "%.2f")").font(.system(size: 14, weight: .semibold)).foregroundColor(.green)
+                        Text("Stock: \(product.stock)").font(.system(size: 12)).foregroundColor(.gray)
                     }
-                    
                     Spacer()
                 }
                 
                 Divider().background(Color.gray.opacity(0.3))
                 
-                // Buyer name
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Buyer Name (Optional)")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gray)
-                    
+                    Text("Buyer Name (Optional)").font(.system(size: 12, weight: .medium)).foregroundColor(.gray)
                     TextField("Enter buyer name", text: $buyerName)
                         .textFieldStyle(PlainTextFieldStyle())
-                        .padding(10)
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(8)
-                        .foregroundColor(.white)
+                        .padding(10).background(Color.white.opacity(0.1)).cornerRadius(8).foregroundColor(.white)
                 }
                 
-                // Quantity
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Quantity")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.gray)
-                    
+                    Text("Quantity").font(.system(size: 12, weight: .medium)).foregroundColor(.gray)
                     HStack {
                         Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundColor(.red)
+                            Image(systemName: "minus.circle.fill").font(.system(size: 28)).foregroundColor(.red)
                         }
-                        
-                        Text("\(orderQuantity)")
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundColor(.white)
-                            .frame(minWidth: 50)
-                        
+                        Text("\(orderQuantity)").font(.system(size: 24, weight: .bold)).foregroundColor(.white).frame(minWidth: 50)
                         Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 28))
-                                .foregroundColor(.green)
+                            Image(systemName: "plus.circle.fill").font(.system(size: 28)).foregroundColor(.green)
                         }
-                    }
-                    .frame(maxWidth: .infinity)
+                    }.frame(maxWidth: .infinity)
                 }
                 
-                // Total
                 HStack {
-                    Text("Total:")
-                        .font(.system(size: 14))
-                        .foregroundColor(.gray)
+                    Text("Total:").font(.system(size: 14)).foregroundColor(.gray)
                     Spacer()
-                    Text("$\(product.price * Double(orderQuantity), specifier: "%.2f")")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.green)
+                    Text("$\(product.price * Double(orderQuantity), specifier: "%.2f")").font(.system(size: 18, weight: .bold)).foregroundColor(.green)
                 }
                 
-                // Buttons
                 HStack(spacing: 12) {
                     Button { showOrderPopup = false } label: {
-                        Text("Cancel")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(8)
+                        Text("Cancel").font(.system(size: 14, weight: .semibold)).foregroundColor(.white)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12).background(Color.gray.opacity(0.3)).cornerRadius(8)
                     }
-                    
                     Button { addOrder(product: product) } label: {
-                        Text("Add Order")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(Color.green)
-                            .cornerRadius(8)
+                        Text("Add Order").font(.system(size: 14, weight: .bold)).foregroundColor(.black)
+                            .frame(maxWidth: .infinity).padding(.vertical, 12).background(Color.green).cornerRadius(8)
                     }
                 }
             }
@@ -312,10 +224,7 @@ struct TikTokLiveOverlayView: View {
     private func addOrder(product: Product) {
         viewModel.addOrder(product: product, quantity: orderQuantity, buyerName: buyerName.isEmpty ? nil : buyerName)
         SoundManager.shared.playOrderAddedSound()
-        
-        let notification = UINotificationFeedbackGenerator()
-        notification.notificationOccurred(.success)
-        
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         showOrderPopup = false
         selectedProduct = nil
     }
@@ -330,37 +239,18 @@ struct ProductOverlayCard: View {
         Button(action: onTap) {
             VStack(spacing: 4) {
                 if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 60, height: 60)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Image(uiImage: uiImage).resizable().scaledToFill()
+                        .frame(width: 60, height: 60).clipShape(RoundedRectangle(cornerRadius: 8))
                 } else {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.green.opacity(0.2))
+                    RoundedRectangle(cornerRadius: 8).fill(Color.green.opacity(0.2))
                         .frame(width: 60, height: 60)
-                        .overlay(
-                            Text(String(product.name.prefix(2)))
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.green)
-                        )
+                        .overlay(Text(String(product.name.prefix(2))).font(.system(size: 16, weight: .bold)).foregroundColor(.green))
                 }
-                
-                Text(product.name)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                
-                Text("$\(product.price, specifier: "%.0f")")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.green)
+                Text(product.name).font(.system(size: 10, weight: .medium)).foregroundColor(.white).lineLimit(1)
+                Text("$\(product.price, specifier: "%.0f")").font(.system(size: 10, weight: .bold)).foregroundColor(.green)
             }
-            .frame(maxWidth: .infinity)
-            .padding(6)
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(10)
+            .frame(maxWidth: .infinity).padding(6).background(Color.white.opacity(0.1)).cornerRadius(10)
         }
         .buttonStyle(PlainButtonStyle())
     }
 }
-
