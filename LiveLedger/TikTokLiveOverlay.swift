@@ -222,7 +222,14 @@ struct TikTokLiveOverlayView: View {
     }
     
     private func addOrder(product: Product) {
-        viewModel.addOrder(product: product, quantity: orderQuantity, buyerName: buyerName.isEmpty ? nil : buyerName)
+        viewModel.createOrder(
+            product: product,
+            buyerName: buyerName.isEmpty ? "Customer" : buyerName,
+            phoneNumber: "",
+            address: "",
+            platform: viewModel.selectedPlatform,
+            quantity: orderQuantity
+        )
         SoundManager.shared.playOrderAddedSound()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         showOrderPopup = false
