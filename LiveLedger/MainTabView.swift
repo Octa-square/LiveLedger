@@ -40,11 +40,11 @@ struct HomeScreenView: View {
     
     private var theme: AppTheme { themeManager.currentTheme }
     
-    // Grid container styling - STATIC LAYOUT
+    // Grid container styling - STATIC LAYOUT (BRIGHTER COLORS)
     private let containerCornerRadius: CGFloat = 12
-    private let containerBorderColor: Color = Color(red: 0, green: 0.8, blue: 0.53)
+    private var containerBorderColor: Color { theme.accentColor } // Uses theme's bright accent
     private let containerBorderWidth: CGFloat = 2
-    private let containerBackground: Color = Color.black.opacity(0.75)
+    private var containerBackground: Color { theme.isDarkTheme ? Color.black.opacity(0.75) : Color.white.opacity(0.85) }
     private let horizontalMargin: CGFloat = 11
     private let internalPadding: CGFloat = 10
     

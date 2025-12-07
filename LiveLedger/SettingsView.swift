@@ -29,14 +29,14 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
     
-    // MARK: - Text Colors (BRIGHTER)
+    // MARK: - Text Colors (BRIGHTER - More Visible)
     var textPrimary: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "111111")
-        case .minimalistDark: return Color(hex: "FFFFFF")
+        case .minimalistLight: return Color(hex: "000000") // Pure black
+        case .minimalistDark: return Color(hex: "FFFFFF") // Pure white
         case .emeraldGreen: return Color(hex: "FFFFFF")
         case .glassmorphism: return Color(hex: "FFFFFF")
-        case .boldFuturistic: return Color(hex: "FFFFFF")
+        case .boldFuturistic: return Color(hex: "00FFFF") // Bright cyan
         case .motionRich: return Color(hex: "FFFFFF")
         case .sunsetOrange: return Color(hex: "FFFFFF")
         }
@@ -44,38 +44,38 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var textSecondary: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "4B5563")
-        case .minimalistDark: return Color(hex: "D1D5DB")
-        case .emeraldGreen: return Color(hex: "A7F3D0")
-        case .glassmorphism: return Color(hex: "CBD5E1")
-        case .boldFuturistic: return Color(hex: "6EE7B7")
-        case .motionRich: return Color(hex: "DDD6FE")
-        case .sunsetOrange: return Color(hex: "FED7AA")
+        case .minimalistLight: return Color(hex: "1A1A1A") // Darker for better contrast
+        case .minimalistDark: return Color(hex: "E6E6E6") // Brighter than D1D5DB
+        case .emeraldGreen: return Color(hex: "B8FFE0") // Brighter mint
+        case .glassmorphism: return Color(hex: "E0E7FF") // Brighter
+        case .boldFuturistic: return Color(hex: "00E6FF") // Bright cyan
+        case .motionRich: return Color(hex: "F0E6FF") // Brighter purple tint
+        case .sunsetOrange: return Color(hex: "FFE6CC") // Brighter orange tint
         }
     }
     
     var textMuted: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "6B7280")
-        case .minimalistDark: return Color(hex: "9CA3AF")
-        case .emeraldGreen: return Color(hex: "6EE7B7")
-        case .glassmorphism: return Color(hex: "94A3B8")
-        case .boldFuturistic: return Color(hex: "34D399")
-        case .motionRich: return Color(hex: "C4B5FD")
-        case .sunsetOrange: return Color(hex: "FDBA74")
+        case .minimalistLight: return Color(hex: "4D4D4D") // Darker for contrast
+        case .minimalistDark: return Color(hex: "B3B3B3") // Brighter than 9CA3AF
+        case .emeraldGreen: return Color(hex: "8CFFCC") // Brighter
+        case .glassmorphism: return Color(hex: "B8C4E0") // Brighter
+        case .boldFuturistic: return Color(hex: "00B3CC") // Brighter cyan
+        case .motionRich: return Color(hex: "D9B3FF") // Brighter purple
+        case .sunsetOrange: return Color(hex: "FFC299") // Brighter orange
         }
     }
     
-    // MARK: - Accent Colors
+    // MARK: - Accent Colors (BRIGHTER)
     var accentColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "3B82F6")
-        case .minimalistDark: return Color(hex: "60A5FA")
-        case .emeraldGreen: return Color(hex: "10B981")
-        case .glassmorphism: return Color(hex: "00D4FF")
-        case .boldFuturistic: return Color(hex: "00F5A0")
-        case .motionRich: return Color(hex: "A78BFA")
-        case .sunsetOrange: return Color(hex: "FF6A00")
+        case .minimalistLight: return Color(hex: "00CC88") // Bright green (matching dark themes)
+        case .minimalistDark: return Color(hex: "00FF99") // Brighter green
+        case .emeraldGreen: return Color(hex: "00FFAA") // Brighter emerald
+        case .glassmorphism: return Color(hex: "00E5FF") // Brighter cyan
+        case .boldFuturistic: return Color(hex: "00FFCC") // Brighter neon green
+        case .motionRich: return Color(hex: "B366FF") // Brighter purple
+        case .sunsetOrange: return Color(hex: "FF8C5A") // Brighter orange
         }
     }
     
@@ -83,13 +83,13 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var secondaryColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "10B981")
-        case .minimalistDark: return Color(hex: "34D399")
-        case .emeraldGreen: return Color(hex: "34D399")
-        case .glassmorphism: return Color(hex: "7C3AED")
-        case .boldFuturistic: return Color(hex: "00D1FF")
-        case .motionRich: return Color(hex: "EC4899")
-        case .sunsetOrange: return Color(hex: "F97316")
+        case .minimalistLight: return Color(hex: "00FF99") // Bright green
+        case .minimalistDark: return Color(hex: "4FFFB0") // Brighter mint
+        case .emeraldGreen: return Color(hex: "4FFFB0") // Brighter mint
+        case .glassmorphism: return Color(hex: "A855F7") // Brighter purple
+        case .boldFuturistic: return Color(hex: "00E5FF") // Bright cyan
+        case .motionRich: return Color(hex: "FF6BB3") // Brighter pink
+        case .sunsetOrange: return Color(hex: "FFAB76") // Brighter coral
         }
     }
     
@@ -141,13 +141,13 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var cardBorder: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "D1D5DB")
-        case .minimalistDark: return Color(hex: "525252")
-        case .emeraldGreen: return Color(hex: "10B981").opacity(0.4)
-        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.2)
-        case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.4)
-        case .motionRich: return Color(hex: "A78BFA").opacity(0.4)
-        case .sunsetOrange: return Color(hex: "FF6A00").opacity(0.4)
+        case .minimalistLight: return Color(hex: "00CC88").opacity(0.5) // Green border on light
+        case .minimalistDark: return Color(hex: "00FF99").opacity(0.5) // Brighter green
+        case .emeraldGreen: return Color(hex: "00FFAA").opacity(0.5) // Brighter
+        case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.4) // Brighter
+        case .boldFuturistic: return Color(hex: "00FFCC").opacity(0.6) // Brighter neon
+        case .motionRich: return Color(hex: "B366FF").opacity(0.5) // Brighter purple
+        case .sunsetOrange: return Color(hex: "FF8C5A").opacity(0.5) // Brighter orange
         }
     }
     
@@ -193,27 +193,27 @@ enum AppTheme: String, CaseIterable, Codable {
     var ordersOpacity: Double { 0.82 }  // 82% opacity for orders
     var formOpacity: Double { 0.92 }  // 92% opacity for forms (readability)
     
-    // MARK: - Status Colors
+    // MARK: - Status Colors (BRIGHTER)
     var successColor: Color {
-        Color(hex: "34D399")
+        Color(hex: "4FFFB0") // Brighter green
     }
     
     var warningColor: Color {
-        Color(hex: "FBBF24")
+        Color(hex: "FFD93D") // Brighter yellow
     }
     
     var dangerColor: Color {
-        Color(hex: "F87171")
+        Color(hex: "FF6B6B") // Brighter red
     }
     
-    // MARK: - Icon Color (adapts to theme background)
+    // MARK: - Icon Color (adapts to theme background - BRIGHTER)
     var iconColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "111111") // Dark icons on light background
-        case .minimalistDark: return Color(hex: "FFFFFF")
+        case .minimalistLight: return Color(hex: "000000") // Pure black on light background
+        case .minimalistDark: return Color(hex: "FFFFFF") // Pure white
         case .emeraldGreen: return Color(hex: "FFFFFF")
         case .glassmorphism: return Color(hex: "FFFFFF")
-        case .boldFuturistic: return Color(hex: "00F5A0") // Neon green
+        case .boldFuturistic: return Color(hex: "00FFCC") // Bright neon green
         case .motionRich: return Color(hex: "FFFFFF")
         case .sunsetOrange: return Color(hex: "FFFFFF")
         }
@@ -225,10 +225,10 @@ enum AppTheme: String, CaseIterable, Codable {
         case .minimalistLight: return Color(hex: "FFFFFF") // White text on colored buttons
         case .minimalistDark: return Color(hex: "000000")
         case .emeraldGreen: return Color(hex: "000000")
-        case .glassmorphism: return Color(hex: "FFFFFF")
+        case .glassmorphism: return Color(hex: "000000")
         case .boldFuturistic: return Color(hex: "000000")
-        case .motionRich: return Color(hex: "FFFFFF")
-        case .sunsetOrange: return Color(hex: "FFFFFF")
+        case .motionRich: return Color(hex: "000000")
+        case .sunsetOrange: return Color(hex: "000000")
         }
     }
     

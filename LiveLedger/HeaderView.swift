@@ -131,17 +131,18 @@ struct HeaderView: View {
                         Label("Settings", systemImage: "gearshape.fill")
                     }
                 } label: {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 15, weight: .medium))
+                    // 9-dot grid menu icon (more modern than hamburger)
+                    Image(systemName: "square.grid.3x3.fill")
+                        .font(.system(size: 14, weight: .medium))
                         .foregroundColor(theme.iconColor) // Adapts to theme
                         .frame(width: 32, height: 32)
                         .background(
-                            Circle()
+                            RoundedRectangle(cornerRadius: 8)
                                 .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
                         )
                         .overlay(
-                            Circle()
-                                .strokeBorder(theme.cardBorder, lineWidth: 1)
+                            RoundedRectangle(cornerRadius: 8)
+                                .strokeBorder(theme.accentColor.opacity(0.5), lineWidth: 1)
                         )
                 }
             }
