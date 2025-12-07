@@ -101,7 +101,7 @@ struct HomeScreenView: View {
                 // NO page scrolling - only Orders has internal scroll
                 VStack(spacing: containerGap) {
                     // === CONTAINER 1: Header + Stats + Actions ===
-                    // FIXED at top, proportional height
+                    // FIXED at top, proportional height - MOVED UP by 7pt
                     gridContainer {
                         HeaderView(
                             viewModel: viewModel,
@@ -114,6 +114,7 @@ struct HomeScreenView: View {
                     }
                     .frame(width: safeWidth, height: headerHeight)
                     .padding(.horizontal, horizontalMargin)
+                    .offset(y: -7) // Move Header UP by 7pt ONLY
                     
                     // === CONTAINER 2: Platform Section ===
                     // FIXED position, proportional height
