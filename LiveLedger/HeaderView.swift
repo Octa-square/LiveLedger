@@ -1147,64 +1147,46 @@ struct DailyOrderReportView: View {
 }
 
 // Mini logo for header - L² (L Squared) Official LiveLedger Logo
+// Matches the login/signup page logo design
 struct LiveLedgerLogoMini: View {
-    private let greenStart = Color(red: 0.02, green: 0.59, blue: 0.41)
-    private let greenEnd = Color(red: 0.02, green: 0.47, blue: 0.34)
-    private let liveRed = Color(red: 0.94, green: 0.27, blue: 0.27)
+    private let size: CGFloat = 36
     
     var body: some View {
         ZStack {
-            // Green background
-            RoundedRectangle(cornerRadius: 8)
+            // Green rounded background (same as login page)
+            RoundedRectangle(cornerRadius: size * 0.22)
                 .fill(
-                    LinearGradient(colors: [greenStart, greenEnd],
-                                  startPoint: .topLeading, endPoint: .bottomTrailing)
+                    LinearGradient(
+                        colors: [Color(red: 0.05, green: 0.59, blue: 0.41), Color(red: 0.04, green: 0.47, blue: 0.34)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 )
-                .frame(width: 36, height: 36)
+                .frame(width: size, height: size)
             
-            // Signal arcs (top right)
-            MiniSignalArc()
-                .stroke(Color.white.opacity(0.4), lineWidth: 1.5)
-                .frame(width: 14, height: 14)
-                .offset(x: 8, y: -8)
-            
-            MiniSignalArc()
-                .stroke(Color.white.opacity(0.7), lineWidth: 1.5)
-                .frame(width: 10, height: 10)
-                .offset(x: 8, y: -8)
-            
-            MiniSignalArc()
-                .stroke(Color.white, lineWidth: 1.5)
-                .frame(width: 6, height: 6)
-                .offset(x: 8, y: -8)
-            
-            // L² - Official LiveLedger Logo
-            // Large L with superscript 2 at top-right, close to L, larger font
-            HStack(alignment: .top, spacing: -2) {
+            // L² - Official LiveLedger Logo (same proportions as login page)
+            HStack(alignment: .top, spacing: -size * 0.04) {
                 Text("L")
-                    .font(.system(size: 20, weight: .black, design: .rounded))
+                    .font(.system(size: size * 0.52, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 
                 Text("²")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(size: size * 0.28, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
-                    .baselineOffset(10) // Superscript positioning
+                    .baselineOffset(size * 0.26)
             }
-            .offset(x: 0, y: 2)
             
-            // LIVE badge
+            // LIVE badge (same as login page)
             Text("LIVE")
-                .font(.system(size: 5, weight: .black, design: .rounded))
+                .font(.system(size: size * 0.11, weight: .heavy))
                 .foregroundColor(.white)
-                .padding(.horizontal, 3)
-                .padding(.vertical, 1)
-                .background(
-                    RoundedRectangle(cornerRadius: 2)
-                        .fill(liveRed)
-                )
-                .offset(x: -8, y: -14)
+                .padding(.horizontal, size * 0.05)
+                .padding(.vertical, size * 0.025)
+                .background(Color.red)
+                .cornerRadius(size * 0.05)
+                .offset(x: -size * 0.26, y: -size * 0.32)
         }
-        .frame(width: 40, height: 40)
+        .frame(width: size, height: size)
     }
 }
 
