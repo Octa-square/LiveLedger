@@ -14,8 +14,8 @@ class TikTokLiveOverlayManager: ObservableObject {
     
     @Published var isOverlayVisible: Bool = false
     @Published var overlayPosition: CGPoint = CGPoint(x: 50, y: 200)
-    @Published var overlaySize: CGSize = CGSize(width: 280, height: 320)
-    @Published var overlayOpacity: Double = 0.95
+    @Published var overlaySize: CGSize = CGSize(width: 200, height: 200)
+    @Published var overlayOpacity: Double = 0.74  // 74% transparency default
     
     private init() {
         loadPreferences()
@@ -115,10 +115,10 @@ struct TikTokLiveOverlayView: View {
             
             ScrollView {
                 LazyVGrid(columns: [
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8),
-                    GridItem(.flexible(), spacing: 8)
-                ], spacing: 8) {
+                    GridItem(.fixed(55), spacing: 6),
+                    GridItem(.fixed(55), spacing: 6),
+                    GridItem(.fixed(55), spacing: 6)
+                ], spacing: 6) {
                     ForEach(viewModel.products.filter { !$0.isEmpty }) { product in
                         ProductOverlayCard(product: product) {
                             selectedProduct = product
@@ -129,8 +129,9 @@ struct TikTokLiveOverlayView: View {
                         }
                     }
                 }
-                .padding(8)
+                .padding(6)
             }
+            .frame(maxHeight: 130) // Show ~6 products (2 rows of 3), rest scrollable
             
             HStack {
                 Text("Orders: \(viewModel.orderCount)")
@@ -235,21 +236,70 @@ struct ProductOverlayCard: View {
     let product: Product
     let onTap: () -> Void
     
+    // Format price
+    private var formattedPrice: String {
+        let price = product.finalPrice
+        if price >= 1_000_000 {
+            return "$\(String(format: "%.1fM", price / 1_000_000))"
+        } else if price >= 10_000 {
+            return "$\(String(format: "%.0fK", price / 1_000))"
+        } else {
+            return "$\(Int(price))"
+        }
+    }
+    
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 4) {
+            ZStack {
+                // Background - image or colored
                 if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage).resizable().scaledToFill()
-                        .frame(width: 60, height: 60).clipShape(RoundedRectangle(cornerRadius: 8))
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
                 } else {
-                    RoundedRectangle(cornerRadius: 8).fill(Color.green.opacity(0.2))
-                        .frame(width: 60, height: 60)
-                        .overlay(Text(String(product.name.prefix(2))).font(.system(size: 16, weight: .bold)).foregroundColor(.green))
+                    // No image - gradient background
+                    LinearGradient(
+                        colors: [Color.green.opacity(0.3), Color.black.opacity(0.5)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
                 }
-                Text(product.name).font(.system(size: 10, weight: .medium)).foregroundColor(.white).lineLimit(1)
-                Text("$\(product.price, specifier: "%.0f")").font(.system(size: 10, weight: .bold)).foregroundColor(.green)
+                
+                // Dark gradient overlay for text readability
+                LinearGradient(
+                    colors: [.black.opacity(0.6), .black.opacity(0.2), .black.opacity(0.7)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                
+                // Text ON the image - Name, Price, Stock
+                VStack(spacing: 1) {
+                    Text(product.name.uppercased())
+                        .font(.system(size: 9, weight: .heavy))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                        .multilineTextAlignment(.center)
+                        .shadow(color: .black.opacity(0.8), radius: 1, x: 0, y: 1)
+                    
+                    Text(formattedPrice)
+                        .font(.system(size: 10, weight: .bold, design: .rounded))
+                        .foregroundColor(.green)
+                        .shadow(color: .black.opacity(0.8), radius: 1, x: 0, y: 1)
+                    
+                    Text("\(product.stock)")
+                        .font(.system(size: 8, weight: .semibold))
+                        .foregroundColor(product.stock > 5 ? .white : (product.stock > 0 ? .orange : .red))
+                        .shadow(color: .black.opacity(0.8), radius: 1, x: 0, y: 1)
+                }
+                .padding(4)
             }
-            .frame(maxWidth: .infinity).padding(6).background(Color.white.opacity(0.1)).cornerRadius(10)
+            .frame(width: 55, height: 55)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .strokeBorder(Color.green.opacity(0.6), lineWidth: 1)
+            )
         }
         .buttonStyle(PlainButtonStyle())
     }

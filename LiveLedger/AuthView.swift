@@ -132,6 +132,51 @@ class AuthManager: ObservableObject {
     init() {
         loadUser()
         setupSubscriptionObserver()
+        ensureDemoAccountExists()
+    }
+    
+    /// Ensures demo account exists for App Store review (without logging in)
+    /// Credentials: demo@liveledger.app / Demo123!
+    private func ensureDemoAccountExists() {
+        let demoEmail = "demo@liveledger.app"
+        
+        // Check if demo account already exists
+        if getAccountByEmail(demoEmail) != nil {
+            return // Demo account already exists
+        }
+        
+        // Create demo account (but don't log in)
+        // isPro is true so Apple can test all features immediately
+        let demoUser = AppUser(
+            id: "demo-user-appstore-review",
+            email: demoEmail,
+            passwordHash: simpleHash("Demo123!"),
+            name: "Demo User",
+            phoneNumber: nil,
+            companyName: "Demo Store",
+            storeAddress: "123 Demo Street",
+            businessPhone: nil,
+            currency: "USD ($)",
+            isPro: true,
+            ordersUsed: 0,
+            exportsUsed: 0,
+            referralCode: "DEMO2024",
+            createdAt: Date(),
+            profileImageData: nil,
+            securityQuestions: [
+                SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "demo"),
+                SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "demo"),
+                SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "demo")
+            ],
+            loginAttempts: 0,
+            accountLocked: false
+        )
+        
+        // Save to accounts storage (but don't log in)
+        updateAccountInStorage(demoUser)
+        
+        // Pre-populate demo data for this account
+        UserDefaults.standard.set(true, forKey: "demo_data_seeded")
     }
     
     // Listen for subscription status changes from StoreKit
@@ -300,6 +345,18 @@ class AuthManager: ObservableObject {
             currentUser = account
             isAuthenticated = true
             saveUser()
+            
+            // If this is the demo account, show full onboarding experience, then populate demo data
+            if normalizedEmail == "demo@liveledger.app" {
+                // Reset onboarding so they see the full demo experience
+                UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+                UserDefaults.standard.set(true, forKey: "hasSelectedPlan") // Skip plan selection (already Pro)
+                // Populate demo data after a small delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    NotificationCenter.default.post(name: .populateDemoData, object: nil)
+                }
+            }
+            
             return .success
             
         } else {
@@ -471,12 +528,13 @@ class AuthManager: ObservableObject {
     }
     
     /// Demo mode for App Store review - creates a pre-configured account with sample data
+    /// Demo credentials: demo@liveledger.app / Demo123!
     func startDemoMode() {
         // Create demo user with Pro access
         let demoUser = AppUser(
             id: "demo-user-\(UUID().uuidString)",
             email: "demo@liveledger.app",
-            passwordHash: simpleHash("demo123"),
+            passwordHash: simpleHash("Demo123!"),
             name: "Demo User",
             phoneNumber: nil,
             companyName: "Demo Store",

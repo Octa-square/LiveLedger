@@ -18,6 +18,7 @@ struct HeaderView: View {
     @State private var showExportOptions = false
     @State private var showClearOptions = false
     @State private var showAnalytics = false
+    @ObservedObject private var overlayManager = TikTokLiveOverlayManager.shared
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -41,7 +42,7 @@ struct HeaderView: View {
     }
     
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 6) {
             // Title Row - COMPACT
             HStack {
                 // LiveLedger logo - always shows app branding
@@ -117,18 +118,34 @@ struct HeaderView: View {
                 
                 // Menu Button (replaces Settings)
                 Menu {
+                    // Overlay Toggle Option
+                    Button {
+                        if overlayManager.isOverlayVisible {
+                            overlayManager.hideOverlay()
+                        } else {
+                            overlayManager.showOverlay()
+                        }
+                    } label: {
+                        Label(
+                            overlayManager.isOverlayVisible ? localization.localized(.hideOverlay) : localization.localized(.showOverlay),
+                            systemImage: overlayManager.isOverlayVisible ? "eye.slash.fill" : "eye.fill"
+                        )
+                    }
+                    
+                    Divider()
+                    
                     // Analytics Option
                     Button {
                         showAnalytics = true
                     } label: {
-                        Label("Analytics", systemImage: "chart.bar.fill")
+                        Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
                     }
                     
                     // Settings Option
                     Button {
                         showSettings = true
                     } label: {
-                        Label("Settings", systemImage: "gearshape.fill")
+                        Label(localization.localized(.settings), systemImage: "gearshape.fill")
                     }
                 } label: {
                     // 9-dot grid menu icon (more modern than hamburger)
@@ -147,14 +164,14 @@ struct HeaderView: View {
                 }
             }
             
-            // Stats Row - Full width, edges align with container edges
+            // Stats Row - Full width with 12pt spacing (aligned with Platform and Products)
             // Left: Total Sales (left edge aligns with container left)
             // Right: Total Orders (right edge aligns with container right)
-            HStack(spacing: 6) {
+            HStack(spacing: 12) {
                 StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
-                StatCardText(title: "Top Seller", text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
-                StatCard(title: "Stock Left", amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
-                StatCard(title: "Total Orders", amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
+                StatCardText(title: localization.localized(.topSeller), text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
+                StatCard(title: localization.localized(.stockLeft), amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
+                StatCard(title: localization.localized(.totalOrders), amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
             }
             .frame(maxWidth: .infinity) // Span full container width
             
@@ -581,7 +598,7 @@ struct StatCard: View {
     let icon: String
     var symbol: String = "$"
     var isCount: Bool = false
-    var theme: AppTheme = .minimalistDark
+    var theme: AppTheme = .emeraldGreen
     
     // Format large amounts to prevent overflow
     private var formattedAmount: String {
@@ -645,7 +662,7 @@ struct StatCardText: View {
     let text: String
     let color: Color
     let icon: String
-    var theme: AppTheme = .minimalistDark
+    var theme: AppTheme = .emeraldGreen
     
     var body: some View {
         VStack(spacing: 2) {
@@ -686,7 +703,7 @@ struct ActionButton: View {
     let title: String
     let icon: String
     let color: Color
-    var theme: AppTheme = .minimalistDark
+    var theme: AppTheme = .emeraldGreen
     let action: () -> Void
     
     @State private var isPressed = false

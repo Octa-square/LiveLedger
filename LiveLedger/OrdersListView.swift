@@ -120,7 +120,7 @@ struct OrdersListView: View {
                             .font(.system(size: 12))
                             .foregroundColor(theme.textMuted.opacity(0.4))
                     } else {
-                        Text("No orders match filters")
+                        Text(localization.localized(.noOrders))
                             .font(.system(size: 15))
                             .foregroundColor(theme.textMuted.opacity(0.6))
                         Text("Try adjusting platform or discount filter")
@@ -203,10 +203,9 @@ struct CompactOrderRow: View {
             // Product name
             Text(order.productName.uppercased())
                 .font(.system(size: 10, weight: .bold))
-                .foregroundColor(order.isFulfilled ? theme.textMuted : theme.textPrimary)
+                .foregroundColor(theme.textPrimary)
                 .lineLimit(1)
                 .frame(minWidth: 35, maxWidth: 55, alignment: .leading)
-                .strikethrough(order.isFulfilled, color: theme.textMuted)
             
             // Buyer name - tappable
             if isEditingName {

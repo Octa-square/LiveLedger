@@ -22,204 +22,221 @@ struct QuickAddView: View {
     @State private var showCreateCatalogAlert: Bool = false
     @State private var showRenameCatalogAlert: Bool = false
     @State private var newCatalogName: String = ""
+    @State private var newProductToAdd: Product?  // For adding new product with full edit sheet
     
     private var theme: AppTheme { themeManager.currentTheme }
     
+    // Count of non-empty products
+    private var activeProductCount: Int {
+        viewModel.products.filter { !$0.isEmpty }.count
+    }
+    
+    // MARK: - Header Row
+    private var headerRow: some View {
+        HStack(spacing: 0) {
+            catalogMenu
+            Spacer()
+            hintText
+            addButton
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // Catalog dropdown menu
+    private var catalogMenu: some View {
+        Menu {
+            ForEach(viewModel.catalogs) { catalog in
+                Button(catalog.name) { viewModel.selectCatalog(catalog) }
+            }
+            Divider()
+            Button("✏️ Rename") {
+                newCatalogName = viewModel.currentCatalogName
+                showRenameCatalogAlert = true
+            }
+            Button("➕ New Catalog") {
+                newCatalogName = "New Catalog"
+                showCreateCatalogAlert = true
+            }
+            if viewModel.catalogs.count > 1, let current = viewModel.currentCatalog {
+                Button("🗑️ Delete", role: .destructive) {
+                    viewModel.deleteCatalog(current)
+                }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text(viewModel.currentCatalogName)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
+                    .lineLimit(1)
+                Text("(\(activeProductCount)/12)")
+                    .font(.system(size: 9))
+                    .foregroundColor(theme.textSecondary)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 7))
+                    .foregroundColor(theme.textSecondary)
+            }
+        }
+    }
+    
+    // Hint text
+    private var hintText: some View {
+        Text(localization.localized(.tapSellHoldEdit))
+            .font(.system(size: 10, weight: .medium))
+            .foregroundColor(theme.textMuted)
+            .padding(.trailing, 8)
+    }
+    
+    // Add button - opens full EditProductSheet for new product
+    private var addButton: some View {
+        Button {
+            if activeProductCount >= 12 {
+                showMaxProductsAlert = true
+            } else {
+                // Create a new empty product and open edit sheet
+                newProductToAdd = Product(name: "", price: 0, stock: 0)
+            }
+        } label: {
+            Image(systemName: "plus.circle.fill")
+                .font(.system(size: 18))
+                .foregroundStyle(
+                    LinearGradient(colors: [theme.accentColor, theme.secondaryColor], startPoint: .topLeading, endPoint: .bottomTrailing)
+                )
+        }
+    }
+    
+    // MARK: - Product tap handler
+    private func handleProductTap(_ product: Product) {
+        guard !product.isEmpty && product.stock > 0 else { return }
+        
+        if let user = authManager.currentUser, !user.canCreateOrder {
+            onLimitReached()
+            return
+        }
+        
+        selectedProductForOrder = product
+        buyerName = ""
+        orderQuantity = 1
+        showBuyerPopup = true
+        
+        let impact = UIImpactFeedbackGenerator(style: .light)
+        impact.impactOccurred()
+    }
+    
+    // MARK: - Cancel popup
+    private func cancelBuyerPopup() {
+        showBuyerPopup = false
+        selectedProductForOrder = nil
+        buyerName = ""
+        orderQuantity = 1
+    }
+    
+    // MARK: - Add order from popup
+    private func addOrderFromPopup(product: Product) {
+        let platform = viewModel.selectedPlatform ?? .all
+        let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
+        
+        viewModel.createOrder(
+            product: product,
+            buyerName: finalName,
+            phoneNumber: "",
+            address: "",
+            platform: platform,
+            quantity: orderQuantity
+        )
+        authManager.incrementOrderCount()
+        cancelBuyerPopup()
+    }
+    
+    // MARK: - Buyer Popup View
+    @ViewBuilder
+    private func buyerPopupView(for product: Product) -> some View {
+        let totalAmount = product.finalPrice * Double(orderQuantity)
+        
+        VStack(spacing: 8) {
+            // Buyer name field
+            HStack(spacing: 6) {
+                Image(systemName: "pencil")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+                TextField("Buyer Name", text: $buyerName)
+                    .font(.system(size: 13))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
+            
+            // Quantity row
+            HStack(spacing: 12) {
+                Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
+                }
+                
+                Text("\(orderQuantity)")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .frame(width: 28)
+                
+                Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
+                }
+                
+                Text("$\(totalAmount, specifier: "%.0f")")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.green)
+            }
+            
+            // Action buttons
+            HStack(spacing: 10) {
+                Button { cancelBuyerPopup() } label: {
+                    Text("Cancel")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(Color(.systemGray5))
+                        .cornerRadius(8)
+                }
+                
+                Button { addOrderFromPopup(product: product) } label: {
+                    Text("Add")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 7)
+                        .background(Color.green)
+                        .cornerRadius(8)
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(.systemBackground))
+                .shadow(color: .black.opacity(0.2), radius: 8)
+        )
+        .transition(.scale.combined(with: .opacity))
+    }
+    
     var body: some View {
         ZStack {
-            VStack(alignment: .leading, spacing: 8) {
-                // Header with Catalog Dropdown - FULL WIDTH ALIGNMENT
-                // LEFT EDGE: My Products label aligns with container left
-                // RIGHT EDGE: + button aligns with container right
-                HStack(spacing: 0) {
-                    // Catalog Dropdown - LEFT EDGE ALIGNMENT
-                    Menu {
-                        // Switch catalogs
-                        ForEach(viewModel.catalogs) { catalog in
-                            Button(catalog.name) { viewModel.selectCatalog(catalog) }
-                        }
-                        Divider()
-                        Button("✏️ Rename") {
-                            newCatalogName = viewModel.currentCatalogName
-                            showRenameCatalogAlert = true
-                        }
-                        Button("➕ New Catalog") {
-                            newCatalogName = "New Catalog"
-                            showCreateCatalogAlert = true
-                        }
-                        if viewModel.catalogs.count > 1, let current = viewModel.currentCatalog {
-                            Button("🗑️ Delete", role: .destructive) {
-                                viewModel.deleteCatalog(current)
-                            }
-                        }
-                    } label: {
-                        HStack(spacing: 3) {
-                            Text(viewModel.currentCatalogName)
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundColor(theme.textPrimary)
-                                .lineLimit(1)
-                            Text("(\(viewModel.products.filter { !$0.isEmpty }.count)/12)")
-                                .font(.system(size: 10))
-                                .foregroundColor(theme.textSecondary)
-                            Image(systemName: "chevron.down")
-                                .font(.system(size: 8))
-                                .foregroundColor(theme.textSecondary)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    // Hint text - positioned close to + button
-                    Text("Tap: Sell • Hold: Edit")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(theme.textMuted)
-                        .padding(.trailing, 8)
-                    
-                    // + button - RIGHT EDGE ALIGNMENT
-                    Button {
-                        let added = viewModel.addNewProduct()
-                        if !added {
-                            showMaxProductsAlert = true
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(
-                                LinearGradient(colors: [theme.accentColor, theme.secondaryColor], startPoint: .topLeading, endPoint: .bottomTrailing)
-                            )
-                    }
-                }
-                .frame(maxWidth: .infinity) // Span full container width
+            VStack(alignment: .leading, spacing: 4) {
+                headerRow
                 
-                // Products Grid - TAP TO ADD ORDER WITH BUYER NAME
-                FlexibleProductGrid(
+                HorizontalProductGrid(
                     products: viewModel.products,
                     theme: theme,
-                    onTap: { product in
-                        if !product.isEmpty && product.stock > 0 {
-                            // Check order limit for free users
-                            if let user = authManager.currentUser, !user.canCreateOrder {
-                                onLimitReached()
-                                return
-                            }
-                            
-                            // Show buyer name popup
-                            selectedProductForOrder = product
-                            buyerName = ""
-                            orderQuantity = 1
-                            showBuyerPopup = true
-                            
-                            // Haptic feedback
-                            let impact = UIImpactFeedbackGenerator(style: .light)
-                            impact.impactOccurred()
-                        }
-                    },
-                    onLongPress: { product in
-                        editingProduct = product
-                    }
+                    onTap: handleProductTap,
+                    onLongPress: { editingProduct = $0 }
                 )
             }
             
             // Quick Add Popup - inline overlay
             if showBuyerPopup, let product = selectedProductForOrder {
-                VStack(spacing: 8) {
-                    // Buyer name field with pencil icon
-                    HStack(spacing: 6) {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                        TextField("Buyer Name", text: $buyerName)
-                            .font(.system(size: 13))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-                    
-                    // Quantity & Amount row
-                    HStack(spacing: 12) {
-                        Button {
-                            if orderQuantity > 1 { orderQuantity -= 1 }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .font(.system(size: 26))
-                                .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
-                        }
-                        
-                        Text("\(orderQuantity)")
-                            .font(.system(size: 20, weight: .bold, design: .rounded))
-                            .frame(width: 28)
-                        
-                        Button {
-                            if orderQuantity < product.stock { orderQuantity += 1 }
-                        } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 26))
-                                .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
-                        }
-                        
-                        // Amount - updates with quantity
-                        Text("$\(product.finalPrice * Double(orderQuantity), specifier: "%.0f")")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundColor(.green)
-                    }
-                    
-                    // Cancel & Add buttons
-                    HStack(spacing: 10) {
-                        // Cancel button
-                        Button {
-                            showBuyerPopup = false
-                            selectedProductForOrder = nil
-                            buyerName = ""
-                            orderQuantity = 1
-                        } label: {
-                            Text("Cancel")
-                                .font(.system(size: 13, weight: .medium))
-                                .foregroundColor(.gray)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 7)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
-                        
-                        // Add button
-                        Button {
-                            // Use grey "All" platform when no specific platform selected
-                            let platform = viewModel.selectedPlatform ?? .all
-                            let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
-                            
-                            viewModel.createOrder(
-                                product: product,
-                                buyerName: finalName,
-                                phoneNumber: "",
-                                address: "",
-                                platform: platform,
-                                quantity: orderQuantity
-                            )
-                            authManager.incrementOrderCount()
-                            
-                            showBuyerPopup = false
-                            selectedProductForOrder = nil
-                            buyerName = ""
-                            orderQuantity = 1
-                        } label: {
-                            Text("Add")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 24)
-                                .padding(.vertical, 7)
-                                .background(Color.green)
-                                .cornerRadius(8)
-                        }
-                    }
-                }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(.systemBackground))
-                        .shadow(color: .black.opacity(0.2), radius: 8)
-                )
-                .transition(.scale.combined(with: .opacity))
+                buyerPopupView(for: product)
             }
         }
         .padding(10)
@@ -275,9 +292,108 @@ struct QuickAddView: View {
         } message: {
             Text("Enter a new name for this catalog.")
         }
+        .sheet(item: $newProductToAdd) { product in
+            EditProductSheet(
+                product: product,
+                onSave: { savedProduct in
+                    handleSaveNewProduct(savedProduct)
+                },
+                onDelete: {
+                    newProductToAdd = nil
+                },
+                onCancel: {
+                    newProductToAdd = nil
+                },
+                isPro: authManager.currentUser?.isPro ?? false
+            )
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
+    }
+    
+    // MARK: - Handle Save New Product
+    private func handleSaveNewProduct(_ product: Product) {
+        // Only save if product has a name
+        guard !product.name.trimmingCharacters(in: .whitespaces).isEmpty else {
+            newProductToAdd = nil
+            return
+        }
+        
+        if let emptyIndex = viewModel.products.firstIndex(where: { $0.isEmpty }) {
+            viewModel.products[emptyIndex] = product
+        } else if viewModel.products.count < 12 {
+            viewModel.products.append(product)
+        }
+        viewModel.saveData()
+        newProductToAdd = nil
     }
 }
 
+// Horizontal scrolling product grid - 4 products visible, aligned with platform buttons
+// Uses SAME width calculation as PlatformSelectorView for pixel-perfect alignment
+struct HorizontalProductGrid: View {
+    let products: [Product]
+    let theme: AppTheme
+    let onTap: (Product) -> Void
+    let onLongPress: (Product) -> Void
+    
+    // ALIGNMENT CONSTANTS - Must match PlatformSelectorView exactly
+    private let maxProducts = 12
+    private let visibleCount: CGFloat = 4
+    private let itemSpacing: CGFloat = 8    // 8pt between items (tighter)
+    private let cardHeight: CGFloat = 58    // Product card height (bigger to fit content)
+    
+    var body: some View {
+        let displayProducts = Array(products.prefix(maxProducts))
+        let hasMoreProducts = displayProducts.count > Int(visibleCount)
+        
+        VStack(spacing: 2) {
+            GeometryReader { geo in
+                let availableWidth = geo.size.width
+                let totalSpacing = itemSpacing * (visibleCount - 1) // 36pt for 3 gaps
+                let itemWidth = (availableWidth - totalSpacing) / visibleCount
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: itemSpacing) {
+                        ForEach(displayProducts, id: \.id) { product in
+                            FastProductCard(
+                                product: product,
+                                theme: theme,
+                                onTap: { onTap(product) },
+                                onLongPress: { onLongPress(product) }
+                            )
+                            .frame(width: itemWidth, height: cardHeight)
+                        }
+                    }
+                }
+                .frame(width: availableWidth) // Clip to exactly 4 items width
+            }
+            .frame(height: cardHeight)
+            
+            // Scroll indicator - ALWAYS visible (permanent)
+            HStack(spacing: 4) {
+                Spacer()
+                
+                // Page dots - show based on product count
+                let pageCount = max(1, min((displayProducts.count - 1) / Int(visibleCount) + 1, 4))
+                ForEach(0..<pageCount, id: \.self) { index in
+                    Circle()
+                        .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
+                        .frame(width: 5, height: 5)
+                }
+                
+                // Scroll arrow indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(hasMoreProducts ? theme.textMuted : theme.textMuted.opacity(0.3))
+                
+                Spacer()
+            }
+        }
+    }
+}
+
+// Keep old FlexibleProductGrid for backwards compatibility
 struct FlexibleProductGrid: View {
     let products: [Product]
     let theme: AppTheme
@@ -307,13 +423,13 @@ struct FlexibleProductGrid: View {
                                 onTap: { onTap(product) },
                                 onLongPress: { onLongPress(product) }
                             )
-                            .frame(width: cardWidth, height: 75)
+                            .frame(width: cardWidth, height: 65)
                         }
                         
                         // Fill empty spaces in incomplete rows
                         if rows[rowIndex].count < maxPerRow {
                             ForEach(0..<(maxPerRow - rows[rowIndex].count), id: \.self) { index in
-                                Color.clear.frame(width: cardWidth, height: 75)
+                                Color.clear.frame(width: cardWidth, height: 65)
                             }
                         }
                     }
@@ -325,7 +441,7 @@ struct FlexibleProductGrid: View {
     
     private func calculateHeight(for productCount: Int) -> CGFloat {
         let rowCount = ceil(Double(productCount) / Double(maxPerRow))
-        let cardHeight: CGFloat = 75
+        let cardHeight: CGFloat = 65
         return CGFloat(rowCount) * cardHeight + CGFloat(max(0, Int(rowCount) - 1)) * spacing
     }
     
@@ -357,6 +473,7 @@ struct FastProductCard: View {
     let theme: AppTheme
     let onTap: () -> Void
     let onLongPress: () -> Void
+    @ObservedObject var localization = LocalizationManager.shared
     
     @State private var isPressed = false
     
@@ -382,23 +499,16 @@ struct FastProductCard: View {
             GeometryReader { geo in
                 ZStack {
                     if product.isEmpty {
-                        // Empty product state - clean placeholder with ⊕ icon
-                        VStack(spacing: 3) {
-                            Image(systemName: "plus.circle")
-                                .font(.system(size: 20, weight: .medium))
+                        // Empty product state - simple "Hold to add product" text
+                        VStack(spacing: 4) {
+                            Image(systemName: "plus.circle.dashed")
+                                .font(.system(size: 18, weight: .light))
+                                .foregroundColor(theme.textMuted.opacity(0.4))
+                            
+                            Text(localization.localized(.holdToAddProduct))
+                                .font(.system(size: 9, weight: .medium))
                                 .foregroundColor(theme.textMuted.opacity(0.5))
-                            
-                            Text("Hold to add")
-                                .font(.system(size: 8, weight: .semibold))
-                                .foregroundColor(theme.textMuted.opacity(0.5))
-                            
-                            Text("name, price")
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.45))
-                            
-                            Text("& stock")
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.45))
+                                .multilineTextAlignment(.center)
                         }
                         .frame(width: geo.size.width, height: geo.size.height)
                     } else if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
@@ -507,7 +617,7 @@ struct FastProductCard: View {
                 }
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(product.isEmpty ? "Empty product slot. Hold to add product" : "\(product.name), \(formattedPrice), \(product.stock) in stock")
+        .accessibilityLabel(product.isEmpty ? localization.localized(.holdToAddProduct) : "\(product.name), \(formattedPrice), \(product.stock) \(localization.localized(.stock))")
         .accessibilityHint(product.isEmpty ? "Long press to add a new product" : "Tap to add order, long press to edit")
     }
 }

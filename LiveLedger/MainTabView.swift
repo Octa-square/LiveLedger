@@ -40,20 +40,16 @@ struct HomeScreenView: View {
     
     private var theme: AppTheme { themeManager.currentTheme }
     
-    // Grid container styling - STATIC LAYOUT (BRIGHTER COLORS)
+    // Grid container styling - RESPONSIVE LAYOUT
     private let containerCornerRadius: CGFloat = 12
-    private var containerBorderColor: Color { theme.accentColor } // Uses theme's bright accent
+    private var containerBorderColor: Color { theme.accentColor }
     private let containerBorderWidth: CGFloat = 2
     private var containerBackground: Color { theme.isDarkTheme ? Color.black.opacity(0.75) : Color.white.opacity(0.85) }
-    private let horizontalMargin: CGFloat = 11
-    private let internalPadding: CGFloat = 10
+    private let horizontalMargin: CGFloat = 16  // 16pt from screen edges
+    private let internalPadding: CGFloat = 6    // Tight internal padding
     
-    // FIXED CONTAINER HEIGHTS (Static layout - fits on iPhone screen)
-    // Total available: ~667pt (iPhone 8) or ~844pt (iPhone 14)
-    // Status bar: ~44pt, Safe area bottom: ~34pt
-    // Available content height: ~589pt (iPhone 8) or ~766pt (iPhone 14)
-    
-    private let containerGap: CGFloat = 10  // Gap between containers (10pt each)
+    // UNIFORM TIGHT SPACING - Same gap everywhere
+    private let sectionGap: CGFloat = 6  // 6pt uniform gap between all grids
     
     private func gridContainer<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         content()
@@ -66,6 +62,7 @@ struct HomeScreenView: View {
                 RoundedRectangle(cornerRadius: containerCornerRadius)
                     .strokeBorder(containerBorderColor, lineWidth: containerBorderWidth)
             )
+            .clipShape(RoundedRectangle(cornerRadius: containerCornerRadius)) // CRITICAL: Hard clip
     }
     
     var body: some View {
@@ -73,35 +70,50 @@ struct HomeScreenView: View {
             let safeWidth = geometry.size.width - (horizontalMargin * 2)
             let safeHeight = geometry.size.height
             
-            // Calculate dynamic heights based on screen size
-            // Proportional layout that fits any iPhone
-            let headerHeight: CGFloat = safeHeight * 0.20   // ~130pt on iPhone 8
-            let platformHeight: CGFloat = safeHeight * 0.14  // ~90pt on iPhone 8
-            let productsHeight: CGFloat = safeHeight * 0.18  // ~110pt on iPhone 8
-            // Orders fills remaining space (no fixed height - uses Spacer)
+            // Calculate available height after gaps and padding
+            // Total gaps: 3 x sectionGap + top padding + bottom padding
+            let totalGaps: CGFloat = (sectionGap * 3) + 6 + 6  // 18 + 12 = 30pt
+            let availableHeight = safeHeight - totalGaps
+            
+            // Fixed heights for each section (percentage of available height)
+            // Header: 20% | Platform: 13% | Products: 18% | Orders: fills remaining
+            let headerHeight: CGFloat = availableHeight * 0.20
+            let platformHeight: CGFloat = availableHeight * 0.13
+            let productsHeight: CGFloat = availableHeight * 0.18
+            let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight  // Fill remaining
             
             ZStack {
-                // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
-                Image(theme.backgroundImageName)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill) // Stretch to fill
-                    .frame(
-                        width: geometry.size.width,
-                        height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                // Background - either wallpaper or plain gradient
+                if theme.hasWallpaper {
+                    // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
+                    Image(theme.backgroundImageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(
+                            width: geometry.size.width,
+                            height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                        )
+                        .clipped()
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .ignoresSafeArea(.all, edges: .all)
+                    
+                    // Dark overlay for readability
+                    Color.black.opacity(0.15)
+                        .ignoresSafeArea(.all, edges: .all)
+                } else {
+                    // Plain gradient background (no wallpaper)
+                    LinearGradient(
+                        colors: theme.gradientColors,
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
-                    .clipped()
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                     .ignoresSafeArea(.all, edges: .all)
+                }
                 
-                // Dark overlay for readability
-                Color.black.opacity(0.15)
-                    .ignoresSafeArea(.all, edges: .all)
-                
-                // STATIC LAYOUT - All containers fit on one screen
-                // NO page scrolling - only Orders has internal scroll
-                VStack(spacing: containerGap) {
+                // STATIC LAYOUT - All containers have FIXED heights
+                // NO overlap - each section has explicit size
+                VStack(spacing: sectionGap) {
                     // === CONTAINER 1: Header + Stats + Actions ===
-                    // FIXED at top, proportional height - MOVED UP by 7pt
                     gridContainer {
                         HeaderView(
                             viewModel: viewModel,
@@ -114,10 +126,8 @@ struct HomeScreenView: View {
                     }
                     .frame(width: safeWidth, height: headerHeight)
                     .padding(.horizontal, horizontalMargin)
-                    .offset(y: -7) // Move Header UP by 7pt ONLY
                     
                     // === CONTAINER 2: Platform Section ===
-                    // FIXED position, proportional height
                     gridContainer {
                         PlatformSelectorView(
                             viewModel: viewModel,
@@ -129,7 +139,6 @@ struct HomeScreenView: View {
                     .padding(.horizontal, horizontalMargin)
                     
                     // === CONTAINER 3: My Products ===
-                    // FIXED position, proportional height (max 12 products)
                     gridContainer {
                         QuickAddView(
                             viewModel: viewModel,
@@ -144,11 +153,9 @@ struct HomeScreenView: View {
                     }
                     .frame(width: safeWidth, height: productsHeight)
                     .padding(.horizontal, horizontalMargin)
-                    .clipped()
                     
                     // === CONTAINER 4: Orders ===
-                    // FILLS REMAINING SPACE - internal scroll only
-                    // No fixed height - expands to fill available space to bottom
+                    // FIXED HEIGHT - internal scroll for content
                     gridContainer {
                         OrdersListView(
                             viewModel: viewModel,
@@ -157,13 +164,11 @@ struct HomeScreenView: View {
                             authManager: authManager
                         )
                     }
-                    .frame(width: safeWidth)
-                    .frame(maxHeight: .infinity) // Fill remaining space
+                    .frame(width: safeWidth, height: ordersHeight)
                     .padding(.horizontal, horizontalMargin)
-                    .clipped()
                 }
-                .padding(.top, 6) // Reduced - move header UP for equal gaps
-                .padding(.bottom, 15) // 15pt from bottom (black area starts after Orders)
+                .padding(.top, 6)
+                .padding(.bottom, 6)
                 
                 // TikTok Overlay (floating widget - separate from layout)
                 TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)

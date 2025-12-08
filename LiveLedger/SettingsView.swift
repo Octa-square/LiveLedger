@@ -11,8 +11,7 @@ import PhotosUI
 
 // MARK: - Theme Definitions
 enum AppTheme: String, CaseIterable, Codable {
-    case minimalistLight = "Minimalist Light"
-    case minimalistDark = "Minimalist Dark"
+    case liveLedger = "LiveLedger"
     case emeraldGreen = "Emerald Green"
     case glassmorphism = "Glassmorphism"
     case boldFuturistic = "Bold Futuristic"
@@ -21,19 +20,22 @@ enum AppTheme: String, CaseIterable, Codable {
     
     // MARK: - Theme Mode
     var isDarkTheme: Bool {
+        // All remaining themes are dark themes
+        return true
+    }
+    
+    // MARK: - Has Wallpaper
+    var hasWallpaper: Bool {
         switch self {
-        case .minimalistLight:
-            return false
-        case .minimalistDark, .emeraldGreen, .glassmorphism, .boldFuturistic, .motionRich, .sunsetOrange:
-            return true
+        case .liveLedger: return false  // Plain background, no wallpaper
+        default: return true
         }
     }
     
     // MARK: - Text Colors (BRIGHTER - More Visible)
     var textPrimary: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "000000") // Pure black
-        case .minimalistDark: return Color(hex: "FFFFFF") // Pure white
+        case .liveLedger: return Color(hex: "FFFFFF")
         case .emeraldGreen: return Color(hex: "FFFFFF")
         case .glassmorphism: return Color(hex: "FFFFFF")
         case .boldFuturistic: return Color(hex: "00FFFF") // Bright cyan
@@ -44,8 +46,7 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var textSecondary: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "1A1A1A") // Darker for better contrast
-        case .minimalistDark: return Color(hex: "E6E6E6") // Brighter than D1D5DB
+        case .liveLedger: return Color(hex: "C8E6C9") // Light green tint
         case .emeraldGreen: return Color(hex: "B8FFE0") // Brighter mint
         case .glassmorphism: return Color(hex: "E0E7FF") // Brighter
         case .boldFuturistic: return Color(hex: "00E6FF") // Bright cyan
@@ -56,8 +57,7 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var textMuted: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "4D4D4D") // Darker for contrast
-        case .minimalistDark: return Color(hex: "B3B3B3") // Brighter than 9CA3AF
+        case .liveLedger: return Color(hex: "A5D6A7") // Muted green
         case .emeraldGreen: return Color(hex: "8CFFCC") // Brighter
         case .glassmorphism: return Color(hex: "B8C4E0") // Brighter
         case .boldFuturistic: return Color(hex: "00B3CC") // Brighter cyan
@@ -69,8 +69,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Accent Colors (BRIGHTER)
     var accentColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "00CC88") // Bright green (matching dark themes)
-        case .minimalistDark: return Color(hex: "00FF99") // Brighter green
+        case .liveLedger: return Color(hex: "4CAF50") // LiveLedger green
         case .emeraldGreen: return Color(hex: "00FFAA") // Brighter emerald
         case .glassmorphism: return Color(hex: "00E5FF") // Brighter cyan
         case .boldFuturistic: return Color(hex: "00FFCC") // Brighter neon green
@@ -83,8 +82,7 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var secondaryColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "00FF99") // Bright green
-        case .minimalistDark: return Color(hex: "4FFFB0") // Brighter mint
+        case .liveLedger: return Color(hex: "81C784") // Lighter green
         case .emeraldGreen: return Color(hex: "4FFFB0") // Brighter mint
         case .glassmorphism: return Color(hex: "A855F7") // Brighter purple
         case .boldFuturistic: return Color(hex: "00E5FF") // Bright cyan
@@ -96,8 +94,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Background Image
     var backgroundImageName: String {
         switch self {
-        case .minimalistLight: return "ThemeBG_MinimalistLight"
-        case .minimalistDark: return "ThemeBG_MinimalistDark"
+        case .liveLedger: return "" // No wallpaper - plain background
         case .emeraldGreen: return "ThemeBG_EmeraldGreen"
         case .glassmorphism: return "ThemeBG_Glassmorphism"
         case .boldFuturistic: return "ThemeBG_BoldFuturistic"
@@ -106,13 +103,12 @@ enum AppTheme: String, CaseIterable, Codable {
         }
     }
     
-    // MARK: - Background Colors (fallback)
+    // MARK: - Background Colors (fallback or primary for plain themes)
     var gradientColors: [Color] {
         switch self {
-        case .minimalistLight: 
-            return [Color(hex: "FFFFFF"), Color(hex: "F8FAFC"), Color(hex: "F1F5F9")]
-        case .minimalistDark: 
-            return [Color(hex: "0F0F0F"), Color(hex: "171717"), Color(hex: "1F1F1F")]
+        case .liveLedger:
+            // Plain solid LiveLedger green background
+            return [Color(hex: "1B5E20"), Color(hex: "2E7D32"), Color(hex: "1B5E20")]
         case .emeraldGreen: 
             return [Color(hex: "022C22"), Color(hex: "064E3B"), Color(hex: "065F46")]
         case .glassmorphism: 
@@ -129,8 +125,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Card/Surface Colors (with transparency support)
     var cardBackground: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "FFFFFF")
-        case .minimalistDark: return Color(hex: "262626")
+        case .liveLedger: return Color(hex: "1B5E20").opacity(0.9)
         case .emeraldGreen: return Color(hex: "064E3B")
         case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.1)
         case .boldFuturistic: return Color(hex: "111111")
@@ -141,8 +136,7 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var cardBorder: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "00CC88").opacity(0.5) // Green border on light
-        case .minimalistDark: return Color(hex: "00FF99").opacity(0.5) // Brighter green
+        case .liveLedger: return Color(hex: "4CAF50").opacity(0.6) // LiveLedger green border
         case .emeraldGreen: return Color(hex: "00FFAA").opacity(0.5) // Brighter
         case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.4) // Brighter
         case .boldFuturistic: return Color(hex: "00FFCC").opacity(0.6) // Brighter neon
@@ -154,8 +148,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Shadows (for neumorphic effects)
     var shadowLight: Color {
         switch self {
-        case .minimalistLight: return Color.white
-        case .minimalistDark: return Color(hex: "404040")
+        case .liveLedger: return Color(hex: "388E3C")
         case .emeraldGreen: return Color(hex: "065F46")
         case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.05)
         case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.1)
@@ -166,8 +159,7 @@ enum AppTheme: String, CaseIterable, Codable {
     
     var shadowDark: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "D1D5DB")
-        case .minimalistDark: return Color.black
+        case .liveLedger: return Color.black.opacity(0.4)
         case .emeraldGreen: return Color.black.opacity(0.4)
         case .glassmorphism: return Color.black.opacity(0.4)
         case .boldFuturistic: return Color(hex: "00F5A0").opacity(0.2)
@@ -179,8 +171,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Container Backgrounds with Transparency
     func cardBackgroundWithOpacity(_ opacity: Double = 0.85) -> Color {
         switch self {
-        case .minimalistLight: return Color(hex: "FFFFFF").opacity(opacity)
-        case .minimalistDark: return Color(hex: "262626").opacity(opacity)
+        case .liveLedger: return Color(hex: "1B5E20").opacity(opacity)
         case .emeraldGreen: return Color(hex: "064E3B").opacity(opacity)
         case .glassmorphism: return Color(hex: "FFFFFF").opacity(0.08)
         case .boldFuturistic: return Color(hex: "111111").opacity(opacity)
@@ -209,8 +200,7 @@ enum AppTheme: String, CaseIterable, Codable {
     // MARK: - Icon Color (adapts to theme background - BRIGHTER)
     var iconColor: Color {
         switch self {
-        case .minimalistLight: return Color(hex: "000000") // Pure black on light background
-        case .minimalistDark: return Color(hex: "FFFFFF") // Pure white
+        case .liveLedger: return Color(hex: "FFFFFF")
         case .emeraldGreen: return Color(hex: "FFFFFF")
         case .glassmorphism: return Color(hex: "FFFFFF")
         case .boldFuturistic: return Color(hex: "00FFCC") // Bright neon green
@@ -221,22 +211,14 @@ enum AppTheme: String, CaseIterable, Codable {
     
     // MARK: - Button Text Color (for buttons with accent background)
     var buttonTextColor: Color {
-        switch self {
-        case .minimalistLight: return Color(hex: "FFFFFF") // White text on colored buttons
-        case .minimalistDark: return Color(hex: "000000")
-        case .emeraldGreen: return Color(hex: "000000")
-        case .glassmorphism: return Color(hex: "000000")
-        case .boldFuturistic: return Color(hex: "000000")
-        case .motionRich: return Color(hex: "000000")
-        case .sunsetOrange: return Color(hex: "000000")
-        }
+        // All themes use black text on accent buttons
+        return Color(hex: "000000")
     }
     
     // MARK: - Icons
     var icon: String {
         switch self {
-        case .minimalistLight: return "sun.max.fill"
-        case .minimalistDark: return "moon.fill"
+        case .liveLedger: return "chart.line.uptrend.xyaxis"
         case .emeraldGreen: return "leaf.fill"
         case .glassmorphism: return "cube.transparent.fill"
         case .boldFuturistic: return "bolt.fill"
@@ -447,11 +429,12 @@ class ThemeManager: ObservableObject {
     }
     
     init() {
+        // Load saved theme or default to Emerald Green
         if let data = UserDefaults.standard.data(forKey: "app_theme"),
            let theme = try? JSONDecoder().decode(AppTheme.self, from: data) {
             currentTheme = theme
         } else {
-            currentTheme = .motionRich // Default theme: Motion Rich (purple flow)
+            currentTheme = .emeraldGreen // Default theme
         }
     }
 }
@@ -569,7 +552,7 @@ struct SettingsView: View {
                         showSoundSettings = true
                     } label: {
                         HStack {
-                            Label("Sound Settings", systemImage: "speaker.wave.2.fill")
+                            Label(localization.localized(.soundSettings), systemImage: "speaker.wave.2.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -578,7 +561,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Sounds")
+                    Text(localization.localized(.soundSettings))
                 } footer: {
                     Text("Configure timer start and order added sounds")
                 }
@@ -589,7 +572,7 @@ struct SettingsView: View {
                         showDisplaySettings = true
                     } label: {
                         HStack {
-                            Label("Display Settings", systemImage: "sun.max.fill")
+                            Label(localization.localized(.displaySettings), systemImage: "sun.max.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -598,7 +581,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Display")
+                    Text(localization.localized(.displaySettings))
                 } footer: {
                     Text("Theme and overlay settings")
                 }
@@ -764,7 +747,7 @@ struct SettingsView: View {
                         showProfileSettings = true
                     } label: {
                         HStack {
-                            Label("Profile", systemImage: "person.circle.fill")
+                            Label(localization.localized(.profile), systemImage: "person.circle.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Text(authManager.currentUser?.name ?? "")
@@ -780,7 +763,7 @@ struct SettingsView: View {
                         showStoreSettings = true
                     } label: {
                         HStack {
-                            Label("My Store", systemImage: "building.2.fill")
+                            Label(localization.localized(.myStore), systemImage: "building.2.fill")
                                 .foregroundColor(.primary)
                             Spacer()
                             Text(authManager.currentUser?.companyName ?? "")
@@ -792,7 +775,7 @@ struct SettingsView: View {
                         }
                     }
                 } header: {
-                    Text("Profile & Store")
+                    Text(localization.localized(.profileSettings))
                 }
                 
                 // Network Section
@@ -893,8 +876,7 @@ struct SettingsView: View {
     
     func themeDescription(_ theme: AppTheme) -> String {
         switch theme {
-        case .minimalistLight: return "Clean & airy whites"
-        case .minimalistDark: return "Smooth dark contrast"
+        case .liveLedger: return "Classic LiveLedger green"
         case .emeraldGreen: return "Rich forest vibes"
         case .glassmorphism: return "Frosted glass panels"
         case .boldFuturistic: return "Neon cyber vibes"
@@ -1160,7 +1142,8 @@ struct TermsPrivacyView: View {
 // MARK: - Display Settings View
 struct DisplaySettingsView: View {
     @ObservedObject var themeManager: ThemeManager
-    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
+    @ObservedObject var localization = LocalizationManager.shared
+    @ObservedObject private var overlayManager = TikTokLiveOverlayManager.shared
     @AppStorage("tiktokOverlayEnabled") private var overlayEnabled: Bool = true
     @Environment(\.dismiss) var dismiss
     
@@ -1208,7 +1191,7 @@ struct DisplaySettingsView: View {
                                 .foregroundColor(.secondary)
                         }
                         Slider(value: $overlayManager.overlayOpacity, in: 0.2...1.0)
-                            .tint(.pink)
+                            .tint(.green)
                             .onChange(of: overlayManager.overlayOpacity) { _, _ in
                                 overlayManager.savePreferences()
                             }
@@ -1257,9 +1240,9 @@ struct DisplaySettingsView: View {
                             }
                         } label: {
                             HStack {
-                                Circle()
-                                    .fill(theme.accentColor)
-                                    .frame(width: 24, height: 24)
+                                Image(systemName: theme.icon)
+                                    .foregroundColor(theme.accentColor)
+                                    .frame(width: 24)
                                 Text(theme.rawValue)
                                     .foregroundColor(.primary)
                                 Spacer()
@@ -1272,20 +1255,22 @@ struct DisplaySettingsView: View {
                     }
                 } header: {
                     Text("Theme")
+                } footer: {
+                    Text("Choose your preferred visual theme")
                 }
                 
                 // Reset
                 Section {
                     Button(role: .destructive) {
-                        themeManager.currentTheme = .motionRich
-                        overlayManager.overlayOpacity = 0.95
+                        themeManager.currentTheme = .emeraldGreen
+                        overlayManager.overlayOpacity = 0.74
                         overlayEnabled = true
                     } label: {
                         Label("Reset to Defaults", systemImage: "arrow.counterclockwise")
                     }
                 }
             }
-            .navigationTitle("Display Settings")
+            .navigationTitle(localization.localized(.displaySettings))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1299,6 +1284,7 @@ struct DisplaySettingsView: View {
 // MARK: - Profile Settings View
 struct ProfileSettingsView: View {
     @ObservedObject var authManager: AuthManager
+    @ObservedObject var localization = LocalizationManager.shared
     @Environment(\.dismiss) var dismiss
     @State private var name: String = ""
     @State private var email: String = ""
@@ -1395,7 +1381,7 @@ struct ProfileSettingsView: View {
                     Text("Security")
                 }
             }
-            .navigationTitle("Profile")
+            .navigationTitle(localization.localized(.profile))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

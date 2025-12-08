@@ -3,6 +3,7 @@
 //  LiveLedger
 //
 //  LiveLedger - Platform Selector
+//  ALIGNED WITH PRODUCTS - Same width calculation for pixel-perfect alignment
 //
 
 import SwiftUI
@@ -16,15 +17,16 @@ struct PlatformSelectorView: View {
     @State private var newPlatformColor = "orange"
     @State private var showDuplicateError = false
     @State private var duplicateErrorMessage = ""
+    @State private var scrollOffset: CGFloat = 0
     
     private var theme: AppTheme { themeManager.currentTheme }
     
     let colorOptions = ["pink", "purple", "blue", "orange", "green", "red", "yellow", "cyan", "indigo", "mint", "teal", "brown"]
     
-    // Platform chip dimensions
-    private let chipWidth: CGFloat = 70
-    private let chipHeight: CGFloat = 50
-    private let chipSpacing: CGFloat = 8
+    // ALIGNMENT CONSTANTS - Must match QuickAddView exactly
+    private let itemSpacing: CGFloat = 8        // 8pt between items (tighter)
+    private let numberOfColumns: CGFloat = 4   // 4 items visible at once
+    private let chipHeight: CGFloat = 42       // Platform button height
     
     // Separate default and custom platforms
     private var defaultPlatforms: [Platform] {
@@ -35,21 +37,33 @@ struct PlatformSelectorView: View {
         viewModel.platforms.filter { $0.isCustom }
     }
     
-    // Timer view (compact, same height as Platform label)
+    // All platforms in display order: All, TikTok, Instagram, Facebook, then custom
+    private var allPlatformsOrdered: [Platform?] {
+        var result: [Platform?] = [nil] // nil represents "All"
+        result.append(contentsOf: defaultPlatforms)
+        result.append(contentsOf: customPlatforms)
+        return result
+    }
+    
+    private var hasMoreThanFour: Bool {
+        allPlatformsOrdered.count > 4
+    }
+    
+    // Timer view (compact)
     private var sessionTimerView: some View {
         HStack(spacing: 4) {
             Text(viewModel.formattedSessionTime)
-                .font(.system(size: 14, weight: .bold, design: .monospaced))
+                .font(.system(size: 13, weight: .bold, design: .monospaced))
                 .foregroundColor(viewModel.isTimerRunning ? theme.successColor : .white.opacity(0.7))
             
             // Control buttons
-            HStack(spacing: 3) {
+            HStack(spacing: 2) {
                 if !viewModel.isTimerRunning && !viewModel.isTimerPaused {
                     Button { viewModel.startTimer() } label: {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 20, height: 20)
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -57,9 +71,9 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerRunning {
                     Button { viewModel.pauseTimer() } label: {
                         Image(systemName: "pause.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 20, height: 20)
                             .background(Circle().fill(Color.orange))
                     }
                 }
@@ -67,9 +81,9 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerPaused && !viewModel.isTimerRunning {
                     Button { viewModel.resumeTimer() } label: {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 20, height: 20)
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -77,16 +91,16 @@ struct PlatformSelectorView: View {
                 if viewModel.isTimerRunning || viewModel.isTimerPaused || viewModel.sessionElapsedTime > 0 {
                     Button { viewModel.resetTimer() } label: {
                         Image(systemName: "stop.fill")
-                            .font(.system(size: 10))
+                            .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 22, height: 22)
+                            .frame(width: 20, height: 20)
                             .background(Circle().fill(Color.red))
                     }
                 }
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
@@ -94,37 +108,31 @@ struct PlatformSelectorView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 4) {
             // ROW 1: "Platform" | Timer (center) | "+ Add"
-            // ALL ON SAME HORIZONTAL LINE - FULL WIDTH
-            // LEFT EDGE: "Platform" aligns with container left (and "All" box below)
-            // RIGHT EDGE: "+ Add" aligns with container right (and "Facebook" box below)
             HStack(alignment: .center, spacing: 0) {
-                // "Platform" label - LEFT EDGE ALIGNMENT
-                Text("Platform")
-                    .font(.system(size: 14, weight: .bold))
+                Text(localization.localized(.platform))
+                    .font(.system(size: 13, weight: .bold))
                     .foregroundColor(.white)
                 
                 Spacer()
                 
-                // Timer - centered
                 sessionTimerView
                 
                 Spacer()
                 
-                // "+ Add" button - RIGHT EDGE ALIGNMENT
                 Button {
                     showingAddPlatform = true
                 } label: {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 3) {
                         Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 9, weight: .bold))
                         Text("Add")
-                            .font(.system(size: 11, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                     }
                     .foregroundColor(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
                     .background(
                         Capsule()
                             .fill(
@@ -134,73 +142,76 @@ struct PlatformSelectorView: View {
                     )
                 }
             }
-            .frame(maxWidth: .infinity) // Span full container width
             
-            // ROW 2: Platform boxes - All 4 MUST be visible: All, TikTok, Instagram, Facebook
-            // FULL WIDTH: "All" left edge aligns with container left, "Facebook" right edge aligns with container right
-            HStack(spacing: 0) {
-                // "All" button - LEFT EDGE ALIGNMENT
-                PlatformChip(
-                    platform: .all,
-                    isSelected: viewModel.selectedPlatform == nil,
-                    theme: theme,
-                    chipWidth: chipWidth,
-                    chipHeight: chipHeight,
-                    onTap: { viewModel.selectedPlatform = nil },
-                    onDelete: nil
-                )
+            // ROW 2: Platform buttons - EXACTLY 4 visible, others COMPLETELY hidden
+            // Uses same width calculation as products for pixel-perfect alignment
+            GeometryReader { geo in
+                let availableWidth = geo.size.width
+                let totalSpacing = itemSpacing * (numberOfColumns - 1) // 36pt for 3 gaps
+                let itemWidth = (availableWidth - totalSpacing) / numberOfColumns
                 
-                Spacer()
-                
-                // Default platforms (TikTok, Instagram, Facebook) - evenly spaced
-                ForEach(defaultPlatforms) { platform in
-                    PlatformChip(
-                        platform: platform,
-                        isSelected: viewModel.selectedPlatform?.id == platform.id,
-                        theme: theme,
-                        chipWidth: chipWidth,
-                        chipHeight: chipHeight,
-                        onTap: { viewModel.selectedPlatform = platform },
-                        onDelete: nil
-                    )
-                    
-                    if platform.id != defaultPlatforms.last?.id {
-                        Spacer()
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity) // Span full container width - edges align
-            
-            // Custom platforms row (only if any exist) - horizontal scroll
-            if !customPlatforms.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: chipSpacing) {
-                        ForEach(customPlatforms) { platform in
-                            PlatformChip(
+                    HStack(spacing: itemSpacing) {
+                        // "All" button
+                        AlignedPlatformChip(
+                            platform: .all,
+                            isSelected: viewModel.selectedPlatform == nil,
+                            theme: theme,
+                            width: itemWidth,
+                            height: chipHeight,
+                            onTap: { viewModel.selectedPlatform = nil },
+                            onDelete: nil
+                        )
+                        
+                        // Default platforms (TikTok, Instagram, Facebook)
+                        ForEach(defaultPlatforms) { platform in
+                            AlignedPlatformChip(
                                 platform: platform,
                                 isSelected: viewModel.selectedPlatform?.id == platform.id,
                                 theme: theme,
-                                chipWidth: chipWidth,
-                                chipHeight: chipHeight,
+                                width: itemWidth,
+                                height: chipHeight,
+                                onTap: { viewModel.selectedPlatform = platform },
+                                onDelete: nil
+                            )
+                        }
+                        
+                        // Custom platforms - HIDDEN off screen, scroll to reveal
+                        ForEach(customPlatforms) { platform in
+                            AlignedPlatformChip(
+                                platform: platform,
+                                isSelected: viewModel.selectedPlatform?.id == platform.id,
+                                theme: theme,
+                                width: itemWidth,
+                                height: chipHeight,
                                 onTap: { viewModel.selectedPlatform = platform },
                                 onDelete: { viewModel.deletePlatform(platform) }
                             )
                         }
                     }
                 }
+                .frame(width: availableWidth) // Clip to exactly 4 items width
+            }
+            .frame(height: chipHeight)
+            
+            // Scroll indicator - ALWAYS visible (permanent)
+            HStack(spacing: 4) {
+                Spacer()
                 
-                // Scroll indicator dots
-                HStack {
-                    Spacer()
-                    HStack(spacing: 4) {
-                        ForEach(0..<min(3, customPlatforms.count), id: \.self) { index in
-                            Circle()
-                                .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.3))
-                                .frame(width: 5, height: 5)
-                        }
-                    }
-                    Spacer()
+                // Page dots - show based on platform count
+                let pageCount = max(1, min((allPlatformsOrdered.count - 1) / 4 + 1, 4))
+                ForEach(0..<pageCount, id: \.self) { index in
+                    Circle()
+                        .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
+                        .frame(width: 5, height: 5)
                 }
+                
+                // Scroll arrow indicator
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundColor(hasMoreThanFour ? theme.textMuted : theme.textMuted.opacity(0.3))
+                
+                Spacer()
             }
         }
         .sheet(isPresented: $showingAddPlatform) {
@@ -243,6 +254,75 @@ struct PlatformSelectorView: View {
     }
 }
 
+// MARK: - Aligned Platform Chip (same width as product cards)
+struct AlignedPlatformChip: View {
+    let platform: Platform
+    let isSelected: Bool
+    let theme: AppTheme
+    let width: CGFloat
+    let height: CGFloat
+    let onTap: () -> Void
+    let onDelete: (() -> Void)?
+    @ObservedObject var localization = LocalizationManager.shared
+    
+    @State private var showDeleteConfirm = false
+    
+    // Get localized name for default platforms
+    private var localizedName: String {
+        switch platform.name.lowercased() {
+        case "all": return localization.localized(.all)
+        case "tiktok": return localization.localized(.tiktok)
+        case "instagram": return localization.localized(.instagram)
+        case "facebook": return localization.localized(.facebook)
+        default: return platform.name
+        }
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            VStack(spacing: 2) {
+                Image(systemName: platform.icon)
+                    .font(.system(size: 16, weight: .semibold))
+                
+                Text(localizedName)
+                    .font(.system(size: 10, weight: .bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .foregroundColor(isSelected ? .white : platform.swiftUIColor)
+            .frame(width: width, height: height)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? platform.swiftUIColor.opacity(0.85) : theme.cardBackgroundWithOpacity(0.4))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(isSelected ? platform.swiftUIColor : theme.cardBorder, lineWidth: isSelected ? 2 : 1)
+            )
+            .overlay(alignment: .topTrailing) {
+                if onDelete != nil {
+                    Button {
+                        showDeleteConfirm = true
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.8))
+                            .background(Circle().fill(Color.black.opacity(0.3)))
+                    }
+                    .padding(2) // Keep inside bounds
+                }
+            }
+            .scaleEffect(isSelected ? 1.02 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isSelected)
+        }
+        .buttonStyle(PlainButtonStyle())
+        .confirmationDialog("Delete Platform?", isPresented: $showDeleteConfirm) {
+            Button("Delete", role: .destructive) { onDelete?() }
+            Button("Cancel", role: .cancel) {}
+        }
+    }
+}
+
 struct PlatformChip: View {
     let platform: Platform
     let isSelected: Bool
@@ -251,8 +331,20 @@ struct PlatformChip: View {
     let chipHeight: CGFloat
     let onTap: () -> Void
     let onDelete: (() -> Void)?
+    @ObservedObject var localization = LocalizationManager.shared
     
     @State private var showDeleteConfirm = false
+    
+    // Get localized name for default platforms
+    private var localizedName: String {
+        switch platform.name.lowercased() {
+        case "all": return localization.localized(.all)
+        case "tiktok": return localization.localized(.tiktok)
+        case "instagram": return localization.localized(.instagram)
+        case "facebook": return localization.localized(.facebook)
+        default: return platform.name
+        }
+    }
     
     var body: some View {
         Button(action: onTap) {
@@ -260,7 +352,7 @@ struct PlatformChip: View {
                 Image(systemName: platform.icon)
                     .font(.system(size: 16, weight: .semibold))
                 
-                Text(platform.name)
+                Text(localizedName)
                     .font(.system(size: 10, weight: .bold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
@@ -281,10 +373,11 @@ struct PlatformChip: View {
                         showDeleteConfirm = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.7))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.8))
+                            .background(Circle().fill(Color.black.opacity(0.3)))
                     }
-                    .offset(x: 5, y: -5)
+                    .padding(2) // Keep inside bounds
                 }
             }
             .scaleEffect(isSelected ? 1.03 : 1.0)

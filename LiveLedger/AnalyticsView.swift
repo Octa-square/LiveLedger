@@ -27,6 +27,14 @@ struct AnalyticsView: View {
         case today = "Today"
         case week = "Week"
         case month = "Month"
+        
+        func localized(_ manager: LocalizationManager) -> String {
+            switch self {
+            case .today: return manager.localized(.today)
+            case .week: return manager.localized(.week)
+            case .month: return manager.localized(.month)
+            }
+        }
     }
     
     // MARK: - Grid Container (Same as Home Page)
@@ -189,19 +197,19 @@ struct AnalyticsView: View {
                 // Time Period Selector
                 Picker("Period", selection: $selectedPeriod) {
                     ForEach(TimePeriod.allCases, id: \.self) { period in
-                        Text(period.rawValue).tag(period)
+                        Text(period.localized(localization)).tag(period)
                     }
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, horizontalMargin)
                 
                 // CONTAINER 1: Summary Stats (green border)
-                gridContainer(title: "📊 Sales Summary") {
+                gridContainer(title: "📊 \(localization.localized(.salesAnalytics))") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                        StatBox(title: "Revenue", value: "$\(String(format: "%.2f", totalRevenue))", color: .green)
-                        StatBox(title: "Orders", value: "\(totalOrders)", color: .blue)
-                        StatBox(title: "Avg Order", value: "$\(String(format: "%.2f", avgOrderValue))", color: .purple)
-                        StatBox(title: "Items Sold", value: "\(totalItemsSold)", color: .orange)
+                        StatBox(title: localization.localized(.revenue), value: "$\(String(format: "%.2f", totalRevenue))", color: .green)
+                        StatBox(title: localization.localized(.orders), value: "\(totalOrders)", color: .blue)
+                        StatBox(title: localization.localized(.avgOrder), value: "$\(String(format: "%.2f", avgOrderValue))", color: .purple)
+                        StatBox(title: localization.localized(.itemsSold), value: "\(totalItemsSold)", color: .orange)
                     }
                 }
                 
@@ -358,7 +366,7 @@ struct AnalyticsView: View {
             }
             .padding(.top, 16)
         }
-        .navigationTitle("Analytics")
+        .navigationTitle(localization.localized(.analytics))
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             // Initialize comparison dropdowns
