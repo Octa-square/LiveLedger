@@ -537,12 +537,145 @@ struct POSReceiptView: View {
                     Button("Close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    ShareLink(item: generateReceiptText()) {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                    Button {
+                        printReceiptAsImage()
+                    } label: {
+                        Label("Print", systemImage: "printer.fill")
                     }
                 }
             }
         }
+    }
+    
+    // MARK: - Print as non-editable image
+    @MainActor
+    private func printReceiptAsImage() {
+        // Create the receipt view
+        let receiptContent = receiptContentView
+        
+        // Render to image
+        let renderer = ImageRenderer(content: receiptContent)
+        renderer.scale = 3.0 // High resolution
+        
+        guard let uiImage = renderer.uiImage else { return }
+        
+        // Print using UIPrintInteractionController
+        let printController = UIPrintInteractionController.shared
+        
+        let printInfo = UIPrintInfo(dictionary: nil)
+        printInfo.jobName = "Receipt-\(order.id.uuidString.prefix(8))"
+        printInfo.outputType = .photo // Non-editable image
+        
+        printController.printInfo = printInfo
+        printController.printingItem = uiImage
+        
+        printController.present(animated: true)
+    }
+    
+    // Receipt content for rendering
+    private var receiptContentView: some View {
+        VStack(spacing: 8) {
+            Text("SALES RECEIPT")
+                .font(.system(size: 18, weight: .bold, design: .monospaced))
+            
+            Text(dateFormatter.string(from: order.timestamp))
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text("Order #\(order.id.uuidString.prefix(8).uppercased())")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text(String(repeating: "-", count: 32))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            HStack {
+                Text(order.productName)
+                    .font(.system(size: 14, design: .monospaced))
+                Spacer()
+            }
+            
+            HStack {
+                Text("\(order.quantity) x $\(order.pricePerUnit, specifier: "%.2f")")
+                    .font(.system(size: 12, design: .monospaced))
+                    .foregroundColor(.gray)
+                Spacer()
+                Text("$\(order.totalPrice, specifier: "%.2f")")
+                    .font(.system(size: 14, weight: .bold, design: .monospaced))
+            }
+            
+            Text(String(repeating: "-", count: 32))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            HStack {
+                Text("TOTAL")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+                Spacer()
+                Text("$\(order.totalPrice, specifier: "%.2f")")
+                    .font(.system(size: 16, weight: .bold, design: .monospaced))
+            }
+            
+            HStack {
+                Text("Status:")
+                    .font(.system(size: 12, design: .monospaced))
+                Spacer()
+                Text(order.paymentStatus.rawValue.uppercased())
+                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .foregroundColor(order.paymentStatus.color)
+            }
+            
+            Text(String(repeating: "-", count: 32))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text("CUSTOMER")
+                    .font(.system(size: 10, weight: .bold, design: .monospaced))
+                    .foregroundColor(.gray)
+                
+                Text(order.buyerName)
+                    .font(.system(size: 12, design: .monospaced))
+                
+                if !order.phoneNumber.isEmpty {
+                    Text(order.phoneNumber)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+                
+                if !order.address.isEmpty {
+                    Text(order.address)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            
+            Text(String(repeating: "-", count: 32))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text("Via \(order.platform.name)")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text(String(repeating: "-", count: 32))
+                .font(.system(size: 12, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text("Thank you for your purchase!")
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text("Order #\(order.id.uuidString.prefix(8).uppercased())")
+                .font(.system(size: 8, design: .monospaced))
+                .foregroundColor(.gray)
+        }
+        .padding(20)
+        .background(Color.white)
+        .foregroundColor(.black)
+        .frame(width: 300)
     }
     
     func generateReceiptText() -> String {

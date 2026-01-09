@@ -910,12 +910,79 @@ struct AllReceiptsView: View {
                     Button("Close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    ShareLink(item: generateAllReceiptsText()) {
-                        Label("Share All", systemImage: "square.and.arrow.up")
+                    Button {
+                        printAllReceiptsAsImage()
+                    } label: {
+                        Label("Print", systemImage: "printer.fill")
                     }
                 }
             }
         }
+    }
+    
+    @MainActor
+    private func printAllReceiptsAsImage() {
+        let content = allReceiptsContentView
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 3.0
+        
+        guard let uiImage = renderer.uiImage else { return }
+        
+        let printController = UIPrintInteractionController.shared
+        let printInfo = UIPrintInfo(dictionary: nil)
+        printInfo.jobName = "AllReceipts-\(Date().timeIntervalSince1970)"
+        printInfo.outputType = .photo
+        
+        printController.printInfo = printInfo
+        printController.printingItem = uiImage
+        printController.present(animated: true)
+    }
+    
+    private var allReceiptsContentView: some View {
+        VStack(spacing: 16) {
+            Text("ALL RECEIPTS (\(orders.count) orders)")
+                .font(.system(size: 16, weight: .bold, design: .monospaced))
+            
+            Text("Generated: \(DateFormatter.localizedString(from: Date(), dateStyle: .medium, timeStyle: .short))")
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            Text(String(repeating: "=", count: 32))
+                .font(.system(size: 10, design: .monospaced))
+                .foregroundColor(.gray)
+            
+            ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("RECEIPT #\(index + 1)")
+                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    Text("Order #\(order.id.uuidString.prefix(8).uppercased())")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.gray)
+                    Text(order.productName)
+                        .font(.system(size: 11, design: .monospaced))
+                    Text("\(order.quantity) x $\(String(format: "%.2f", order.pricePerUnit)) = $\(String(format: "%.2f", order.totalPrice))")
+                        .font(.system(size: 10, design: .monospaced))
+                    Text("Buyer: \(order.buyerName)")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.gray)
+                    Text("Platform: \(order.platform.name) | \(order.paymentStatus.rawValue)")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundColor(.gray)
+                    Text(String(repeating: "-", count: 32))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            
+            let total = orders.reduce(0) { $0 + $1.totalPrice }
+            Text("GRAND TOTAL: $\(String(format: "%.2f", total))")
+                .font(.system(size: 14, weight: .bold, design: .monospaced))
+        }
+        .padding(20)
+        .background(Color.white)
+        .foregroundColor(.black)
+        .frame(width: 320)
     }
     
     func generateAllReceiptsText() -> String {
@@ -1114,12 +1181,105 @@ struct DailyOrderReportView: View {
                     Button("Close") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    ShareLink(item: generateReportText()) {
-                        Label("Share", systemImage: "square.and.arrow.up")
+                    Button {
+                        printReportAsImage()
+                    } label: {
+                        Label("Print", systemImage: "printer.fill")
                     }
                 }
             }
         }
+    }
+    
+    @MainActor
+    private func printReportAsImage() {
+        let content = reportContentView
+        let renderer = ImageRenderer(content: content)
+        renderer.scale = 3.0
+        
+        guard let uiImage = renderer.uiImage else { return }
+        
+        let printController = UIPrintInteractionController.shared
+        let printInfo = UIPrintInfo(dictionary: nil)
+        printInfo.jobName = "DailyReport-\(Date().timeIntervalSince1970)"
+        printInfo.outputType = .photo
+        
+        printController.printInfo = printInfo
+        printController.printingItem = uiImage
+        printController.present(animated: true)
+    }
+    
+    private var reportContentView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            VStack(spacing: 4) {
+                Text(companyName)
+                    .font(.system(size: 18, weight: .bold))
+                Text("DAILY SALES REPORT")
+                    .font(.system(size: 14, weight: .semibold))
+                Text(dateFormatter.string(from: Date()))
+                    .font(.system(size: 10))
+                    .foregroundColor(.gray)
+                Text(String(repeating: "=", count: 40))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Orders
+            ForEach(Array(orders.enumerated()), id: \.element.id) { index, order in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("#\(index + 1) \(order.productName)")
+                        .font(.system(size: 12, weight: .semibold))
+                    
+                    let buyerDisplay = order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName
+                    
+                    Text("Qty: \(order.quantity) x \(currencySymbol)\(String(format: "%.2f", order.pricePerUnit)) = \(currencySymbol)\(String(format: "%.2f", order.totalPrice))")
+                        .font(.system(size: 10))
+                    Text("Buyer: \(buyerDisplay)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+                    Text("Platform: \(order.platform.name) | \(order.paymentStatus.rawValue)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.gray)
+                    Text(String(repeating: "-", count: 40))
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            // Summary
+            VStack(spacing: 4) {
+                Text(String(repeating: "=", count: 40))
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundColor(.gray)
+                HStack {
+                    Text("TOTAL ORDERS:")
+                    Spacer()
+                    Text("\(orders.count)")
+                        .fontWeight(.bold)
+                }
+                .font(.system(size: 12))
+                HStack {
+                    Text("TOTAL ITEMS:")
+                    Spacer()
+                    Text("\(orders.reduce(0) { $0 + $1.quantity })")
+                        .fontWeight(.bold)
+                }
+                .font(.system(size: 12))
+                HStack {
+                    Text("GRAND TOTAL:")
+                    Spacer()
+                    Text("\(currencySymbol)\(String(format: "%.2f", totalRevenue))")
+                        .fontWeight(.bold)
+                }
+                .font(.system(size: 14))
+            }
+        }
+        .padding(20)
+        .background(Color.white)
+        .foregroundColor(.black)
+        .frame(width: 320)
     }
     
     func generateReportText() -> String {
