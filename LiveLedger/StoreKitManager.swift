@@ -15,11 +15,17 @@ typealias StoreProduct = StoreKit.Product
 // MARK: - Product Identifiers
 enum ProductID: String, CaseIterable {
     case proMonthly = "com.octasquare.liveledger.pro.monthly"
+    case proYearly = "com.octasquare.liveledger.pro.yearly"
     
     var displayName: String {
         switch self {
         case .proMonthly: return "Pro Monthly"
+        case .proYearly: return "Pro Yearly"
         }
+    }
+    
+    var isYearly: Bool {
+        self == .proYearly
     }
 }
 
@@ -177,7 +183,9 @@ class StoreKitManager: ObservableObject {
             do {
                 let transaction = try checkVerified(result)
                 
-                if transaction.productID == ProductID.proMonthly.rawValue {
+                // Check both monthly and yearly subscriptions
+                if transaction.productID == ProductID.proMonthly.rawValue ||
+                   transaction.productID == ProductID.proYearly.rawValue {
                     if let expirationDate = transaction.expirationDate {
                         if expirationDate > Date() {
                             // Check if in grace period (billing retry)
@@ -241,9 +249,13 @@ class StoreKitManager: ObservableObject {
         }
     }
     
-    // MARK: - Get Pro Product
+    // MARK: - Get Pro Products
     var proMonthlyProduct: StoreProduct? {
         products.first { $0.id == ProductID.proMonthly.rawValue }
+    }
+    
+    var proYearlyProduct: StoreProduct? {
+        products.first { $0.id == ProductID.proYearly.rawValue }
     }
     
     // MARK: - Format Price

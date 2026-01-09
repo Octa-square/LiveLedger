@@ -12,14 +12,14 @@ struct SubscriptionView: View {
     @ObservedObject var authManager: AuthManager
     @StateObject private var storeKit = StoreKitManager.shared
     @Environment(\.dismiss) var dismiss
-    @State private var selectedPlan: Plan = .pro
+    @State private var selectedPlan: SubscriptionPlan = .yearly  // Default to best value
     @State private var isPurchasing = false
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showSuccess = false
     
-    enum Plan {
-        case basic, pro
+    enum SubscriptionPlan {
+        case free, monthly, yearly
     }
     
     var body: some View {
@@ -52,63 +52,73 @@ struct SubscriptionView: View {
                         .padding(.horizontal)
                     }
                     
-                    // Plan Cards
-                    VStack(spacing: 16) {
-                        // Basic Plan
-                        PlanCard(
-                            title: "Basic",
-                            price: "Free",
-                            period: "forever",
-                            features: [
-                                ("checkmark", "First 20 orders free", true),
-                                ("checkmark", "Choose your currency", true),
-                                ("checkmark", "Inventory management", true),
-                                ("checkmark", "Basic reports", true),
-                                ("checkmark", "10 CSV exports", true),
-                                ("xmark", "Order filters", false),
-                                ("xmark", "Product images", false),
-                                ("xmark", "Barcode scanning", false),
-                                ("xmark", "Unlimited orders", false),
-                                ("xmark", "Unlimited exports", false),
-                                ("xmark", "Priority support", false)
-                            ],
-                            isSelected: selectedPlan == .basic,
-                            isPro: false
+                    // Subscription Options
+                    VStack(spacing: 12) {
+                        // Yearly Plan - Best Value
+                        SubscriptionOptionCard(
+                            title: "Yearly",
+                            price: storeKit.proYearlyProduct?.displayPrice ?? "$189.99",
+                            period: "/year",
+                            savings: "Save 20%",
+                            isSelected: selectedPlan == .yearly,
+                            isBestValue: true
                         ) {
-                            selectedPlan = .basic
+                            selectedPlan = .yearly
                         }
                         
-                        // Pro Plan
-                        PlanCard(
-                            title: "Pro",
-                            price: storeKit.proMonthlyProduct?.displayPrice ?? "$49.99",
+                        // Monthly Plan
+                        SubscriptionOptionCard(
+                            title: "Monthly",
+                            price: storeKit.proMonthlyProduct?.displayPrice ?? "$19.99",
                             period: "/month",
-                            features: [
-                                ("checkmark", "Unlimited orders", true),
-                                ("checkmark", "Order filters (platform & price)", true),
-                                ("checkmark", "Choose your currency", true),
-                                ("checkmark", "Advanced inventory", true),
-                                ("checkmark", "Advanced analytics", true),
-                                ("checkmark", "Unlimited CSV exports", true),
-                                ("checkmark", "Product images", true),
-                                ("checkmark", "Barcode scanning", true),
-                                ("checkmark", "Multi-platform insights", true),
-                                ("checkmark", "Priority support", true)
-                            ],
-                            isSelected: selectedPlan == .pro,
-                            isPro: true
+                            savings: nil,
+                            isSelected: selectedPlan == .monthly,
+                            isBestValue: false
                         ) {
-                            selectedPlan = .pro
+                            selectedPlan = .monthly
+                        }
+                        
+                        // Free Plan
+                        SubscriptionOptionCard(
+                            title: "Free",
+                            price: "$0",
+                            period: "",
+                            savings: "20 orders included",
+                            isSelected: selectedPlan == .free,
+                            isBestValue: false
+                        ) {
+                            selectedPlan = .free
                         }
                     }
                     .padding(.horizontal)
                     
+                    // Pro Features List
+                    if selectedPlan != .free {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Pro includes:")
+                                .font(.headline)
+                                .padding(.bottom, 4)
+                            
+                            ProFeatureRow(icon: "infinity", text: "Unlimited orders")
+                            ProFeatureRow(icon: "square.and.arrow.up", text: "Unlimited CSV exports")
+                            ProFeatureRow(icon: "line.3.horizontal.decrease.circle", text: "Advanced order filters")
+                            ProFeatureRow(icon: "photo", text: "Product images")
+                            ProFeatureRow(icon: "barcode", text: "Barcode scanning")
+                            ProFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Advanced analytics")
+                            ProFeatureRow(icon: "headphones", text: "Priority support")
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+                    }
+                    
                     // Subscribe Button
-                    if selectedPlan == .pro && !storeKit.subscriptionStatus.isActive {
+                    if selectedPlan != .free && !storeKit.subscriptionStatus.isActive {
                         VStack(spacing: 12) {
                             Button {
                                 Task {
-                                    await purchaseProSubscription()
+                                    await purchaseSubscription()
                                 }
                             } label: {
                                 HStack {
@@ -117,8 +127,13 @@ struct SubscriptionView: View {
                                             .progressViewStyle(CircularProgressViewStyle(tint: .black))
                                     } else {
                                         Image(systemName: "crown.fill")
-                                        Text("Subscribe to Pro - \(storeKit.proMonthlyProduct?.displayPrice ?? "$49.99")/mo")
-                                            .fontWeight(.bold)
+                                        if selectedPlan == .yearly {
+                                            Text("Subscribe - \(storeKit.proYearlyProduct?.displayPrice ?? "$189.99")/year")
+                                                .fontWeight(.bold)
+                                        } else {
+                                            Text("Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")/month")
+                                                .fontWeight(.bold)
+                                        }
                                     }
                                 }
                                 .foregroundColor(.black)
@@ -130,9 +145,9 @@ struct SubscriptionView: View {
                                 )
                                 .cornerRadius(12)
                             }
-                            .disabled(isPurchasing || storeKit.proMonthlyProduct == nil)
+                            .disabled(isPurchasing || (selectedPlan == .yearly && storeKit.proYearlyProduct == nil) || (selectedPlan == .monthly && storeKit.proMonthlyProduct == nil))
                             
-                            Text("Cancel anytime in Settings")
+                            Text("Cancel anytime • Secure payment via Apple")
                                 .font(.caption)
                                 .foregroundColor(.gray)
                             
@@ -146,6 +161,21 @@ struct SubscriptionView: View {
                                     .font(.caption)
                                     .foregroundColor(.blue)
                             }
+                        }
+                        .padding(.horizontal)
+                    }
+                    
+                    // Continue with Free
+                    if selectedPlan == .free && !storeKit.subscriptionStatus.isActive {
+                        Button {
+                            dismiss()
+                        } label: {
+                            Text("Continue with Free Plan")
+                                .foregroundColor(.gray)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(Color(.systemGray5))
+                                .cornerRadius(12)
                         }
                         .padding(.horizontal)
                     }
@@ -238,8 +268,16 @@ struct SubscriptionView: View {
     }
     
     // MARK: - Purchase Function
-    private func purchaseProSubscription() async {
-        guard let product = storeKit.proMonthlyProduct else {
+    private func purchaseSubscription() async {
+        let product: StoreProduct?
+        
+        if selectedPlan == .yearly {
+            product = storeKit.proYearlyProduct
+        } else {
+            product = storeKit.proMonthlyProduct
+        }
+        
+        guard let product = product else {
             errorMessage = "Product not available. Please try again later."
             showError = true
             return
@@ -406,6 +444,95 @@ struct WhyProRow: View {
                     .font(.caption)
                     .foregroundColor(.gray)
             }
+        }
+    }
+}
+
+// MARK: - Subscription Option Card
+struct SubscriptionOptionCard: View {
+    let title: String
+    let price: String
+    let period: String
+    let savings: String?
+    let isSelected: Bool
+    let isBestValue: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack {
+                // Selection indicator
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(isSelected ? .orange : .gray)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        
+                        if isBestValue {
+                            Text("BEST VALUE")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.green)
+                                .cornerRadius(4)
+                        }
+                    }
+                    
+                    if let savings = savings {
+                        Text(savings)
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                }
+                
+                Spacer()
+                
+                // Price
+                VStack(alignment: .trailing) {
+                    Text(price)
+                        .font(.title2.bold())
+                        .foregroundColor(isSelected ? .orange : .primary)
+                    if !period.isEmpty {
+                        Text(period)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(isSelected ? Color.orange : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Pro Feature Row
+struct ProFeatureRow: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 14))
+                .foregroundColor(.green)
+                .frame(width: 20)
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.primary)
         }
     }
 }
