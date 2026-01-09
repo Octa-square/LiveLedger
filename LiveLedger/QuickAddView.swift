@@ -231,20 +231,37 @@ struct BuyerPopupView: View {
     
     @FocusState private var isBuyerNameFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
+    @State private var safeAreaBottom: CGFloat = 0
     
     var totalAmount: Double {
         product.finalPrice * Double(orderQuantity)
     }
     
+    // Calculate bottom padding: popup sits just above keyboard
+    private var bottomPadding: CGFloat {
+        if keyboardHeight > 0 {
+            // Keyboard visible: position popup 10pt above keyboard
+            // Subtract safe area because keyboard height includes it
+            return keyboardHeight - safeAreaBottom + 10
+        } else {
+            // Keyboard hidden: 20pt from bottom of safe area
+            return 20
+        }
+    }
+    
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Semi-transparent backdrop - tap to dismiss (fills entire screen)
-            Color.black.opacity(0.4)
-                .ignoresSafeArea()
-                .onTapGesture {
-                    isBuyerNameFocused = false
-                    onCancel()
-                }
+        GeometryReader { geometry in
+            ZStack(alignment: .bottom) {
+                // Semi-transparent backdrop - tap to dismiss (fills entire screen)
+                Color.black.opacity(0.4)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        isBuyerNameFocused = false
+                        onCancel()
+                    }
+                    .onAppear {
+                        safeAreaBottom = geometry.safeAreaInsets.bottom
+                    }
             
             // Popup content - positioned at bottom, animates up when keyboard appears
             VStack(spacing: 10) {
@@ -334,14 +351,18 @@ struct BuyerPopupView: View {
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.vertical, 16)
             .background(
                 RoundedRectangle(cornerRadius: 20)
                     .fill(Color(white: 0.15))
+                    .shadow(color: .black.opacity(0.3), radius: 10)
             )
-            .padding(.horizontal, 10)
-            .padding(.bottom, max(10, keyboardHeight)) // Move up when keyboard appears
+            .padding(.horizontal, 16)
+            // Position: sits directly above keyboard with 10pt gap, or 20pt from bottom when no keyboard
+            .padding(.bottom, bottomPadding)
             .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .onAppear {
             // Listen for keyboard show/hide
