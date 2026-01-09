@@ -13,6 +13,13 @@ struct LiveLedgerApp: App {
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.scenePhase) private var scenePhase
     
+    init() {
+        // DEBUG: Reset all data on simulator launch for fresh testing
+        #if targetEnvironment(simulator)
+        resetForSimulator()
+        #endif
+    }
+    
     var body: some Scene {
         WindowGroup {
             RootView(authManager: authManager, localization: localization)
@@ -24,6 +31,30 @@ struct LiveLedgerApp: App {
                     }
                 }
         }
+    }
+    
+    /// Clears all app data for fresh simulator testing
+    private func resetForSimulator() {
+        let defaults = UserDefaults.standard
+        
+        // Clear all UserDefaults
+        if let bundleID = Bundle.main.bundleIdentifier {
+            defaults.removePersistentDomain(forName: bundleID)
+        }
+        
+        // Clear specific keys
+        defaults.removeObject(forKey: "hasCompletedOnboarding")
+        defaults.removeObject(forKey: "hasSelectedPlan")
+        defaults.removeObject(forKey: "currentUser")
+        defaults.removeObject(forKey: "allAccounts")
+        defaults.removeObject(forKey: "savedProducts")
+        defaults.removeObject(forKey: "savedOrders")
+        defaults.removeObject(forKey: "selectedTheme")
+        defaults.removeObject(forKey: "overlay_position_x")
+        defaults.removeObject(forKey: "overlay_position_y")
+        defaults.synchronize()
+        
+        print("🔄 Simulator: All data cleared for fresh start")
     }
 }
 
