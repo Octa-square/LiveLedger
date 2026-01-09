@@ -14,6 +14,9 @@ struct MainTabView: View {
     @ObservedObject var localization: LocalizationManager
     @StateObject private var viewModel = SalesViewModel()
     @StateObject private var themeManager = ThemeManager()
+    @StateObject private var pipManager = PiPOverlayManager.shared
+    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
+    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         // Single screen layout - NO tabs, NO bottom navigation
@@ -23,6 +26,25 @@ struct MainTabView: View {
             authManager: authManager,
             localization: localization
         )
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Auto-start PiP when app goes to background (if overlay is enabled)
+            if newPhase == .background || newPhase == .inactive {
+                if overlayManager.isOverlayVisible && pipManager.isPiPSupported {
+                    pipManager.startPiP()
+                }
+            }
+            // Stop PiP when app comes to foreground
+            if newPhase == .active && pipManager.isPiPActive {
+                // Keep PiP open if user manually activated it
+                // pipManager.stopPiP() - commented out to let user control
+            }
+        }
+        .onAppear {
+            // Setup PiP callback to return to app
+            pipManager.onPiPTapped = {
+                // User tapped PiP - app will automatically come to foreground
+            }
+        }
     }
 }
 
