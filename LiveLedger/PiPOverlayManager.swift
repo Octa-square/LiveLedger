@@ -65,7 +65,7 @@ class PiPOverlayManager: NSObject, ObservableObject {
             return
         }
         
-        let asset = AVAsset(url: videoURL)
+        let asset = AVURLAsset(url: videoURL)
         let playerItem = AVPlayerItem(asset: asset)
         
         player = AVQueuePlayer(playerItem: playerItem)
