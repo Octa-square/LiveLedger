@@ -39,12 +39,19 @@ class PiPOverlayManager: NSObject, ObservableObject {
     // MARK: - Setup
     private func setupPiP() {
         // Check if PiP is supported
+        // Note: PiP requires a REAL device - doesn't work on Simulator
+        #if targetEnvironment(simulator)
+        isPiPSupported = false
+        print("ℹ️ PiP not available on Simulator - test on a real device")
+        return
+        #else
         isPiPSupported = AVPictureInPictureController.isPictureInPictureSupported()
         
         if !isPiPSupported {
-            print("⚠️ PiP is not supported on this device")
+            print("⚠️ PiP not supported - requires iOS 14+ and iPhone 8 or newer")
             return
         }
+        #endif
         
         // Configure audio session for PiP
         do {
@@ -310,6 +317,8 @@ struct PiPReadyOverlayView: View {
                 Spacer()
                 
                 // PiP button (Float on top of other apps)
+                // Only shows on real devices that support PiP
+                #if !targetEnvironment(simulator)
                 if pipManager.isPiPSupported {
                     Button {
                         pipManager.startPiP()
@@ -320,6 +329,7 @@ struct PiPReadyOverlayView: View {
                     }
                     .padding(.trailing, 8)
                 }
+                #endif
                 
                 Button { overlayManager.hideOverlay() } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -358,6 +368,7 @@ struct PiPReadyOverlayView: View {
                     .foregroundColor(.white.opacity(0.7))
                 Spacer()
                 
+                #if !targetEnvironment(simulator)
                 if pipManager.isPiPSupported {
                     Image(systemName: "pip")
                         .font(.system(size: 9))
@@ -366,6 +377,7 @@ struct PiPReadyOverlayView: View {
                         .font(.system(size: 9))
                         .foregroundColor(.white.opacity(0.5))
                 }
+                #endif
                 
                 Spacer()
                 
