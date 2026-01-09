@@ -14,9 +14,6 @@ struct MainTabView: View {
     @ObservedObject var localization: LocalizationManager
     @StateObject private var viewModel = SalesViewModel()
     @StateObject private var themeManager = ThemeManager()
-    @StateObject private var pipManager = PiPOverlayManager.shared
-    @StateObject private var overlayManager = TikTokLiveOverlayManager.shared
-    @Environment(\.scenePhase) private var scenePhase
     
     var body: some View {
         // Single screen layout - NO tabs, NO bottom navigation
@@ -26,25 +23,6 @@ struct MainTabView: View {
             authManager: authManager,
             localization: localization
         )
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            // Auto-start PiP when app goes to background (if overlay is enabled)
-            if newPhase == .background || newPhase == .inactive {
-                if overlayManager.isOverlayVisible && pipManager.isPiPSupported {
-                    pipManager.startPiP()
-                }
-            }
-            // Stop PiP when app comes to foreground
-            if newPhase == .active && pipManager.isPiPActive {
-                // Keep PiP open if user manually activated it
-                // pipManager.stopPiP() - commented out to let user control
-            }
-        }
-        .onAppear {
-            // Setup PiP callback to return to app
-            pipManager.onPiPTapped = {
-                // User tapped PiP - app will automatically come to foreground
-            }
-        }
     }
 }
 
@@ -59,6 +37,11 @@ struct HomeScreenView: View {
     @State private var showLimitAlert = false
     @State private var limitAlertMessage = ""
     @State private var showAnalytics = false
+    
+    // Buyer popup state - managed at top level so popup is independent of content
+    @State private var selectedProductForOrder: Product?
+    @State private var buyerName: String = ""
+    @State private var orderQuantity: Int = 1
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -88,112 +71,158 @@ struct HomeScreenView: View {
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            let safeWidth = geometry.size.width - (horizontalMargin * 2)
-            let safeHeight = geometry.size.height
-            
-            // Calculate available height after gaps and padding
-            // Total gaps: 3 x sectionGap + top padding + bottom padding
-            let totalGaps: CGFloat = (sectionGap * 3) + 6 + 6  // 18 + 12 = 30pt
-            let availableHeight = safeHeight - totalGaps
-            
-            // Fixed heights for each section (percentage of available height)
-            // Header: 20% | Platform: 13% | Products: 18% | Orders: fills remaining
-            let headerHeight: CGFloat = availableHeight * 0.20
-            let platformHeight: CGFloat = availableHeight * 0.13
-            let productsHeight: CGFloat = availableHeight * 0.18
-            let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight  // Fill remaining
-            
-            ZStack {
-                // Background - either wallpaper or plain gradient
-                if theme.hasWallpaper {
-                    // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
-                    Image(theme.backgroundImageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(
-                            width: geometry.size.width,
-                            height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
-                        )
-                        .clipped()
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                        .ignoresSafeArea(.all, edges: .all)
-                    
-                    // Dark overlay for readability
-                    Color.black.opacity(0.15)
-                        .ignoresSafeArea(.all, edges: .all)
-                } else {
-                    // Plain gradient background (no wallpaper)
-                    LinearGradient(
-                        colors: theme.gradientColors,
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                    .ignoresSafeArea(.all, edges: .all)
-                }
+        // ROOT ZSTACK: Main content and popup are siblings (independent keyboard handling)
+        ZStack {
+            // LAYER 1: Main Dashboard Content - STAYS STATIC (ignores keyboard)
+            GeometryReader { geometry in
+                let safeWidth = geometry.size.width - (horizontalMargin * 2)
+                let safeHeight = geometry.size.height
                 
-                // STATIC LAYOUT - All containers have FIXED heights
-                // NO overlap - each section has explicit size
-                VStack(spacing: sectionGap) {
-                    // === CONTAINER 1: Header + Stats + Actions ===
-                    gridContainer {
-                        HeaderView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            authManager: authManager,
-                            localization: localization,
-                            showSettings: $showSettings,
-                            showSubscription: $showSubscription
-                        )
-                    }
-                    .frame(width: safeWidth, height: headerHeight)
-                    .padding(.horizontal, horizontalMargin)
-                    
-                    // === CONTAINER 2: Platform Section ===
-                    gridContainer {
-                        PlatformSelectorView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            localization: localization
-                        )
-                    }
-                    .frame(width: safeWidth, height: platformHeight)
-                    .padding(.horizontal, horizontalMargin)
-                    
-                    // === CONTAINER 3: My Products ===
-                    gridContainer {
-                        QuickAddView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            authManager: authManager,
-                            localization: localization,
-                            onLimitReached: {
-                                limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
-                                showLimitAlert = true
-                            }
-                        )
-                    }
-                    .frame(width: safeWidth, height: productsHeight)
-                    .padding(.horizontal, horizontalMargin)
-                    
-                    // === CONTAINER 4: Orders ===
-                    // FIXED HEIGHT - internal scroll for content
-                    gridContainer {
-                        OrdersListView(
-                            viewModel: viewModel,
-                            themeManager: themeManager,
-                            localization: localization,
-                            authManager: authManager
-                        )
-                    }
-                    .frame(width: safeWidth, height: ordersHeight)
-                    .padding(.horizontal, horizontalMargin)
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 6)
+                // Calculate available height after gaps and padding
+                // Total gaps: 3 x sectionGap + top padding + bottom padding
+                let totalGaps: CGFloat = (sectionGap * 3) + 6 + 6  // 18 + 12 = 30pt
+                let availableHeight = safeHeight - totalGaps
                 
-                // TikTok Overlay (floating widget - separate from layout)
-                TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
+                // Fixed heights for each section (percentage of available height)
+                // Header: 20% | Platform: 13% | Products: 18% | Orders: fills remaining
+                let headerHeight: CGFloat = availableHeight * 0.20
+                let platformHeight: CGFloat = availableHeight * 0.13
+                let productsHeight: CGFloat = availableHeight * 0.18
+                let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight  // Fill remaining
+                
+                ZStack {
+                    // Background - either wallpaper or plain gradient
+                    if theme.hasWallpaper {
+                        // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
+                        Image(theme.backgroundImageName)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(
+                                width: geometry.size.width,
+                                height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
+                            )
+                            .clipped()
+                            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                            .ignoresSafeArea(.all, edges: .all)
+                        
+                        // Dark overlay for readability
+                        Color.black.opacity(0.15)
+                            .ignoresSafeArea(.all, edges: .all)
+                    } else {
+                        // Plain gradient background (no wallpaper)
+                        LinearGradient(
+                            colors: theme.gradientColors,
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                        .ignoresSafeArea(.all, edges: .all)
+                    }
+                    
+                    // STATIC LAYOUT - All containers have FIXED heights
+                    // NO overlap - each section has explicit size
+                    VStack(spacing: sectionGap) {
+                        // === CONTAINER 1: Header + Stats + Actions ===
+                        gridContainer {
+                            HeaderView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                authManager: authManager,
+                                localization: localization,
+                                showSettings: $showSettings,
+                                showSubscription: $showSubscription
+                            )
+                        }
+                        .frame(width: safeWidth, height: headerHeight)
+                        .padding(.horizontal, horizontalMargin)
+                        
+                        // === CONTAINER 2: Platform Section ===
+                        gridContainer {
+                            PlatformSelectorView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization
+                            )
+                        }
+                        .frame(width: safeWidth, height: platformHeight)
+                        .padding(.horizontal, horizontalMargin)
+                        
+                        // === CONTAINER 3: My Products ===
+                        gridContainer {
+                            QuickAddView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                authManager: authManager,
+                                localization: localization,
+                                onLimitReached: {
+                                    limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                    showLimitAlert = true
+                                },
+                                onProductSelected: { product in
+                                    buyerName = ""
+                                    orderQuantity = 1
+                                    withAnimation(.easeIn(duration: 0.2)) {
+                                        selectedProductForOrder = product
+                                    }
+                                }
+                            )
+                        }
+                        .frame(width: safeWidth, height: productsHeight)
+                        .padding(.horizontal, horizontalMargin)
+                        
+                        // === CONTAINER 4: Orders ===
+                        // FIXED HEIGHT - internal scroll for content
+                        gridContainer {
+                            OrdersListView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization,
+                                authManager: authManager
+                            )
+                        }
+                        .frame(width: safeWidth, height: ordersHeight)
+                        .padding(.horizontal, horizontalMargin)
+                    }
+                    .padding(.top, 6)
+                    .padding(.bottom, 6)
+                }
+            }
+            .ignoresSafeArea(.keyboard) // Main dashboard stays static when keyboard appears
+            
+            // LAYER 2: Buyer Popup - RESPONDS TO KEYBOARD (moves up when keyboard appears)
+            if let product = selectedProductForOrder {
+                BuyerPopupView(
+                    product: product,
+                    buyerName: $buyerName,
+                    orderQuantity: $orderQuantity,
+                    onCancel: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                    },
+                    onAdd: {
+                        // Create the order
+                        let platform = viewModel.selectedPlatform ?? .all
+                        let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
+                        viewModel.createOrder(
+                            product: product,
+                            buyerName: finalName,
+                            phoneNumber: "",
+                            address: "",
+                            platform: platform,
+                            quantity: orderQuantity
+                        )
+                        authManager.incrementOrderCount()
+                        // Dismiss popup
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                    }
+                )
+                .transition(.opacity)
             }
         }
         .preferredColorScheme(.dark)

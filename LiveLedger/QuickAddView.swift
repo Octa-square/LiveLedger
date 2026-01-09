@@ -13,11 +13,8 @@ struct QuickAddView: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
     var onLimitReached: () -> Void = {}
+    var onProductSelected: (Product) -> Void = { _ in }  // Callback when product tapped
     @State private var editingProduct: Product?
-    @State private var selectedProductForOrder: Product?
-    @State private var buyerName: String = ""
-    @State private var orderQuantity: Int = 1
-    @State private var showBuyerPopup: Bool = false
     @State private var showMaxProductsAlert: Bool = false
     @State private var showCreateCatalogAlert: Bool = false
     @State private var showRenameCatalogAlert: Bool = false
@@ -113,131 +110,25 @@ struct QuickAddView: View {
             return
         }
         
-        selectedProductForOrder = product
-        buyerName = ""
-        orderQuantity = 1
-        showBuyerPopup = true
+        // Call callback to show popup at ContentView level
+        onProductSelected(product)
         
         let impact = UIImpactFeedbackGenerator(style: .light)
         impact.impactOccurred()
     }
     
-    // MARK: - Cancel popup
-    private func cancelBuyerPopup() {
-        showBuyerPopup = false
-        selectedProductForOrder = nil
-        buyerName = ""
-        orderQuantity = 1
-    }
     
-    // MARK: - Add order from popup
-    private func addOrderFromPopup(product: Product) {
-        let platform = viewModel.selectedPlatform ?? .all
-        let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
-        
-        viewModel.createOrder(
-            product: product,
-            buyerName: finalName,
-            phoneNumber: "",
-            address: "",
-            platform: platform,
-            quantity: orderQuantity
-        )
-        authManager.incrementOrderCount()
-        cancelBuyerPopup()
-    }
-    
-    // MARK: - Buyer Popup View
-    @ViewBuilder
-    private func buyerPopupView(for product: Product) -> some View {
-        let totalAmount = product.finalPrice * Double(orderQuantity)
-        
-        VStack(spacing: 8) {
-            // Buyer name field
-            HStack(spacing: 6) {
-                Image(systemName: "pencil")
-                    .font(.system(size: 12))
-                    .foregroundColor(.gray)
-                TextField("Buyer Name", text: $buyerName)
-                    .font(.system(size: 13))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
-            
-            // Quantity row
-            HStack(spacing: 12) {
-                Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
-                    Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
-                }
-                
-                Text("\(orderQuantity)")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
-                    .frame(width: 28)
-                
-                Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 26))
-                        .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
-                }
-                
-                Text("$\(totalAmount, specifier: "%.0f")")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(.green)
-            }
-            
-            // Action buttons
-            HStack(spacing: 10) {
-                Button { cancelBuyerPopup() } label: {
-                    Text("Cancel")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 7)
-                        .background(Color(.systemGray5))
-                        .cornerRadius(8)
-                }
-                
-                Button { addOrderFromPopup(product: product) } label: {
-                    Text("Add")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 24)
-                        .padding(.vertical, 7)
-                        .background(Color.green)
-                        .cornerRadius(8)
-                }
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.2), radius: 8)
-        )
-        .transition(.scale.combined(with: .opacity))
-    }
     
     var body: some View {
-        ZStack {
-            VStack(alignment: .leading, spacing: 4) {
-                headerRow
-                
-                HorizontalProductGrid(
-                    products: viewModel.products,
-                    theme: theme,
-                    onTap: handleProductTap,
-                    onLongPress: { editingProduct = $0 }
-                )
-            }
+        VStack(alignment: .leading, spacing: 4) {
+            headerRow
             
-            // Quick Add Popup - inline overlay
-            if showBuyerPopup, let product = selectedProductForOrder {
-                buyerPopupView(for: product)
-            }
+            HorizontalProductGrid(
+                products: viewModel.products,
+                theme: theme,
+                onTap: handleProductTap,
+                onLongPress: { editingProduct = $0 }
+            )
         }
         .padding(10)
         .sheet(item: $editingProduct) { product in
@@ -326,6 +217,155 @@ struct QuickAddView: View {
         }
         viewModel.saveData()
         newProductToAdd = nil
+    }
+}
+
+// MARK: - Buyer Popup View
+// Overlay that appears at bottom - adjusts position when keyboard appears
+struct BuyerPopupView: View {
+    let product: Product
+    @Binding var buyerName: String
+    @Binding var orderQuantity: Int
+    let onCancel: () -> Void
+    let onAdd: () -> Void
+    
+    @FocusState private var isBuyerNameFocused: Bool
+    @State private var keyboardHeight: CGFloat = 0
+    
+    var totalAmount: Double {
+        product.finalPrice * Double(orderQuantity)
+    }
+    
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            // Semi-transparent backdrop - tap to dismiss (fills entire screen)
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+                .onTapGesture {
+                    isBuyerNameFocused = false
+                    onCancel()
+                }
+            
+            // Popup content - positioned at bottom, animates up when keyboard appears
+            VStack(spacing: 10) {
+                // Drag indicator
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.gray.opacity(0.5))
+                    .frame(width: 40, height: 5)
+                    .padding(.top, 8)
+                
+                // Product name header
+                Text(product.name.uppercased())
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                
+                // Buyer name field
+                HStack(spacing: 6) {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray)
+                    TextField("Buyer Name", text: $buyerName)
+                        .font(.system(size: 14))
+                        .foregroundColor(.white)
+                        .focused($isBuyerNameFocused)
+                        .submitLabel(.done)
+                        .onSubmit {
+                            onAdd()
+                        }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(8)
+                
+                // Quantity row
+                HStack(spacing: 16) {
+                    Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
+                        Image(systemName: "minus.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
+                    }
+                    
+                    Text("\(orderQuantity)")
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(width: 32)
+                    
+                    Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
+                    }
+                    
+                    Spacer()
+                    
+                    Text("$\(totalAmount, specifier: "%.0f")")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundColor(.green)
+                }
+                
+                // Action buttons
+                HStack(spacing: 12) {
+                    Button {
+                        isBuyerNameFocused = false
+                        onCancel()
+                    } label: {
+                        Text("Cancel")
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.gray.opacity(0.3))
+                            .cornerRadius(8)
+                    }
+                    
+                    Button {
+                        isBuyerNameFocused = false
+                        onAdd()
+                    } label: {
+                        Text("Add")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.green)
+                            .cornerRadius(8)
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 20)
+                    .fill(Color(white: 0.15))
+            )
+            .padding(.horizontal, 10)
+            .padding(.bottom, max(10, keyboardHeight)) // Move up when keyboard appears
+            .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+        }
+        .onAppear {
+            // Listen for keyboard show/hide
+            NotificationCenter.default.addObserver(
+                forName: UIResponder.keyboardWillShowNotification,
+                object: nil,
+                queue: .main
+            ) { notification in
+                if let keyboardFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect {
+                    keyboardHeight = keyboardFrame.height
+                }
+            }
+            NotificationCenter.default.addObserver(
+                forName: UIResponder.keyboardWillHideNotification,
+                object: nil,
+                queue: .main
+            ) { _ in
+                keyboardHeight = 0
+            }
+            // Auto-focus the text field
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                isBuyerNameFocused = true
+            }
+        }
     }
 }
 

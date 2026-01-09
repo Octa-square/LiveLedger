@@ -18,7 +18,6 @@ struct HeaderView: View {
     @State private var showExportOptions = false
     @State private var showClearOptions = false
     @State private var showAnalytics = false
-    @ObservedObject private var overlayManager = TikTokLiveOverlayManager.shared
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -118,22 +117,6 @@ struct HeaderView: View {
                 
                 // Menu Button (replaces Settings)
                 Menu {
-                    // Overlay Toggle Option
-                    Button {
-                        if overlayManager.isOverlayVisible {
-                            overlayManager.hideOverlay()
-                        } else {
-                            overlayManager.showOverlay()
-                        }
-                    } label: {
-                        Label(
-                            overlayManager.isOverlayVisible ? localization.localized(.hideOverlay) : localization.localized(.showOverlay),
-                            systemImage: overlayManager.isOverlayVisible ? "eye.slash.fill" : "eye.fill"
-                        )
-                    }
-                    
-                    Divider()
-                    
                     // Analytics Option
                     Button {
                         showAnalytics = true

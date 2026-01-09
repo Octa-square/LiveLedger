@@ -17,6 +17,11 @@ struct MainContentView: View {
     @State private var showLimitAlert = false
     @State private var limitAlertMessage = ""
     
+    // Buyer popup state - managed at top level so popup is independent of content
+    @State private var selectedProductForOrder: Product?
+    @State private var buyerName: String = ""
+    @State private var orderQuantity: Int = 1
+    
     private var theme: AppTheme { themeManager.currentTheme }
     
     // GRID CONTAINER STYLE - Green border, rounded corners, semi-transparent
@@ -110,6 +115,13 @@ struct MainContentView: View {
                                 onLimitReached: {
                                     limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
                                     showLimitAlert = true
+                                },
+                                onProductSelected: { product in
+                                    buyerName = ""
+                                    orderQuantity = 1
+                                    withAnimation(.easeIn(duration: 0.2)) {
+                                        selectedProductForOrder = product
+                                    }
                                 }
                             )
                         }
@@ -129,11 +141,48 @@ struct MainContentView: View {
                     .padding(.top, 4)  // Minimal top padding - start near status bar
                     .padding(.bottom, 12) // Small gap at bottom for wallpaper peek
                 }
-                
-                // TikTok Live Overlay (floats above everything)
-                TikTokLiveOverlayView(viewModel: viewModel, themeManager: themeManager)
+                .ignoresSafeArea(.keyboard) // Keep screen static - keyboard hovers over content
             }
         }
+        .overlay {
+            // BUYER POPUP - Full screen overlay, independent of main content
+            if let product = selectedProductForOrder {
+                BuyerPopupView(
+                    product: product,
+                    buyerName: $buyerName,
+                    orderQuantity: $orderQuantity,
+                    onCancel: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                    },
+                    onAdd: {
+                        // Create the order
+                        let platform = viewModel.selectedPlatform ?? .all
+                        let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
+                        viewModel.createOrder(
+                            product: product,
+                            buyerName: finalName,
+                            phoneNumber: "",
+                            address: "",
+                            platform: platform,
+                            quantity: orderQuantity
+                        )
+                        authManager.incrementOrderCount()
+                        // Dismiss popup
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                    }
+                )
+                .ignoresSafeArea()
+            }
+        }
+        .ignoresSafeArea(.keyboard) // Entire view ignores keyboard
         .preferredColorScheme(.dark) // Force dark for better contrast
         // Auto-save listener
         .onReceive(NotificationCenter.default.publisher(for: .autoSaveData)) { _ in
