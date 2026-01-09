@@ -527,44 +527,45 @@ class AuthManager: ObservableObject {
         saveUser()
     }
     
-    /// Demo mode for App Store review - creates a pre-configured account with sample data
-    /// Demo credentials: demo@liveledger.app / Demo123!
+    /// Try Demo Mode - creates a TRIAL account with FREE tier limits
+    /// Different from Apple demo (demo@liveledger.app) which has Pro for testing
+    /// Trial users get 20 orders max, then must upgrade to Pro
     func startDemoMode() {
-        // Create demo user with Pro access
-        let demoUser = AppUser(
-            id: "demo-user-\(UUID().uuidString)",
-            email: "demo@liveledger.app",
-            passwordHash: simpleHash("Demo123!"),
-            name: "Demo User",
+        // Generate unique trial email so each trial is fresh
+        let trialID = UUID().uuidString.prefix(8).lowercased()
+        let trialEmail = "trial-\(trialID)@liveledger.app"
+        
+        // Create trial user with FREE tier (20 orders limit)
+        let trialUser = AppUser(
+            id: "trial-user-\(trialID)",
+            email: trialEmail,
+            passwordHash: simpleHash("trial"),
+            name: "Trial User",
             phoneNumber: nil,
-            companyName: "Demo Store",
-            storeAddress: "123 Demo Street",
+            companyName: "My Store",
+            storeAddress: nil,
             businessPhone: nil,
             currency: "USD ($)",
-            isPro: true, // Pro access to test all features
+            isPro: false, // FREE tier - 20 orders max, then must upgrade
             ordersUsed: 0,
             exportsUsed: 0,
-            referralCode: "DEMO2024",
+            referralCode: "TRIAL\(trialID.uppercased())",
             createdAt: Date(),
             profileImageData: nil,
-            securityQuestions: [
-                SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "demo"),
-                SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "demo"),
-                SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "demo")
-            ],
+            securityQuestions: nil,
             loginAttempts: 0,
             accountLocked: false
         )
         
-        currentUser = demoUser
+        currentUser = trialUser
         isAuthenticated = true
         saveUser()
         
-        // Skip onboarding for demo
+        // Skip onboarding for trial
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
         
-        // Skip plan selection for demo (already Pro)
-        UserDefaults.standard.set(true, forKey: "hasSelectedPlan")
+        // Show plan selection so they see upgrade options
+        UserDefaults.standard.set(false, forKey: "hasSelectedPlan")
         
         // Trigger demo data population
         NotificationCenter.default.post(name: .populateDemoData, object: nil)
