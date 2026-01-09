@@ -43,15 +43,14 @@ class PiPOverlayManager: NSObject, ObservableObject {
         #if targetEnvironment(simulator)
         isPiPSupported = false
         print("ℹ️ PiP not available on Simulator - test on a real device")
-        return
         #else
         isPiPSupported = AVPictureInPictureController.isPictureInPictureSupported()
         
         if !isPiPSupported {
             print("⚠️ PiP not supported - requires iOS 14+ and iPhone 8 or newer")
-            return
         }
-        #endif
+        
+        guard isPiPSupported else { return }
         
         // Configure audio session for PiP
         do {
@@ -63,6 +62,7 @@ class PiPOverlayManager: NSObject, ObservableObject {
         
         // Create a silent video for PiP (required for PiP to work)
         setupSilentVideoPlayer()
+        #endif
     }
     
     private func setupSilentVideoPlayer() {
