@@ -184,7 +184,7 @@ struct PlanSelectionView: View {
                         // Pro Plan Card (Recommended)
                         SelectablePlanCard(
                             title: "Pro",
-                            price: "$49.99",
+                            price: "$19.99",
                             period: "/month",
                             description: "Unlimited everything for serious sellers",
                             features: [
@@ -272,7 +272,7 @@ struct PlanSelectionView: View {
                 Text("Upgrade to Pro")
                     .font(.title2.bold())
                 
-                Text("$49.99/month")
+                Text("$19.99/month")
                     .font(.title3)
                     .foregroundColor(.orange)
             }

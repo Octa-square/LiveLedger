@@ -518,7 +518,7 @@ struct SettingsView: View {
                                     Text("Upgrade to Pro")
                                         .foregroundColor(.orange)
                                     Spacer()
-                                    Text("$49.99/mo")
+                                    Text("$19.99/mo")
                                         .font(.caption)
                                         .foregroundColor(.gray)
                                 }
