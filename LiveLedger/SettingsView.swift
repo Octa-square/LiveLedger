@@ -463,6 +463,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 // Profile Section
+                // Apple reviewers using review@liveledger.app will see "Subscription Expired" status here
                 if let user = authManager.currentUser {
                     Section {
                         HStack(spacing: 12) {
@@ -481,11 +482,17 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundColor(.gray)
                                 
+                                // Subscription status display - handles Pro, Expired, and Free
                                 HStack(spacing: 4) {
                                     if user.isPro {
                                         Label("PRO", systemImage: "crown.fill")
                                             .font(.system(size: 10, weight: .bold))
                                             .foregroundColor(.orange)
+                                    } else if user.isLapsedSubscriber {
+                                        // EXPIRED SUBSCRIPTION - Apple reviewers will see this
+                                        Label("EXPIRED", systemImage: "exclamationmark.triangle.fill")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.red)
                                     } else {
                                         Text("Free Plan")
                                             .font(.system(size: 10))
@@ -508,7 +515,51 @@ struct SettingsView: View {
                         }
                         .padding(.vertical, 4)
                         
-                        if !user.isPro {
+                        // EXPIRED SUBSCRIPTION NOTICE
+                        // Apple reviewers using review@liveledger.app will see this prominent banner
+                        if user.isLapsedSubscriber {
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .foregroundColor(.orange)
+                                    Text("Your Pro subscription expired")
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.orange)
+                                }
+                                
+                                if let expiredDate = user.formattedExpirationDate {
+                                    Text("Expired on \(expiredDate)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Text("Resubscribe to continue using unlimited orders, exports, and all Pro features.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                
+                                Button {
+                                    showSubscription = true
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "crown.fill")
+                                        Text("Resubscribe to Pro")
+                                            .fontWeight(.semibold)
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(
+                                        LinearGradient(colors: [.orange, .red],
+                                                      startPoint: .leading, endPoint: .trailing)
+                                    )
+                                    .cornerRadius(8)
+                                }
+                            }
+                            .padding(.vertical, 8)
+                        }
+                        
+                        // Regular upgrade button for users who never had Pro
+                        if !user.isPro && !user.isLapsedSubscriber {
                             Button {
                                 showSubscription = true
                             } label: {

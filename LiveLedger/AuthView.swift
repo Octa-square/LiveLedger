@@ -52,6 +52,14 @@ struct AppUser: Codable {
     var resetTokenExpiry: Date?
     var lastLogin: Date?
     
+    // MARK: - Subscription History (For App Store Review Testing)
+    // These fields track subscription history to properly handle:
+    // 1. New subscribers (hadPreviousSubscription = false)
+    // 2. Lapsed/expired subscribers (hadPreviousSubscription = true, isPro = false)
+    // Apple reviewers use review@liveledger.app to test the expired subscription flow
+    var hadPreviousSubscription: Bool?  // True if user ever had a Pro subscription
+    var subscriptionExpiredDate: Date?  // When the subscription expired (nil if never subscribed or currently active)
+    
     static let currencies = [
         "USD ($)", "EUR (€)", "GBP (£)", "NGN (₦)", "CAD ($)", "AUD ($)", 
         "INR (₹)", "JPY (¥)", "CNY (¥)", "KRW (₩)", "MXN ($)", "BRL (R$)",
@@ -96,7 +104,8 @@ struct AppUser: Codable {
          currency: String, isPro: Bool, ordersUsed: Int, exportsUsed: Int, referralCode: String,
          createdAt: Date, profileImageData: Data? = nil, securityQuestions: [SecurityQuestion]? = nil,
          loginAttempts: Int = 0, accountLocked: Bool = false, resetToken: String? = nil,
-         resetTokenExpiry: Date? = nil, lastLogin: Date? = nil) {
+         resetTokenExpiry: Date? = nil, lastLogin: Date? = nil,
+         hadPreviousSubscription: Bool? = nil, subscriptionExpiredDate: Date? = nil) {
         self.id = id
         self.email = email
         self.passwordHash = passwordHash
@@ -118,6 +127,23 @@ struct AppUser: Codable {
         self.resetToken = resetToken
         self.resetTokenExpiry = resetTokenExpiry
         self.lastLogin = lastLogin
+        self.hadPreviousSubscription = hadPreviousSubscription
+        self.subscriptionExpiredDate = subscriptionExpiredDate
+    }
+    
+    // MARK: - Subscription Status Helpers
+    
+    /// Returns true if user is a lapsed subscriber (previously had Pro, now expired)
+    var isLapsedSubscriber: Bool {
+        return (hadPreviousSubscription == true) && !isPro
+    }
+    
+    /// Formatted expiration date string
+    var formattedExpirationDate: String? {
+        guard let date = subscriptionExpiredDate else { return nil }
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 }
 
@@ -175,10 +201,30 @@ class AuthManager: ObservableObject {
             updateAccountInStorage(demoUser)
         }
         
-        // ACCOUNT 2: Expired/Free Account for Testing Purchase Flow
-        // Apple specifically needs this to test the subscription purchase flow
+        // ACCOUNT 2: EXPIRED SUBSCRIPTION Account for Testing Purchase Flow
+        // =====================================================================
+        // Apple App Store Review requires testing the EXPIRED subscription flow.
+        // This account simulates a user who:
+        // 1. Previously had a Pro subscription (hadPreviousSubscription = true)
+        // 2. Subscription expired on December 15, 2025 (subscriptionExpiredDate)
+        // 3. Is now on free tier (isPro = false)
+        // 4. Has used 15/20 orders and 5/10 exports (approaching limits)
+        //
+        // WHERE APPLE REVIEWERS WILL SEE SUBSCRIPTION PROMPTS:
+        // - Settings screen: Shows "Your Pro subscription expired on Dec 15, 2025"
+        // - Settings > Subscription: Shows "Resubscribe to Pro" with "Welcome Back!" message
+        // - When adding 6+ more orders: Limit alert with resubscription CTA
+        // - Subscription View: Special messaging for returning subscribers
+        // =====================================================================
         let reviewEmail = "review@liveledger.app"
         if getAccountByEmail(reviewEmail) == nil {
+            // Create expired date: December 15, 2025
+            var expiredDateComponents = DateComponents()
+            expiredDateComponents.year = 2025
+            expiredDateComponents.month = 12
+            expiredDateComponents.day = 15
+            let expiredDate = Calendar.current.date(from: expiredDateComponents) ?? Date().addingTimeInterval(-86400 * 30)
+            
             let reviewUser = AppUser(
                 id: "review-user-appstore",
                 email: reviewEmail,
@@ -189,11 +235,11 @@ class AuthManager: ObservableObject {
                 storeAddress: "1 Infinite Loop",
                 businessPhone: nil,
                 currency: "USD ($)",
-                isPro: false,  // FREE tier so Apple can test upgrade flow
-                ordersUsed: 15, // Approaching 20 order limit
-                exportsUsed: 5,  // Approaching 10 export limit
+                isPro: false,  // Currently NOT Pro (subscription expired)
+                ordersUsed: 15, // Approaching 20 order limit (5 remaining)
+                exportsUsed: 5,  // Approaching 10 export limit (5 remaining)
                 referralCode: "REVIEW2024",
-                createdAt: Date().addingTimeInterval(-86400 * 30), // Created 30 days ago
+                createdAt: Date().addingTimeInterval(-86400 * 90), // Created 90 days ago
                 profileImageData: nil,
                 securityQuestions: [
                     SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "review"),
@@ -201,7 +247,9 @@ class AuthManager: ObservableObject {
                     SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "review")
                 ],
                 loginAttempts: 0,
-                accountLocked: false
+                accountLocked: false,
+                hadPreviousSubscription: true,  // WAS a Pro subscriber
+                subscriptionExpiredDate: expiredDate  // Expired on Dec 15, 2025
             )
             updateAccountInStorage(reviewUser)
         }
@@ -514,6 +562,17 @@ class AuthManager: ObservableObject {
     
     func upgradeToPro() {
         currentUser?.isPro = true
+        // Track subscription history for expired subscription flow
+        currentUser?.hadPreviousSubscription = true
+        currentUser?.subscriptionExpiredDate = nil  // Clear expired date since now active
+        saveUser()
+    }
+    
+    /// Called when a subscription expires (for testing or when StoreKit detects expiration)
+    func markSubscriptionExpired() {
+        currentUser?.isPro = false
+        currentUser?.hadPreviousSubscription = true
+        currentUser?.subscriptionExpiredDate = Date()
         saveUser()
     }
     

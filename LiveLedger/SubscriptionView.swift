@@ -22,11 +22,27 @@ struct SubscriptionView: View {
         case free, monthly, yearly
     }
     
+    // Dynamic success alert for new vs returning subscribers
+    private var successAlertTitle: String {
+        if authManager.currentUser?.isLapsedSubscriber == true {
+            return "Welcome Back! 🎉"
+        }
+        return "Welcome to Pro! 🎉"
+    }
+    
+    private var successAlertMessage: String {
+        if authManager.currentUser?.isLapsedSubscriber == true {
+            return "Your Pro subscription has been reactivated! Unlimited orders and all premium features are restored."
+        }
+        return "Your Pro subscription is now active. Enjoy unlimited orders and all premium features!"
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Header
+                    // Header - Different messaging for lapsed vs new subscribers
+                    // Apple reviewers using review@liveledger.app will see "Welcome Back!" header
                     VStack(spacing: 8) {
                         Image(systemName: "crown.fill")
                             .font(.system(size: 50))
@@ -35,12 +51,20 @@ struct SubscriptionView: View {
                                               startPoint: .top, endPoint: .bottom)
                             )
                         
-                        Text("Upgrade to Pro")
-                            .font(.system(size: 28, weight: .bold))
-                        
-                        Text("Unlock all features and grow your business")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
+                        // Show "Welcome Back!" for lapsed subscribers, "Upgrade to Pro" for new users
+                        if authManager.currentUser?.isLapsedSubscriber == true {
+                            Text("Welcome Back!")
+                                .font(.system(size: 28, weight: .bold))
+                            Text("Reactivate your Pro subscription")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        } else {
+                            Text("Upgrade to Pro")
+                                .font(.system(size: 28, weight: .bold))
+                            Text("Unlock all features and grow your business")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                        }
                     }
                     .padding(.top)
                     
@@ -48,6 +72,17 @@ struct SubscriptionView: View {
                     if storeKit.subscriptionStatus.isActive {
                         CurrentSubscriptionBanner(
                             expirationDate: storeKit.expirationDateString
+                        )
+                        .padding(.horizontal)
+                    }
+                    
+                    // EXPIRED SUBSCRIPTION BANNER (for lapsed subscribers)
+                    // Apple reviewers using review@liveledger.app will see this banner
+                    if authManager.currentUser?.isLapsedSubscriber == true {
+                        ExpiredSubscriptionBanner(
+                            expirationDate: authManager.currentUser?.formattedExpirationDate,
+                            remainingOrders: authManager.currentUser?.remainingFreeOrders ?? 0,
+                            remainingExports: authManager.currentUser?.remainingFreeExports ?? 0
                         )
                         .padding(.horizontal)
                     }
@@ -236,9 +271,9 @@ struct SubscriptionView: View {
                             .multilineTextAlignment(.center)
                         
                         HStack(spacing: 16) {
-                            Link("Terms of Service", destination: URL(string: "https://octasquare.com/liveledger/terms")!)
+                            Link("Terms of Service", destination: URL(string: "https://octa-square.github.io/LiveLedger/terms-of-service.html")!)
                                 .font(.caption2)
-                            Link("Privacy Policy", destination: URL(string: "https://octasquare.com/liveledger/privacy")!)
+                            Link("Privacy Policy", destination: URL(string: "https://octa-square.github.io/LiveLedger/privacy-policy.html")!)
                                 .font(.caption2)
                         }
                     }
@@ -259,10 +294,10 @@ struct SubscriptionView: View {
             } message: {
                 Text(errorMessage)
             }
-            .alert("Welcome to Pro! 🎉", isPresented: $showSuccess) {
+            .alert(successAlertTitle, isPresented: $showSuccess) {
                 Button("OK") { dismiss() }
             } message: {
-                Text("Your Pro subscription is now active. Enjoy unlimited orders and all premium features!")
+                Text(successAlertMessage)
             }
         }
     }
@@ -339,6 +374,82 @@ struct CurrentSubscriptionBanner: View {
         .overlay(
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.green.opacity(0.3), lineWidth: 1)
+        )
+    }
+}
+
+// MARK: - Expired Subscription Banner
+// This banner is shown to LAPSED subscribers (previously had Pro, now expired)
+// Apple reviewers using review@liveledger.app will see this banner
+struct ExpiredSubscriptionBanner: View {
+    let expirationDate: String?
+    let remainingOrders: Int
+    let remainingExports: Int
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Expired Status Header
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Pro Subscription Expired")
+                        .font(.headline)
+                        .foregroundColor(.orange)
+                    if let date = expirationDate {
+                        Text("Expired on \(date)")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                Spacer()
+                
+                Image(systemName: "crown.fill")
+                    .foregroundColor(.gray)
+                    .font(.title2)
+            }
+            
+            Divider()
+            
+            // Current Limits Status
+            VStack(alignment: .leading, spacing: 6) {
+                Text("You're now on the Free plan:")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack(spacing: 16) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "cart.fill")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        Text("\(remainingOrders) orders left")
+                            .font(.caption.bold())
+                    }
+                    
+                    HStack(spacing: 4) {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.caption)
+                            .foregroundColor(.purple)
+                        Text("\(remainingExports) exports left")
+                            .font(.caption.bold())
+                    }
+                }
+            }
+            
+            // Resubscribe CTA
+            Text("Resubscribe below to restore unlimited orders, exports, and all Pro features!")
+                .font(.caption)
+                .foregroundColor(.orange)
+                .italic()
+        }
+        .padding()
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.orange.opacity(0.3), lineWidth: 1)
         )
     }
 }

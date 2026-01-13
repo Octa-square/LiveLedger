@@ -38,6 +38,15 @@ struct HomeScreenView: View {
     @State private var limitAlertMessage = ""
     @State private var showAnalytics = false
     
+    // Dynamic alert titles for lapsed vs new subscribers
+    private var limitAlertTitle: String {
+        authManager.currentUser?.isLapsedSubscriber == true ? "Subscription Expired" : "Upgrade Required"
+    }
+    
+    private var limitAlertButtonText: String {
+        authManager.currentUser?.isLapsedSubscriber == true ? "Resubscribe to Pro" : "Upgrade to Pro"
+    }
+    
     // Buyer popup state - managed at top level so popup is independent of content
     @State private var selectedProductForOrder: Product?
     @State private var buyerName: String = ""
@@ -154,7 +163,17 @@ struct HomeScreenView: View {
                                 authManager: authManager,
                                 localization: localization,
                                 onLimitReached: {
-                                    limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                    // Different message for lapsed subscribers vs new users
+                                    // Apple reviewers using review@liveledger.app will see the lapsed subscriber message
+                                    if authManager.currentUser?.isLapsedSubscriber == true {
+                                        if let expiredDate = authManager.currentUser?.formattedExpirationDate {
+                                            limitAlertMessage = "You've reached your free tier limit. Your Pro subscription expired on \(expiredDate). Resubscribe to Pro for unlimited orders!"
+                                        } else {
+                                            limitAlertMessage = "You've reached your free tier limit. Your Pro subscription has expired. Resubscribe to Pro for unlimited orders!"
+                                        }
+                                    } else {
+                                        limitAlertMessage = "You've used all 20 free orders. Upgrade to Pro for unlimited orders!"
+                                    }
                                     showLimitAlert = true
                                 },
                                 onProductSelected: { product in
@@ -237,8 +256,8 @@ struct HomeScreenView: View {
                 AnalyticsView(viewModel: viewModel, localization: localization)
             }
         }
-        .alert("Upgrade Required", isPresented: $showLimitAlert) {
-            Button("Upgrade to Pro") { showSubscription = true }
+        .alert(limitAlertTitle, isPresented: $showLimitAlert) {
+            Button(limitAlertButtonText) { showSubscription = true }
             Button("Later", role: .cancel) {}
         } message: {
             Text(limitAlertMessage)
