@@ -135,45 +135,76 @@ class AuthManager: ObservableObject {
         ensureDemoAccountExists()
     }
     
-    /// Ensures demo account exists for App Store review (without logging in)
-    /// Credentials: demo@liveledger.app / Demo123!
+    /// Ensures demo accounts exist for App Store review (without logging in)
+    /// 
+    /// Account 1 (Full Features): demo@liveledger.app / Demo123!
+    /// - isPro: true - Can test ALL Pro features
+    /// 
+    /// Account 2 (Expired/Free - For Purchase Flow Testing): review@liveledger.app / Review123!
+    /// - isPro: false - Apple can test the subscription purchase flow
+    /// - Has used 15 orders (approaching limit)
+    ///
     private func ensureDemoAccountExists() {
+        // ACCOUNT 1: Full Pro Demo Account
         let demoEmail = "demo@liveledger.app"
-        
-        // Check if demo account already exists
-        if getAccountByEmail(demoEmail) != nil {
-            return // Demo account already exists
+        if getAccountByEmail(demoEmail) == nil {
+            let demoUser = AppUser(
+                id: "demo-user-appstore-review",
+                email: demoEmail,
+                passwordHash: simpleHash("Demo123!"),
+                name: "Demo User",
+                phoneNumber: nil,
+                companyName: "Demo Store",
+                storeAddress: "123 Demo Street",
+                businessPhone: nil,
+                currency: "USD ($)",
+                isPro: true,
+                ordersUsed: 0,
+                exportsUsed: 0,
+                referralCode: "DEMO2024",
+                createdAt: Date(),
+                profileImageData: nil,
+                securityQuestions: [
+                    SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "demo"),
+                    SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "demo"),
+                    SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "demo")
+                ],
+                loginAttempts: 0,
+                accountLocked: false
+            )
+            updateAccountInStorage(demoUser)
         }
         
-        // Create demo account (but don't log in)
-        // isPro is true so Apple can test all features immediately
-        let demoUser = AppUser(
-            id: "demo-user-appstore-review",
-            email: demoEmail,
-            passwordHash: simpleHash("Demo123!"),
-            name: "Demo User",
-            phoneNumber: nil,
-            companyName: "Demo Store",
-            storeAddress: "123 Demo Street",
-            businessPhone: nil,
-            currency: "USD ($)",
-            isPro: true,
-            ordersUsed: 0,
-            exportsUsed: 0,
-            referralCode: "DEMO2024",
-            createdAt: Date(),
-            profileImageData: nil,
-            securityQuestions: [
-                SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "demo"),
-                SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "demo"),
-                SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "demo")
-            ],
-            loginAttempts: 0,
-            accountLocked: false
-        )
-        
-        // Save to accounts storage (but don't log in)
-        updateAccountInStorage(demoUser)
+        // ACCOUNT 2: Expired/Free Account for Testing Purchase Flow
+        // Apple specifically needs this to test the subscription purchase flow
+        let reviewEmail = "review@liveledger.app"
+        if getAccountByEmail(reviewEmail) == nil {
+            let reviewUser = AppUser(
+                id: "review-user-appstore",
+                email: reviewEmail,
+                passwordHash: simpleHash("Review123!"),
+                name: "App Review",
+                phoneNumber: nil,
+                companyName: "Review Store",
+                storeAddress: "1 Infinite Loop",
+                businessPhone: nil,
+                currency: "USD ($)",
+                isPro: false,  // FREE tier so Apple can test upgrade flow
+                ordersUsed: 15, // Approaching 20 order limit
+                exportsUsed: 5,  // Approaching 10 export limit
+                referralCode: "REVIEW2024",
+                createdAt: Date().addingTimeInterval(-86400 * 30), // Created 30 days ago
+                profileImageData: nil,
+                securityQuestions: [
+                    SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "review"),
+                    SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "review"),
+                    SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "review")
+                ],
+                loginAttempts: 0,
+                accountLocked: false
+            )
+            updateAccountInStorage(reviewUser)
+        }
         
         // Pre-populate demo data for this account
         UserDefaults.standard.set(true, forKey: "demo_data_seeded")
