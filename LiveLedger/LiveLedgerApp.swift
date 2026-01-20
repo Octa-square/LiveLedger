@@ -242,7 +242,7 @@ struct PlanSelectionView: View {
                     .padding(.horizontal)
                     
                     if selectedPlan == .pro {
-                        Text("Cancel anytime • 7-day free trial")
+                        Text("Cancel anytime • Secure payment via Apple")
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
