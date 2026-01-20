@@ -263,6 +263,8 @@ struct HomeScreenView: View {
         }
         .sheet(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showAnalytics) {
             NavigationStack {
@@ -560,6 +562,8 @@ struct iPadHomeScreenView: View {
         }
         .sheet(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showAnalytics) {
             NavigationStack {

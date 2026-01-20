@@ -881,6 +881,8 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showSubscription) {
                 SubscriptionView(authManager: authManager)
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
             }
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {

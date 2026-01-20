@@ -253,6 +253,8 @@ struct MainContentView: View {
         }
         .sheet(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
     }
 }

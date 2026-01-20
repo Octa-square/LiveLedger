@@ -12,6 +12,7 @@ struct SubscriptionView: View {
     @ObservedObject var authManager: AuthManager
     @StateObject private var storeKit = StoreKitManager.shared
     @Environment(\.dismiss) var dismiss
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass  // iPad detection
     @State private var selectedPlan: SubscriptionPlan = .yearly  // Default to best value
     @State private var isPurchasing = false
     @State private var showError = false
@@ -40,7 +41,7 @@ struct SubscriptionView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 20) {
                     // Header - Different messaging for lapsed vs new subscribers
                     // Apple reviewers using review@liveledger.app will see "Welcome Back!" header
                     VStack(spacing: 8) {
@@ -279,9 +280,20 @@ struct SubscriptionView: View {
                     }
                     .padding()
                     
+                    // CRITICAL: "Maybe Later" dismiss button for iPad accessibility
+                    // Apple requires a clear way to dismiss the paywall on iPad
+                    Button("Maybe Later") {
+                        dismiss()
+                    }
+                    .font(.system(size: 16))
+                    .foregroundColor(.gray)
+                    .padding(.bottom, 20)
+                    
                     Spacer(minLength: 30)
                 }
+                .padding(.horizontal)
             }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : .infinity)  // Constrain width on iPad
             .navigationTitle("Plans")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -314,6 +326,10 @@ struct SubscriptionView: View {
     
     // MARK: - Purchase Function
     private func purchaseSubscription() async {
+        // Debug logging for Apple review troubleshooting
+        let deviceType = UIDevice.current.userInterfaceIdiom == .pad ? "iPad" : "iPhone"
+        print("🔍 Purchase initiated - Device: \(deviceType), Plan: \(selectedPlan), Paywall shown: \(storeKit.paywallWasShown)")
+        
         let product: StoreProduct?
         
         if selectedPlan == .yearly {
@@ -323,6 +339,7 @@ struct SubscriptionView: View {
         }
         
         guard let product = product else {
+            print("❌ Purchase failed: Product not available")
             errorMessage = "Product not available. Please try again later."
             showError = true
             return
@@ -335,10 +352,13 @@ struct SubscriptionView: View {
             try await storeKit.purchase(product)
             // Update auth manager
             authManager.upgradeToPro()
+            print("✅ Purchase completed successfully - Plan: \(selectedPlan)")
             showSuccess = true
         } catch PurchaseError.purchaseCancelled {
+            print("ℹ️ Purchase cancelled by user")
             // User cancelled, no error message needed
         } catch {
+            print("❌ Purchase failed: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
             showError = true
         }
