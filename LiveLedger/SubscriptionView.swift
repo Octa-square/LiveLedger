@@ -88,66 +88,27 @@ struct SubscriptionView: View {
                         .padding(.horizontal)
                     }
                     
-                    // Subscription Options
+                    // PLAN CARDS: Basic (Free) and Pro (with Monthly/Yearly grid inside)
                     VStack(spacing: 12) {
-                        // Yearly Plan - Best Value
-                        SubscriptionOptionCard(
-                            title: "Yearly",
-                            price: storeKit.proYearlyProduct?.displayPrice ?? "$189.99",
-                            period: "/year",
-                            savings: "Save 20%",
-                            isSelected: selectedPlan == .yearly,
-                            isBestValue: true
-                        ) {
-                            selectedPlan = .yearly
-                        }
-                        
-                        // Monthly Plan
-                        SubscriptionOptionCard(
-                            title: "Monthly",
-                            price: storeKit.proMonthlyProduct?.displayPrice ?? "$19.99",
-                            period: "/month",
-                            savings: nil,
-                            isSelected: selectedPlan == .monthly,
-                            isBestValue: false
-                        ) {
-                            selectedPlan = .monthly
-                        }
-                        
-                        // Free Plan
-                        SubscriptionOptionCard(
-                            title: "Free",
-                            price: "$0",
-                            period: "",
-                            savings: "20 orders included",
+                        // BASIC (FREE) PLAN CARD
+                        BasicPlanCard(
                             isSelected: selectedPlan == .free,
-                            isBestValue: false
-                        ) {
-                            selectedPlan = .free
-                        }
+                            onSelect: { selectedPlan = .free }
+                        )
+                        
+                        // PRO PLAN CARD (contains Monthly/Yearly grid inside)
+                        ProPlanCard(
+                            selectedDuration: selectedPlan == .yearly ? .yearly : .monthly,
+                            isProSelected: selectedPlan != .free,
+                            monthlyPrice: storeKit.proMonthlyProduct?.displayPrice ?? "$19.99",
+                            yearlyPrice: storeKit.proYearlyProduct?.displayPrice ?? "$189.99",
+                            onSelectMonthly: { selectedPlan = .monthly },
+                            onSelectYearly: { selectedPlan = .yearly }
+                        )
                     }
                     .padding(.horizontal)
                     
-                    // Pro Features List
-                    if selectedPlan != .free {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Pro includes:")
-                                .font(.headline)
-                                .padding(.bottom, 4)
-                            
-                            ProFeatureRow(icon: "infinity", text: "Unlimited orders")
-                            ProFeatureRow(icon: "square.and.arrow.up", text: "Unlimited CSV exports")
-                            ProFeatureRow(icon: "photo", text: "Product images")
-                            ProFeatureRow(icon: "barcode", text: "Barcode scanning")
-                            ProFeatureRow(icon: "headphones", text: "Priority support")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                    }
-                    
-                    // Subscribe Button
+                    // Subscribe Button (only when Pro is selected)
                     if selectedPlan != .free && !storeKit.subscriptionStatus.isActive {
                         VStack(spacing: 12) {
                             Button {
@@ -161,13 +122,8 @@ struct SubscriptionView: View {
                                             .progressViewStyle(CircularProgressViewStyle(tint: .black))
                                     } else {
                                         Image(systemName: "crown.fill")
-                                        if selectedPlan == .yearly {
-                                            Text("Subscribe - \(storeKit.proYearlyProduct?.displayPrice ?? "$189.99")/year")
-                                                .fontWeight(.bold)
-                                        } else {
-                                            Text("Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")/month")
-                                                .fontWeight(.bold)
-                                        }
+                                        Text("Continue with Pro")
+                                            .fontWeight(.bold)
                                     }
                                 }
                                 .foregroundColor(.black)
@@ -668,6 +624,252 @@ struct ProFeatureRow: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundColor(.primary)
+        }
+    }
+}
+
+// MARK: - Basic (Free) Plan Card
+struct BasicPlanCard: View {
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(alignment: .leading, spacing: 12) {
+                // Header
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Basic")
+                            .font(.title2.bold())
+                        Text("Great for getting started")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    Spacer()
+                    
+                    VStack(alignment: .trailing) {
+                        Text("Free")
+                            .font(.title2.bold())
+                        Text("forever")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                }
+                
+                Divider()
+                
+                // Features
+                VStack(alignment: .leading, spacing: 8) {
+                    FeatureRowItem(icon: "checkmark.circle.fill", text: "First 20 orders free", included: true)
+                    FeatureRowItem(icon: "checkmark.circle.fill", text: "Basic inventory management", included: true)
+                    FeatureRowItem(icon: "checkmark.circle.fill", text: "10 CSV exports", included: true)
+                    FeatureRowItem(icon: "checkmark.circle.fill", text: "Standard reports", included: true)
+                    FeatureRowItem(icon: "xmark.circle.fill", text: "Limited orders", included: false)
+                    FeatureRowItem(icon: "xmark.circle.fill", text: "No product images", included: false)
+                    FeatureRowItem(icon: "xmark.circle.fill", text: "No barcode scanning", included: false)
+                }
+                
+                // Selection indicator
+                HStack {
+                    Spacer()
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .font(.title2)
+                        .foregroundColor(isSelected ? .blue : .gray.opacity(0.4))
+                }
+            }
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Pro Plan Card (with Monthly/Yearly grid inside)
+struct ProPlanCard: View {
+    enum Duration { case monthly, yearly }
+    
+    let selectedDuration: Duration
+    let isProSelected: Bool
+    let monthlyPrice: String
+    let yearlyPrice: String
+    let onSelectMonthly: () -> Void
+    let onSelectYearly: () -> Void
+    
+    // Calculate equivalent monthly price for yearly plan
+    private var yearlyMonthlyEquivalent: String {
+        // $189.99/12 ≈ $15.83
+        if let yearlyValue = Double(yearlyPrice.replacingOccurrences(of: "$", with: "").replacingOccurrences(of: ",", with: "")) {
+            let monthly = yearlyValue / 12
+            return String(format: "$%.2f", monthly)
+        }
+        return "$15.83"
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text("Pro")
+                            .font(.title2.bold())
+                        
+                        Text("BEST")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.orange)
+                            .cornerRadius(4)
+                    }
+                    Text("Monthly or Yearly • Save 20% with annual")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+                
+                Spacer()
+                
+                VStack(alignment: .trailing) {
+                    Text("From \(yearlyMonthlyEquivalent)")
+                        .font(.title3.bold())
+                        .foregroundColor(.orange)
+                    Text("/month")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            // PRO FEATURES
+            VStack(alignment: .leading, spacing: 8) {
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "Unlimited orders", included: true, highlight: true)
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "Unlimited exports", included: true, highlight: true)
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "Product images", included: true, highlight: true)
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "Barcode scanning", included: true, highlight: true)
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "Priority support", included: true, highlight: true)
+                FeatureRowItem(icon: "checkmark.circle.fill", text: "All future features", included: true, highlight: true)
+            }
+            
+            // MONTHLY/YEARLY SELECTION GRID (2 options side by side)
+            HStack(spacing: 12) {
+                // Monthly Option
+                DurationOptionButton(
+                    title: "Monthly",
+                    price: monthlyPrice,
+                    period: "/month",
+                    savingsBadge: nil,
+                    isSelected: isProSelected && selectedDuration == .monthly,
+                    onSelect: onSelectMonthly
+                )
+                
+                // Yearly Option
+                DurationOptionButton(
+                    title: "Yearly",
+                    price: yearlyPrice,
+                    period: "/year",
+                    savingsBadge: "Save 20%",
+                    isSelected: isProSelected && selectedDuration == .yearly,
+                    onSelect: onSelectYearly
+                )
+            }
+            .padding(.top, 4)
+            
+            // Selection indicator
+            HStack {
+                Spacer()
+                Image(systemName: isProSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title2)
+                    .foregroundColor(isProSelected ? .orange : .gray.opacity(0.4))
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .strokeBorder(isProSelected ? Color.orange : Color.gray.opacity(0.3), lineWidth: isProSelected ? 2 : 1)
+                )
+        )
+    }
+}
+
+// MARK: - Duration Option Button (for Monthly/Yearly selection inside Pro card)
+struct DurationOptionButton: View {
+    let title: String
+    let price: String
+    let period: String
+    let savingsBadge: String?
+    let isSelected: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            VStack(spacing: 6) {
+                // Title + Badge
+                HStack(spacing: 4) {
+                    Text(title)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.primary)
+                    
+                    if let badge = savingsBadge {
+                        Text(badge)
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 2)
+                            .background(Color.green)
+                            .cornerRadius(3)
+                    }
+                }
+                
+                // Price
+                Text(price)
+                    .font(.title3.bold())
+                    .foregroundColor(isSelected ? .orange : .primary)
+                
+                Text(period)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(isSelected ? Color.orange.opacity(0.1) : Color(.systemGray6))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(isSelected ? Color.orange : Color.clear, lineWidth: 2)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Feature Row Item
+struct FeatureRowItem: View {
+    let icon: String
+    let text: String
+    let included: Bool
+    var highlight: Bool = false
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundColor(included ? .green : .gray.opacity(0.5))
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(included ? (highlight ? .primary : .primary) : .gray.opacity(0.5))
         }
     }
 }
