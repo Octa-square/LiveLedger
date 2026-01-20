@@ -77,6 +77,13 @@ class StoreKitManager: ObservableObject {
     @Published private(set) var isLoading: Bool = false
     @Published var errorMessage: String?
     
+    // CRITICAL: Flag to track if a purchase was initiated by user interaction
+    // This prevents auto-subscription issues reported by Apple reviewers
+    @Published var userInitiatedPurchase: Bool = false
+    
+    // Flag to ensure paywall was shown before any purchase
+    @Published var paywallWasShown: Bool = false
+    
     private var updateListenerTask: Task<Void, Error>?
     private var isPreviewMode: Bool = false
     
@@ -93,6 +100,8 @@ class StoreKitManager: ObservableObject {
         updateListenerTask = listenForTransactions()
         
         // Load products and check subscription status
+        // NOTE: We do NOT auto-process pending transactions on launch
+        // to prevent the "auto-subscription" bug reported by Apple
         Task {
             await loadProducts()
             await updateSubscriptionStatus()
@@ -120,11 +129,24 @@ class StoreKitManager: ObservableObject {
     }
     
     // MARK: - Purchase Product
+    // CRITICAL: This function should ONLY be called after user taps Subscribe button
+    // This ensures the paywall is always shown before any purchase
     func purchase(_ product: StoreProduct) async throws {
+        // Safety check: Ensure paywall was shown
+        guard paywallWasShown else {
+            print("⚠️ Purchase attempted without paywall being shown - blocking")
+            throw PurchaseError.purchaseFailed
+        }
+        
         isLoading = true
-        defer { isLoading = false }
+        userInitiatedPurchase = true  // Mark that user initiated this purchase
+        defer { 
+            isLoading = false
+            userInitiatedPurchase = false
+        }
         
         do {
+            print("🛒 User-initiated purchase starting for: \(product.displayName)")
             let result = try await product.purchase()
             
             switch result {
@@ -157,6 +179,20 @@ class StoreKitManager: ObservableObject {
             errorMessage = "Purchase failed: \(error.localizedDescription)"
             throw PurchaseError.purchaseFailed
         }
+    }
+    
+    // MARK: - Mark Paywall Shown
+    // Call this when SubscriptionView appears to enable purchases
+    func markPaywallShown() {
+        paywallWasShown = true
+        print("📱 Paywall shown - purchases now enabled")
+    }
+    
+    // MARK: - Reset Paywall State
+    // Call this when SubscriptionView disappears
+    func resetPaywallState() {
+        paywallWasShown = false
+        print("📱 Paywall dismissed - paywall flag reset")
     }
     
     // MARK: - Restore Purchases
@@ -225,12 +261,27 @@ class StoreKitManager: ObservableObject {
     }
     
     // MARK: - Listen for Transactions
+    // IMPORTANT: Only process transactions that were user-initiated
+    // This prevents auto-subscription bug on app launch
     private func listenForTransactions() -> Task<Void, Error> {
         return Task.detached {
             for await result in Transaction.updates {
                 do {
                     let transaction = try await self.checkVerified(result)
+                    
+                    // Only auto-finish if user initiated a purchase
+                    // Otherwise, update status but don't auto-finish pending transactions
+                    await MainActor.run {
+                        if self.userInitiatedPurchase || self.paywallWasShown {
+                            print("✅ Processing user-initiated transaction: \(transaction.productID)")
+                        } else {
+                            print("⚠️ Transaction update received but no user interaction - status updated only")
+                        }
+                    }
+                    
                     await self.updateSubscriptionStatus()
+                    
+                    // Always finish verified transactions to prevent re-delivery
                     await transaction.finish()
                 } catch {
                     print("❌ Transaction update failed verification: \(error)")

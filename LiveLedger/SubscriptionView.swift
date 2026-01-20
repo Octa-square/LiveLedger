@@ -299,6 +299,16 @@ struct SubscriptionView: View {
             } message: {
                 Text(successAlertMessage)
             }
+            // CRITICAL: Mark paywall as shown when view appears
+            // This prevents auto-subscription bug reported by Apple
+            .onAppear {
+                storeKit.markPaywallShown()
+                print("📱 SubscriptionView appeared - paywall marked as shown")
+            }
+            .onDisappear {
+                storeKit.resetPaywallState()
+                print("📱 SubscriptionView disappeared - paywall state reset")
+            }
         }
     }
     
