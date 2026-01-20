@@ -187,12 +187,12 @@ struct PlanSelectionView: View {
                             withAnimation { selectedPlan = .basic }
                         }
                         
-                        // Pro Plan Card (Recommended)
+                        // Pro Plan Card (Recommended) - Shows starting price, full options in next screen
                         SelectablePlanCard(
                             title: "Pro",
-                            price: "$19.99",
+                            price: "From $15.83",
                             period: "/month",
-                            description: "Unlimited everything for serious sellers",
+                            description: "Monthly or Yearly • Save 20% with annual",
                             features: [
                                 "Unlimited orders",
                                 "Unlimited exports",
