@@ -137,10 +137,8 @@ struct SubscriptionView: View {
                             
                             ProFeatureRow(icon: "infinity", text: "Unlimited orders")
                             ProFeatureRow(icon: "square.and.arrow.up", text: "Unlimited CSV exports")
-                            ProFeatureRow(icon: "line.3.horizontal.decrease.circle", text: "Advanced order filters")
                             ProFeatureRow(icon: "photo", text: "Product images")
                             ProFeatureRow(icon: "barcode", text: "Barcode scanning")
-                            ProFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Advanced analytics")
                             ProFeatureRow(icon: "headphones", text: "Priority support")
                         }
                         .padding()
@@ -251,13 +249,9 @@ struct SubscriptionView: View {
                                  title: "Barcode Support",
                                  subtitle: "Scan barcodes to quickly find and add products.")
                         
-                        WhyProRow(icon: "line.3.horizontal.decrease.circle", color: .orange,
-                                 title: "Order Filters",
-                                 subtitle: "Filter orders by platform and discount status for better insights.")
-                        
-                        WhyProRow(icon: "chart.line.uptrend.xyaxis", color: .pink,
-                                 title: "Advanced Analytics",
-                                 subtitle: "Deep insights into sales trends, top products, and more.")
+                        WhyProRow(icon: "headphones", color: .orange,
+                                 title: "Priority Support",
+                                 subtitle: "Get faster responses and dedicated help when you need it.")
                     }
                     .padding()
                     .background(Color(.systemGray6))

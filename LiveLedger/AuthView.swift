@@ -902,33 +902,41 @@ struct AuthView: View {
                         )
                         .padding(.horizontal, 24)
                         
-                        // Features List
+                        // Features List - Only real, working features
+                        // CENTERED: Two equal-width columns, horizontally centered
                         if !isLoginMode {
-                            VStack(spacing: 4) {
+                            VStack(spacing: 12) {
                                 Text("Why LiveLedger?")
-                                    .font(.system(size: 11, weight: .semibold))
-                                    .foregroundColor(.white.opacity(0.8))
+                                    .font(.system(size: 13, weight: .semibold))
+                                    .foregroundColor(.white.opacity(0.9))
                                 
-                                LazyVGrid(columns: [
-                                    GridItem(.flexible(), spacing: 4),
-                                    GridItem(.flexible(), spacing: 4)
-                                ], spacing: 3) {
-                                    CompactFeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Real-time tracking")
-                                    CompactFeatureItem(icon: "apps.iphone", text: "Multi-platform")
-                                    CompactFeatureItem(icon: "timer", text: "Live timer")
-                                    CompactFeatureItem(icon: "network", text: "Network analyzer")
-                                    CompactFeatureItem(icon: "bell.badge", text: "Smart alerts")
-                                    CompactFeatureItem(icon: "chart.pie", text: "Analytics")
-                                    CompactFeatureItem(icon: "printer", text: "Print & export")
-                                    CompactFeatureItem(icon: "speaker.wave.2", text: "Sound notifications")
-                                    CompactFeatureItem(icon: "chart.bar.xaxis", text: "Comparisons")
-                                    CompactFeatureItem(icon: "photo", text: "Image editing")
-                                    CompactFeatureItem(icon: "plus.circle", text: "Custom platforms")
-                                    CompactFeatureItem(icon: "line.3.horizontal.decrease", text: "Order filtering")
+                                // Two-column grid with FIXED equal widths
+                                HStack(alignment: .top, spacing: 24) {
+                                    // LEFT COLUMN
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        CompactFeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Real-time tracking")
+                                        CompactFeatureItem(icon: "arrow.clockwise.icloud", text: "Auto-save")
+                                        CompactFeatureItem(icon: "apps.iphone", text: "Multi-platform")
+                                        CompactFeatureItem(icon: "printer", text: "Print & export")
+                                        CompactFeatureItem(icon: "barcode.viewfinder", text: "Barcode scanning")
+                                        CompactFeatureItem(icon: "photo", text: "Product images")
+                                    }
+                                    .frame(width: 140, alignment: .leading)  // Fixed width
+                                    
+                                    // RIGHT COLUMN
+                                    VStack(alignment: .leading, spacing: 6) {
+                                        CompactFeatureItem(icon: "timer", text: "Live timer")
+                                        CompactFeatureItem(icon: "chart.pie", text: "Analytics")
+                                        CompactFeatureItem(icon: "bag", text: "Order tracking")
+                                        CompactFeatureItem(icon: "doc.text", text: "CSV exports")
+                                        CompactFeatureItem(icon: "chart.bar.doc.horizontal", text: "Sales reports")
+                                        CompactFeatureItem(icon: "shippingbox", text: "Inventory mgmt")
+                                    }
+                                    .frame(width: 140, alignment: .leading)  // Fixed width (same as left)
                                 }
                             }
-                            .padding(.horizontal, 24)
-                            .padding(.top, 4)
+                            .frame(maxWidth: .infinity)  // Center horizontally
+                            .padding(.top, 8)
                         }
                         
                         Spacer(minLength: 20)

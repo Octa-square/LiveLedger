@@ -9,33 +9,23 @@
 
 import SwiftUI
 
-// MARK: - Main View (Adaptive for iPhone and iPad)
+// MARK: - Main View (Universal Layout for iPhone and iPad)
+// Uses the same single-column layout on all devices - scales naturally on iPad
 struct MainTabView: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
     @StateObject private var viewModel = SalesViewModel()
     @StateObject private var themeManager = ThemeManager()
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     
     var body: some View {
-        // Adaptive layout based on device size class
-        if horizontalSizeClass == .regular {
-            // iPad layout - optimized for larger screens
-            iPadHomeScreenView(
-                viewModel: viewModel,
-                themeManager: themeManager,
-                authManager: authManager,
-                localization: localization
-            )
-        } else {
-            // iPhone layout - single screen
-            HomeScreenView(
-                viewModel: viewModel,
-                themeManager: themeManager,
-                authManager: authManager,
-                localization: localization
-            )
-        }
+        // Single-column layout works on both iPhone and iPad
+        // On iPad, it simply scales up and fills the screen
+        HomeScreenView(
+            viewModel: viewModel,
+            themeManager: themeManager,
+            authManager: authManager,
+            localization: localization
+        )
     }
 }
 
@@ -281,6 +271,8 @@ struct HomeScreenView: View {
 }
 
 // MARK: - iPad Home Screen View (Optimized for Larger Screens)
+// ADAPTIVE LAYOUT: Switches between two-column and single-column based on ACTUAL WIDTH
+// This prevents UI overlap when iPad window is resized (Split View, Slide Over, etc.)
 struct iPadHomeScreenView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var themeManager: ThemeManager
@@ -307,6 +299,10 @@ struct iPadHomeScreenView: View {
     @State private var orderQuantity: Int = 1
     
     private var theme: AppTheme { themeManager.currentTheme }
+    
+    // MINIMUM WIDTH THRESHOLDS - Prevents UI overlap
+    private let minWidthForTwoColumn: CGFloat = 700  // Minimum width for side-by-side layout
+    private let minColumnWidth: CGFloat = 320        // Minimum width per column
     
     // iPad-specific styling - larger containers and spacing
     private let containerCornerRadius: CGFloat = 16
@@ -335,9 +331,16 @@ struct iPadHomeScreenView: View {
         ZStack {
             // Main content
             GeometryReader { geometry in
-                let isLandscape = geometry.size.width > geometry.size.height
-                let safeWidth = geometry.size.width - (horizontalMargin * 2)
+                let totalWidth = geometry.size.width
+                let safeWidth = totalWidth - (horizontalMargin * 2)
                 let safeHeight = geometry.size.height
+                
+                // ADAPTIVE LAYOUT: Use width-based check, not just orientation
+                // Two-column layout requires BOTH:
+                // 1. Sufficient width (>= minWidthForTwoColumn)
+                // 2. Each column must be >= minColumnWidth
+                let canUseTwoColumn = safeWidth >= minWidthForTwoColumn && 
+                                       ((safeWidth - sectionGap) / 2) >= minColumnWidth
                 
                 ZStack {
                     // Background
@@ -364,8 +367,8 @@ struct iPadHomeScreenView: View {
                         .ignoresSafeArea(.all, edges: .all)
                     }
                     
-                    // iPad-optimized layout: Two columns
-                    if isLandscape {
+                    // iPad-optimized layout: Two columns ONLY if width permits
+                    if canUseTwoColumn {
                         // Landscape: Side-by-side layout
                         HStack(spacing: sectionGap) {
                             // LEFT COLUMN: Header + Platform + Products
@@ -422,7 +425,8 @@ struct iPadHomeScreenView: View {
                                     )
                                 }
                             }
-                            .frame(width: (safeWidth - sectionGap) / 2)
+                            .frame(width: (safeWidth - sectionGap) / 2, alignment: .top)
+                            .frame(minWidth: minColumnWidth)
                             
                             // RIGHT COLUMN: Orders (full height)
                             gridContainer {
@@ -434,18 +438,23 @@ struct iPadHomeScreenView: View {
                                 )
                             }
                             .frame(width: (safeWidth - sectionGap) / 2)
+                            .frame(minWidth: minColumnWidth)
                         }
+                        .frame(minWidth: minWidthForTwoColumn)
                         .padding(.horizontal, horizontalMargin)
                         .padding(.vertical, sectionGap)
                     } else {
-                        // Portrait: Stacked layout (similar to iPhone but with better proportions)
+                        // SINGLE-COLUMN LAYOUT: Used when width is insufficient for two columns
+                        // This handles: Portrait mode, Split View, Slide Over, narrow windows
                         let totalGaps: CGFloat = (sectionGap * 3) + 12 + 12
                         let availableHeight = safeHeight - totalGaps
                         
-                        // Better proportions for iPad portrait
-                        let headerHeight: CGFloat = availableHeight * 0.18
-                        let platformHeight: CGFloat = availableHeight * 0.12
-                        let productsHeight: CGFloat = availableHeight * 0.22
+                        // Adaptive proportions based on available width
+                        // Use smaller proportions when width is very narrow
+                        let isNarrow = safeWidth < 400
+                        let headerHeight: CGFloat = availableHeight * (isNarrow ? 0.20 : 0.18)
+                        let platformHeight: CGFloat = availableHeight * (isNarrow ? 0.14 : 0.12)
+                        let productsHeight: CGFloat = availableHeight * (isNarrow ? 0.24 : 0.22)
                         let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight
                         
                         VStack(spacing: sectionGap) {
@@ -460,7 +469,7 @@ struct iPadHomeScreenView: View {
                                     showSubscription: $showSubscription
                                 )
                             }
-                            .frame(width: safeWidth, height: headerHeight)
+                            .frame(maxWidth: .infinity, minHeight: headerHeight)
                             
                             // Platform
                             gridContainer {
@@ -470,7 +479,7 @@ struct iPadHomeScreenView: View {
                                     localization: localization
                                 )
                             }
-                            .frame(width: safeWidth, height: platformHeight)
+                            .frame(maxWidth: .infinity, minHeight: platformHeight)
                             
                             // Products
                             gridContainer {
@@ -500,7 +509,7 @@ struct iPadHomeScreenView: View {
                                     }
                                 )
                             }
-                            .frame(width: safeWidth, height: productsHeight)
+                            .frame(maxWidth: .infinity, minHeight: productsHeight)
                             
                             // Orders
                             gridContainer {
@@ -511,8 +520,9 @@ struct iPadHomeScreenView: View {
                                     authManager: authManager
                                 )
                             }
-                            .frame(width: safeWidth, height: ordersHeight)
+                            .frame(maxWidth: .infinity, minHeight: ordersHeight)
                         }
+                        .frame(minWidth: 280) // Minimum width constraint
                         .padding(.horizontal, horizontalMargin)
                         .padding(.top, 12)
                         .padding(.bottom, 12)

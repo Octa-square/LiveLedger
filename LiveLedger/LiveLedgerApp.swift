@@ -30,7 +30,13 @@ struct LiveLedgerApp: App {
                         NotificationCenter.default.post(name: .autoSaveData, object: nil)
                     }
                 }
+                // MINIMUM SIZE CONSTRAINT: Prevents UI overlap on iPad when window is resized
+                .frame(minWidth: 320, minHeight: 568) // Minimum iPhone SE size
         }
+        #if os(iOS)
+        // iPad minimum window size to prevent UI overlap in Split View/Slide Over
+        .defaultSize(width: 768, height: 1024)
+        #endif
     }
     
     /// Clears all app data for fresh simulator testing
@@ -172,8 +178,8 @@ struct PlanSelectionView: View {
                             ],
                             limitations: [
                                 "Limited orders",
-                                "No advanced filters",
-                                "No product images"
+                                "No product images",
+                                "No barcode scanning"
                             ],
                             isSelected: selectedPlan == .basic,
                             isPro: false
@@ -191,8 +197,7 @@ struct PlanSelectionView: View {
                                 "Unlimited orders",
                                 "Unlimited exports",
                                 "Product images",
-                                "Advanced analytics",
-                                "Order filters",
+                                "Barcode scanning",
                                 "Priority support",
                                 "All future features"
                             ],
@@ -261,88 +266,24 @@ struct PlanSelectionView: View {
     }
     
     // MARK: - Subscription Confirmation Sheet
+    // Shows both Monthly and Yearly subscription options
     private var subscriptionConfirmationSheet: some View {
-        VStack(spacing: 20) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.yellow)
-                
-                Text("Upgrade to Pro")
-                    .font(.title2.bold())
-                
-                Text("$19.99/month")
-                    .font(.title3)
-                    .foregroundColor(.orange)
-            }
-            .padding(.top, 30)
-            
-            // Benefits
-            VStack(alignment: .leading, spacing: 10) {
-                benefitRow(icon: "infinity", text: "Unlimited orders")
-                benefitRow(icon: "photo.fill", text: "Product images")
-                benefitRow(icon: "chart.bar.fill", text: "Advanced analytics")
-                benefitRow(icon: "arrow.down.doc.fill", text: "Unlimited exports")
-                benefitRow(icon: "star.fill", text: "Priority support")
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-            .padding(.horizontal)
-            
-            Spacer()
-            
-            // Subscribe Button
-            Button {
+        SubscriptionConfirmationContent(
+            isProcessing: isProcessing,
+            onSubscribeMonthly: {
                 Task {
-                    await processSubscription()
+                    await processSubscription(isYearly: false)
                 }
-            } label: {
-                HStack {
-                    if isProcessing {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                    } else {
-                        Image(systemName: "creditcard.fill")
-                        Text("Subscribe Now")
-                            .fontWeight(.bold)
-                    }
+            },
+            onSubscribeYearly: {
+                Task {
+                    await processSubscription(isYearly: true)
                 }
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
-                )
-                .cornerRadius(12)
-            }
-            .disabled(isProcessing)
-            .padding(.horizontal)
-            
-            // Cancel Button
-            Button {
+            },
+            onDismiss: {
                 showSubscribeConfirmation = false
-            } label: {
-                Text("Maybe Later")
-                    .foregroundColor(.gray)
             }
-            .disabled(isProcessing)
-            .padding(.bottom, 30)
-        }
-        .presentationDetents([.medium])
-    }
-    
-    private func benefitRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.green)
-                .frame(width: 24)
-            
-            Text(text)
-                .font(.subheadline)
-        }
+        )
     }
     
     private func selectPlan() async {
@@ -355,8 +296,11 @@ struct PlanSelectionView: View {
         }
     }
     
-    private func processSubscription() async {
+    private func processSubscription(isYearly: Bool) async {
         isProcessing = true
+        
+        // Log which plan was selected
+        print("📱 Processing subscription: \(isYearly ? "Yearly ($189.99/year)" : "Monthly ($19.99/month)")")
         
         // Simulate subscription processing
         try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
@@ -368,6 +312,7 @@ struct PlanSelectionView: View {
         SoundManager.shared.playOrderAddedSound()
         
         isProcessing = false
+        showSubscribeConfirmation = false
         showSuccess = true
     }
     
@@ -480,6 +425,228 @@ struct SelectablePlanCard: View {
                 .shadow(color: isSelected ? (isPro ? Color.orange.opacity(0.3) : Color.green.opacity(0.3)) : Color.clear, radius: 10)
         )
         .onTapGesture(perform: onSelect)
+    }
+}
+
+// MARK: - Subscription Confirmation Content
+// Compact layout with Monthly/Yearly subscription options
+struct SubscriptionConfirmationContent: View {
+    let isProcessing: Bool
+    let onSubscribeMonthly: () -> Void
+    let onSubscribeYearly: () -> Void
+    let onDismiss: () -> Void
+    
+    @State private var selectedPlan: SubscriptionPlan = .yearly  // Default to yearly (best value)
+    
+    enum SubscriptionPlan {
+        case monthly, yearly
+        
+        var price: String {
+            switch self {
+            case .monthly: return "$19.99"
+            case .yearly: return "$189.99"
+            }
+        }
+        
+        var period: String {
+            switch self {
+            case .monthly: return "/month"
+            case .yearly: return "/year"
+            }
+        }
+    }
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            // X button row
+            HStack {
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                        .font(.title3)
+                }
+                .disabled(isProcessing)
+                .padding(.trailing, 16)
+                .padding(.top, 8)
+            }
+            
+            // Header
+            VStack(spacing: 4) {
+                Image(systemName: "crown.fill")
+                    .font(.system(size: 32))
+                    .foregroundColor(.yellow)
+                
+                Text("Upgrade to Pro")
+                    .font(.title3.bold())
+            }
+            
+            // SUBSCRIPTION OPTIONS - Monthly vs Yearly
+            VStack(spacing: 8) {
+                // Yearly Option (Best Value)
+                SubscriptionOptionRow(
+                    title: "Yearly",
+                    price: "$189.99",
+                    period: "/year",
+                    savingsText: "Save 20%",
+                    isSelected: selectedPlan == .yearly,
+                    isBestValue: true
+                ) {
+                    selectedPlan = .yearly
+                }
+                
+                // Monthly Option
+                SubscriptionOptionRow(
+                    title: "Monthly",
+                    price: "$19.99",
+                    period: "/month",
+                    savingsText: nil,
+                    isSelected: selectedPlan == .monthly,
+                    isBestValue: false
+                ) {
+                    selectedPlan = .monthly
+                }
+            }
+            .padding(.horizontal)
+            
+            // Benefits - Compact
+            VStack(alignment: .leading, spacing: 4) {
+                compactBenefitRow(icon: "infinity", text: "Unlimited orders")
+                compactBenefitRow(icon: "arrow.down.doc.fill", text: "Unlimited exports")
+                compactBenefitRow(icon: "photo.fill", text: "Product images")
+                compactBenefitRow(icon: "barcode.viewfinder", text: "Barcode scanning")
+                compactBenefitRow(icon: "star.fill", text: "Priority support")
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 10)
+            .background(Color.gray.opacity(0.1))
+            .cornerRadius(8)
+            .padding(.horizontal)
+            
+            // Subscribe Button - Shows selected plan price
+            Button {
+                if selectedPlan == .yearly {
+                    onSubscribeYearly()
+                } else {
+                    onSubscribeMonthly()
+                }
+            } label: {
+                HStack {
+                    if isProcessing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                    } else {
+                        Image(systemName: "creditcard.fill")
+                        Text("Subscribe - \(selectedPlan.price)\(selectedPlan.period)")
+                            .fontWeight(.bold)
+                    }
+                }
+                .foregroundColor(.black)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
+                )
+                .cornerRadius(10)
+            }
+            .disabled(isProcessing)
+            .padding(.horizontal)
+            
+            // Maybe Later Button
+            Button("Maybe Later", action: onDismiss)
+                .font(.system(size: 14))
+                .foregroundColor(.gray)
+                .disabled(isProcessing)
+                .padding(.top, 2)
+                .padding(.bottom, 4)
+        }
+        .frame(maxWidth: 500)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func compactBenefitRow(icon: String, text: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.system(size: 11))
+                .foregroundColor(.green)
+                .frame(width: 16)
+            
+            Text(text)
+                .font(.system(size: 13))
+            
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+// MARK: - Subscription Option Row
+struct SubscriptionOptionRow: View {
+    let title: String
+    let price: String
+    let period: String
+    let savingsText: String?
+    let isSelected: Bool
+    let isBestValue: Bool
+    let onSelect: () -> Void
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack {
+                // Selection indicator
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 20))
+                    .foregroundColor(isSelected ? .orange : .gray.opacity(0.5))
+                
+                // Plan details
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(title)
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundColor(.primary)
+                        
+                        if isBestValue {
+                            Text("BEST VALUE")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(Color.green)
+                                .cornerRadius(3)
+                        }
+                    }
+                    
+                    if let savings = savingsText {
+                        Text(savings)
+                            .font(.system(size: 11))
+                            .foregroundColor(.green)
+                    }
+                }
+                
+                Spacer()
+                
+                // Price
+                VStack(alignment: .trailing, spacing: 0) {
+                    Text(price)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(isSelected ? .orange : .primary)
+                    Text(period)
+                        .font(.system(size: 11))
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color(.systemBackground))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(isSelected ? Color.orange : Color.gray.opacity(0.3), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
