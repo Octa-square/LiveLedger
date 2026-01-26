@@ -116,12 +116,28 @@ struct AdaptiveHomeScreenView: View {
                 // Use actual geometry width, not size class (more accurate for Split View)
                 let useTwoColumn = width >= 700
                 
-                // Debug: Log layout changes (remove in production)
-                let _ = print("📐 Layout: \(Int(width))x\(Int(height)), columns: \(useTwoColumn ? 2 : 1), sizeClass: \(horizontalSizeClass == .compact ? "compact" : "regular")")
+                // Debug: Log layout changes (visible in Xcode console)
+                let _ = print("📐 ADAPTIVE LAYOUT v2: \(Int(width))x\(Int(height)), columns: \(useTwoColumn ? 2 : 1), sizeClass: \(horizontalSizeClass == .compact ? "compact" : "regular")")
                 
                 ZStack {
                     // Background
                     backgroundView(geometry: geometry)
+                    
+                    // DEBUG BANNER - Shows in DEBUG builds to confirm new code is loaded
+                    #if DEBUG
+                    VStack {
+                        Text("📐 W:\(Int(width)) | \(useTwoColumn ? "2-COL" : "1-COL") | v2.0")
+                            .font(.system(size: 10, weight: .bold, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.red.opacity(0.8))
+                            .cornerRadius(4)
+                        Spacer()
+                    }
+                    .padding(.top, 2)
+                    .zIndex(999)
+                    #endif
                     
                     // Content - always in ScrollView to handle any size
                     ScrollView(.vertical, showsIndicators: false) {
