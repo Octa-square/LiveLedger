@@ -3,6 +3,7 @@
 //  LiveLedger
 //
 //  LiveLedger - Header with Stats and Actions
+//  ADAPTIVE LAYOUT: Responds to window width changes (Split View, Slide Over, etc.)
 //
 
 import SwiftUI
@@ -41,144 +42,23 @@ struct HeaderView: View {
     }
     
     var body: some View {
-        VStack(spacing: 6) {
-            // Title Row - COMPACT
-            HStack {
-                // LiveLedger logo - always shows app branding
-                LiveLedgerLogoMini()
-                
-                // App Info: LiveLedger + Store Name (both fit within logo height ~40pt)
-                VStack(alignment: .leading, spacing: 2) {
-                    // App name - LiveLedger branding
-                    Text("LiveLedger")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(theme.successColor) // Green accent color
-                        .lineLimit(1)
-                    
-                    // Store name (directly below, no "Account:" prefix)
-                    if let user = authManager.currentUser {
-                        Text(user.companyName.isEmpty ? "My Shop" : user.companyName)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(theme.textPrimary.opacity(0.9))
-                            .lineLimit(1)
-                    } else {
-                        Text("My Shop")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(theme.textPrimary.opacity(0.9))
-                            .lineLimit(1)
-                    }
-                }
-                .frame(maxHeight: 40) // Constrain to logo height
-                
-                Spacer()
-                
-                // Right side - PRO badge + Auto-save indicator
-                VStack(alignment: .trailing, spacing: 3) {
-                    // PRO/FREE badge
-                    if let user = authManager.currentUser {
-                        if user.isPro {
-                            HStack(spacing: 3) {
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(theme.warningColor)
-                                Text("PRO")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(theme.warningColor)
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(theme.warningColor.opacity(0.15))
-                            )
-                        } else {
-                            Text("FREE")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(theme.textMuted)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(
-                                    Capsule()
-                                        .fill(theme.textMuted.opacity(0.15))
-                                )
-                        }
-                    }
-                    
-                    // Auto-save indicator
-                    HStack(spacing: 3) {
-                        Circle()
-                            .fill(theme.successColor)
-                            .frame(width: 6, height: 6)
-                        Text(localization.localized(.autoSaving))
-                            .font(.system(size: 9))
-                            .foregroundColor(theme.textSecondary)
-                    }
-                }
-                
-                // Menu Button (replaces Settings)
-                Menu {
-                    // Analytics Option
-                    Button {
-                        showAnalytics = true
-                    } label: {
-                        Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
-                    }
-                    
-                    // Settings Option
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Label(localization.localized(.settings), systemImage: "gearshape.fill")
-                    }
-                } label: {
-                    // 9-dot grid menu icon (more modern than hamburger)
-                    Image(systemName: "square.grid.3x3.fill")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(theme.iconColor) // Adapts to theme
-                        .frame(width: 32, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(theme.accentColor.opacity(0.5), lineWidth: 1)
-                        )
-                }
-            }
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            // Breakpoints for adaptive layout
+            let isVeryNarrow = width < 400
+            let isNarrow = width < 500
             
-            // Stats Row - Full width with 12pt spacing (aligned with Platform and Products)
-            // Left: Total Sales (left edge aligns with container left)
-            // Right: Total Orders (right edge aligns with container right)
-            HStack(spacing: 12) {
-                StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
-                StatCardText(title: localization.localized(.topSeller), text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
-                StatCard(title: localization.localized(.stockLeft), amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
-                StatCard(title: localization.localized(.totalOrders), amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
+            VStack(spacing: isVeryNarrow ? 4 : 6) {
+                // Title Row - COMPACT (adapts padding on narrow screens)
+                titleRow(isNarrow: isNarrow)
+                
+                // Stats Row - ADAPTIVE: Uses LazyVGrid with adaptive columns
+                statsGrid(width: width, isNarrow: isNarrow)
+                
+                // Action Buttons Row - ADAPTIVE: Stacks vertically when very narrow
+                actionButtonsRow(isVeryNarrow: isVeryNarrow, width: width)
             }
-            .frame(maxWidth: .infinity) // Span full container width
-            
-            // Action Buttons Row - Full width, edges align with container edges
-            // Left: Clear (left edge aligns with container left)
-            // Right: Print (right edge aligns with container right)
-            HStack(spacing: 0) {
-                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
-                    showClearOptions = true
-                }
-                
-                Spacer()
-                
-                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
-                    showExportOptions = true
-                }
-                
-                Spacer()
-                
-                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
-                    showPrintOptions = true
-                }
-            }
-            .frame(maxWidth: .infinity) // Span full container width
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         // No internal background - container styling handled by parent gridContainer
         .sheet(isPresented: $showPrintOptions) {
@@ -194,6 +74,169 @@ struct HeaderView: View {
             NavigationStack {
                 AnalyticsView(viewModel: viewModel, localization: localization)
             }
+        }
+    }
+    
+    // MARK: - Title Row
+    @ViewBuilder
+    private func titleRow(isNarrow: Bool) -> some View {
+        HStack {
+            // LiveLedger logo - always shows app branding
+            LiveLedgerLogoMini()
+            
+            // App Info: LiveLedger + Store Name (both fit within logo height ~40pt)
+            VStack(alignment: .leading, spacing: 2) {
+                // App name - LiveLedger branding
+                Text("LiveLedger")
+                    .font(.system(size: isNarrow ? 14 : 16, weight: .bold, design: .rounded))
+                    .foregroundColor(theme.successColor) // Green accent color
+                    .lineLimit(1)
+                
+                // Store name (directly below, no "Account:" prefix)
+                if let user = authManager.currentUser {
+                    Text(user.companyName.isEmpty ? "My Shop" : user.companyName)
+                        .font(.system(size: isNarrow ? 11 : 13, weight: .medium))
+                        .foregroundColor(theme.textPrimary.opacity(0.9))
+                        .lineLimit(1)
+                } else {
+                    Text("My Shop")
+                        .font(.system(size: isNarrow ? 11 : 13, weight: .medium))
+                        .foregroundColor(theme.textPrimary.opacity(0.9))
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxHeight: 40) // Constrain to logo height
+            
+            Spacer()
+            
+            // Right side - PRO badge + Auto-save indicator (hide auto-save on very narrow)
+            VStack(alignment: .trailing, spacing: 3) {
+                // PRO/FREE badge
+                if let user = authManager.currentUser {
+                    if user.isPro {
+                        HStack(spacing: 3) {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(theme.warningColor)
+                            Text("PRO")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(theme.warningColor)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(
+                            Capsule()
+                                .fill(theme.warningColor.opacity(0.15))
+                        )
+                    } else {
+                        Text("FREE")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(theme.textMuted)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(
+                                Capsule()
+                                    .fill(theme.textMuted.opacity(0.15))
+                            )
+                    }
+                }
+                
+                // Auto-save indicator - hide on narrow screens to save space
+                if !isNarrow {
+                    HStack(spacing: 3) {
+                        Circle()
+                            .fill(theme.successColor)
+                            .frame(width: 6, height: 6)
+                        Text(localization.localized(.autoSaving))
+                            .font(.system(size: 9))
+                            .foregroundColor(theme.textSecondary)
+                    }
+                }
+            }
+            
+            // Menu Button (replaces Settings)
+            Menu {
+                // Analytics Option
+                Button {
+                    showAnalytics = true
+                } label: {
+                    Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
+                }
+                
+                // Settings Option
+                Button {
+                    showSettings = true
+                } label: {
+                    Label(localization.localized(.settings), systemImage: "gearshape.fill")
+                }
+            } label: {
+                // 9-dot grid menu icon (more modern than hamburger)
+                Image(systemName: "square.grid.3x3.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(theme.iconColor) // Adapts to theme
+                    .frame(width: 44, height: 44) // Minimum tap target
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(theme.accentColor.opacity(0.5), lineWidth: 1)
+                    )
+            }
+        }
+    }
+    
+    // MARK: - Stats Grid (ADAPTIVE)
+    @ViewBuilder
+    private func statsGrid(width: CGFloat, isNarrow: Bool) -> some View {
+        // Use adaptive grid that automatically wraps based on available space
+        // Minimum 80pt per stat card ensures they don't get too squished
+        let minCardWidth: CGFloat = isNarrow ? 70 : 80
+        let columns = [GridItem(.adaptive(minimum: minCardWidth, maximum: 200))]
+        
+        LazyVGrid(columns: columns, spacing: 8) {
+            StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
+            StatCardText(title: localization.localized(.topSeller), text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
+            StatCard(title: localization.localized(.stockLeft), amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
+            StatCard(title: localization.localized(.totalOrders), amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    // MARK: - Action Buttons Row (ADAPTIVE)
+    @ViewBuilder
+    private func actionButtonsRow(isVeryNarrow: Bool, width: CGFloat) -> some View {
+        if isVeryNarrow {
+            // Stack vertically when very narrow (< 400px)
+            VStack(spacing: 6) {
+                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
+                    showClearOptions = true
+                }
+                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
+                    showExportOptions = true
+                }
+                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
+                    showPrintOptions = true
+                }
+            }
+            .frame(maxWidth: .infinity)
+        } else {
+            // Horizontal layout with flexible spacing
+            HStack(spacing: 8) {
+                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
+                    showClearOptions = true
+                }
+                
+                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
+                    showExportOptions = true
+                }
+                
+                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
+                    showPrintOptions = true
+                }
+            }
+            .frame(maxWidth: .infinity)
         }
     }
 }

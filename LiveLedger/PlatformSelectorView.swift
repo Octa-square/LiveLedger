@@ -3,7 +3,10 @@
 //  LiveLedger
 //
 //  LiveLedger - Platform Selector
-//  ALIGNED WITH PRODUCTS - Same width calculation for pixel-perfect alignment
+//  ADAPTIVE LAYOUT: Responds to window width changes
+//  - Width >= 500: Shows 4 platforms in row
+//  - Width 350-500: Shows 3 platforms in row
+//  - Width < 350: Shows 2 platforms in row (ultra-compact)
 //
 
 import SwiftUI
@@ -23,10 +26,10 @@ struct PlatformSelectorView: View {
     
     let colorOptions = ["pink", "purple", "blue", "orange", "green", "red", "yellow", "cyan", "indigo", "mint", "teal", "brown"]
     
-    // ALIGNMENT CONSTANTS - Must match QuickAddView exactly
-    private let itemSpacing: CGFloat = 8        // 8pt between items (tighter)
-    private let numberOfColumns: CGFloat = 4   // 4 items visible at once
-    private let chipHeight: CGFloat = 42       // Platform button height
+    // ADAPTIVE CONSTANTS
+    private let itemSpacing: CGFloat = 8
+    private let minChipWidth: CGFloat = 70  // Minimum width to prevent squishing
+    private let chipHeight: CGFloat = 44    // Minimum tap target height
     
     // Separate default and custom platforms
     private var defaultPlatforms: [Platform] {
@@ -45,25 +48,33 @@ struct PlatformSelectorView: View {
         return result
     }
     
-    private var hasMoreThanFour: Bool {
-        allPlatformsOrdered.count > 4
+    // Calculate visible columns based on width
+    private func visibleColumns(for width: CGFloat) -> CGFloat {
+        if width < 300 { return 2 }
+        if width < 400 { return 3 }
+        return 4
     }
     
-    // Timer view (compact)
-    private var sessionTimerView: some View {
-        HStack(spacing: 4) {
+    private func hasMorePlatforms(columns: Int) -> Bool {
+        allPlatformsOrdered.count > columns
+    }
+    
+    // Timer view (compact) - adapts to narrow widths
+    @ViewBuilder
+    private func sessionTimerView(isNarrow: Bool) -> some View {
+        HStack(spacing: isNarrow ? 2 : 4) {
             Text(viewModel.formattedSessionTime)
-                .font(.system(size: 13, weight: .bold, design: .monospaced))
+                .font(.system(size: isNarrow ? 11 : 13, weight: .bold, design: .monospaced))
                 .foregroundColor(viewModel.isTimerRunning ? theme.successColor : .white.opacity(0.7))
             
-            // Control buttons
+            // Control buttons - use minimum tap targets
             HStack(spacing: 2) {
                 if !viewModel.isTimerRunning && !viewModel.isTimerPaused {
                     Button { viewModel.startTimer() } label: {
                         Image(systemName: "play.fill")
                             .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 24, height: 24) // Minimum tap target
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -73,7 +84,7 @@ struct PlatformSelectorView: View {
                         Image(systemName: "pause.fill")
                             .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 24, height: 24)
                             .background(Circle().fill(Color.orange))
                     }
                 }
@@ -83,7 +94,7 @@ struct PlatformSelectorView: View {
                         Image(systemName: "play.fill")
                             .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 24, height: 24)
                             .background(Circle().fill(Color.green))
                     }
                 }
@@ -93,13 +104,13 @@ struct PlatformSelectorView: View {
                         Image(systemName: "stop.fill")
                             .font(.system(size: 9))
                             .foregroundColor(.white)
-                            .frame(width: 20, height: 20)
+                            .frame(width: 24, height: 24)
                             .background(Circle().fill(Color.red))
                     }
                 }
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, isNarrow ? 4 : 8)
         .padding(.vertical, 4)
         .background(
             RoundedRectangle(cornerRadius: 8)
@@ -108,110 +119,21 @@ struct PlatformSelectorView: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            // ROW 1: "Platform" | Timer (center) | "+ Add"
-            HStack(alignment: .center, spacing: 0) {
-                Text(localization.localized(.platform))
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                sessionTimerView
-                
-                Spacer()
-                
-                Button {
-                    showingAddPlatform = true
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 9, weight: .bold))
-                        Text("Add")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(
-                                LinearGradient(colors: [theme.accentColor, theme.secondaryColor],
-                                              startPoint: .topLeading, endPoint: .bottomTrailing)
-                            )
-                    )
-                }
-            }
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let isVeryNarrow = width < 350
+            let isNarrow = width < 450
+            let columns = visibleColumns(for: width)
             
-            // ROW 2: Platform buttons - EXACTLY 4 visible, others COMPLETELY hidden
-            // Uses same width calculation as products for pixel-perfect alignment
-            GeometryReader { geo in
-                let availableWidth = geo.size.width
-                let totalSpacing = itemSpacing * (numberOfColumns - 1) // 36pt for 3 gaps
-                let itemWidth = (availableWidth - totalSpacing) / numberOfColumns
+            VStack(alignment: .leading, spacing: 4) {
+                // ROW 1: Header row - adapts layout on narrow screens
+                headerRow(isNarrow: isNarrow, isVeryNarrow: isVeryNarrow)
                 
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: itemSpacing) {
-                        // "All" button
-                        AlignedPlatformChip(
-                            platform: .all,
-                            isSelected: viewModel.selectedPlatform == nil,
-                            theme: theme,
-                            width: itemWidth,
-                            height: chipHeight,
-                            onTap: { viewModel.selectedPlatform = nil },
-                            onDelete: nil
-                        )
-                        
-                        // Default platforms (TikTok, Instagram, Facebook)
-                        ForEach(defaultPlatforms) { platform in
-                            AlignedPlatformChip(
-                                platform: platform,
-                                isSelected: viewModel.selectedPlatform?.id == platform.id,
-                                theme: theme,
-                                width: itemWidth,
-                                height: chipHeight,
-                                onTap: { viewModel.selectedPlatform = platform },
-                                onDelete: nil
-                            )
-                        }
-                        
-                        // Custom platforms - HIDDEN off screen, scroll to reveal
-                        ForEach(customPlatforms) { platform in
-                            AlignedPlatformChip(
-                                platform: platform,
-                                isSelected: viewModel.selectedPlatform?.id == platform.id,
-                                theme: theme,
-                                width: itemWidth,
-                                height: chipHeight,
-                                onTap: { viewModel.selectedPlatform = platform },
-                                onDelete: { viewModel.deletePlatform(platform) }
-                            )
-                        }
-                    }
-                }
-                .frame(width: availableWidth) // Clip to exactly 4 items width
-            }
-            .frame(height: chipHeight)
-            
-            // Scroll indicator - ALWAYS visible (permanent)
-            HStack(spacing: 4) {
-                Spacer()
+                // ROW 2: Platform buttons - ADAPTIVE columns
+                platformButtonsRow(width: width, columns: columns)
                 
-                // Page dots - show based on platform count
-                let pageCount = max(1, min((allPlatformsOrdered.count - 1) / 4 + 1, 4))
-                ForEach(0..<pageCount, id: \.self) { index in
-                    Circle()
-                        .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
-                        .frame(width: 5, height: 5)
-                }
-                
-                // Scroll arrow indicator
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(hasMoreThanFour ? theme.textMuted : theme.textMuted.opacity(0.3))
-                
-                Spacer()
+                // Scroll indicator
+                scrollIndicator(columns: Int(columns))
             }
         }
         .sheet(isPresented: $showingAddPlatform) {
@@ -243,6 +165,142 @@ struct PlatformSelectorView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(duplicateErrorMessage)
+        }
+    }
+    
+    // MARK: - Header Row
+    @ViewBuilder
+    private func headerRow(isNarrow: Bool, isVeryNarrow: Bool) -> some View {
+        if isVeryNarrow {
+            // Stack vertically on very narrow screens
+            VStack(spacing: 4) {
+                HStack {
+                    Text(localization.localized(.platform))
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    addButton(isNarrow: true)
+                }
+                
+                sessionTimerView(isNarrow: true)
+            }
+        } else {
+            // Horizontal layout
+            HStack(alignment: .center, spacing: 0) {
+                Text(localization.localized(.platform))
+                    .font(.system(size: isNarrow ? 12 : 13, weight: .bold))
+                    .foregroundColor(.white)
+                
+                Spacer()
+                
+                sessionTimerView(isNarrow: isNarrow)
+                
+                Spacer()
+                
+                addButton(isNarrow: isNarrow)
+            }
+        }
+    }
+    
+    // MARK: - Add Button
+    @ViewBuilder
+    private func addButton(isNarrow: Bool) -> some View {
+        Button {
+            showingAddPlatform = true
+        } label: {
+            HStack(spacing: 3) {
+                Image(systemName: "plus")
+                    .font(.system(size: 9, weight: .bold))
+                if !isNarrow {
+                    Text("Add")
+                        .font(.system(size: 10, weight: .semibold))
+                }
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, isNarrow ? 8 : 10)
+            .padding(.vertical, 6)
+            .frame(minWidth: 44, minHeight: 32) // Minimum tap target
+            .background(
+                Capsule()
+                    .fill(
+                        LinearGradient(colors: [theme.accentColor, theme.secondaryColor],
+                                      startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+            )
+        }
+    }
+    
+    // MARK: - Platform Buttons Row
+    @ViewBuilder
+    private func platformButtonsRow(width: CGFloat, columns: CGFloat) -> some View {
+        let totalSpacing = itemSpacing * (columns - 1)
+        let itemWidth = max(minChipWidth, (width - totalSpacing) / columns)
+        
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: itemSpacing) {
+                // "All" button
+                AlignedPlatformChip(
+                    platform: .all,
+                    isSelected: viewModel.selectedPlatform == nil,
+                    theme: theme,
+                    width: itemWidth,
+                    height: chipHeight,
+                    onTap: { viewModel.selectedPlatform = nil },
+                    onDelete: nil
+                )
+                
+                // Default platforms (TikTok, Instagram, Facebook)
+                ForEach(defaultPlatforms) { platform in
+                    AlignedPlatformChip(
+                        platform: platform,
+                        isSelected: viewModel.selectedPlatform?.id == platform.id,
+                        theme: theme,
+                        width: itemWidth,
+                        height: chipHeight,
+                        onTap: { viewModel.selectedPlatform = platform },
+                        onDelete: nil
+                    )
+                }
+                
+                // Custom platforms - scroll to reveal
+                ForEach(customPlatforms) { platform in
+                    AlignedPlatformChip(
+                        platform: platform,
+                        isSelected: viewModel.selectedPlatform?.id == platform.id,
+                        theme: theme,
+                        width: itemWidth,
+                        height: chipHeight,
+                        onTap: { viewModel.selectedPlatform = platform },
+                        onDelete: { viewModel.deletePlatform(platform) }
+                    )
+                }
+            }
+        }
+        .frame(height: chipHeight)
+    }
+    
+    // MARK: - Scroll Indicator
+    @ViewBuilder
+    private func scrollIndicator(columns: Int) -> some View {
+        HStack(spacing: 4) {
+            Spacer()
+            
+            // Page dots - show based on platform count
+            let pageCount = max(1, min((allPlatformsOrdered.count - 1) / columns + 1, 4))
+            ForEach(0..<pageCount, id: \.self) { index in
+                Circle()
+                    .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
+                    .frame(width: 5, height: 5)
+            }
+            
+            // Scroll arrow indicator
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundColor(hasMorePlatforms(columns: columns) ? theme.textMuted : theme.textMuted.opacity(0.3))
+            
+            Spacer()
         }
     }
     
