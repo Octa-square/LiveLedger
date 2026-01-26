@@ -4,10 +4,13 @@
 //
 //  ADAPTIVE LAYOUT - Supports iPhone AND iPad
 //  iPhone: Static single-screen layout
-//  iPad: Optimized two-column layout for larger screens
+//  iPad: Same layout with minimum window size; scroll in HomeScreenView when short
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 // MARK: - Main View (Adaptive for iPhone and iPad)
 struct MainTabView: View {
@@ -15,26 +18,22 @@ struct MainTabView: View {
     @ObservedObject var localization: LocalizationManager
     @StateObject private var viewModel = SalesViewModel()
     @StateObject private var themeManager = ThemeManager()
-    @Environment(\.horizontalSizeClass) var horizontalSizeClass
     
     var body: some View {
-        // Adaptive layout based on device size class
-        if horizontalSizeClass == .regular {
-            // iPad layout - optimized for larger screens
-            iPadHomeScreenView(
-                viewModel: viewModel,
-                themeManager: themeManager,
-                authManager: authManager,
-                localization: localization
-            )
-        } else {
-            // iPhone layout - single screen
-            HomeScreenView(
-                viewModel: viewModel,
-                themeManager: themeManager,
-                authManager: authManager,
-                localization: localization
-            )
+        HomeScreenView(
+            viewModel: viewModel,
+            themeManager: themeManager,
+            authManager: authManager,
+            localization: localization
+        )
+        .onAppear {
+            #if os(iOS)
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                    windowScene.sizeRestrictions?.minimumSize = CGSize(width: 660, height: 1000)
+                }
+            }
+            #endif
         }
     }
 }
@@ -93,57 +92,49 @@ struct HomeScreenView: View {
     }
     
     var body: some View {
-        // ROOT ZSTACK: Main content and popup are siblings (independent keyboard handling)
+        // ROOT ZSTACK: Background covers entire app, content scrolls on top
         ZStack {
-            // LAYER 1: Main Dashboard Content - STAYS STATIC (ignores keyboard)
+            // Background - Must cover entire screen (outside ScrollView)
             GeometryReader { geometry in
-                let safeWidth = geometry.size.width - (horizontalMargin * 2)
-                let safeHeight = geometry.size.height
-                
-                // Calculate available height after gaps and padding
-                // Total gaps: 3 x sectionGap + top padding + bottom padding
-                let totalGaps: CGFloat = (sectionGap * 3) + 6 + 6  // 18 + 12 = 30pt
-                let availableHeight = safeHeight - totalGaps
-                
-                // Fixed heights for each section (percentage of available height)
-                // Header: 20% | Platform: 13% | Products: 18% | Orders: fills remaining
-                let headerHeight: CGFloat = availableHeight * 0.20
-                let platformHeight: CGFloat = availableHeight * 0.13
-                let productsHeight: CGFloat = availableHeight * 0.18
-                let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight  // Fill remaining
-                
-                ZStack {
-                    // Background - either wallpaper or plain gradient
+                Group {
                     if theme.hasWallpaper {
-                        // Wallpaper - STRETCHED HORIZONTALLY to fill screen width
                         Image(theme.backgroundImageName)
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
+                            .scaledToFill()
                             .frame(
                                 width: geometry.size.width,
                                 height: geometry.size.height + geometry.safeAreaInsets.top + geometry.safeAreaInsets.bottom
                             )
                             .clipped()
                             .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                            .ignoresSafeArea(.all, edges: .all)
-                        
-                        // Dark overlay for readability
                         Color.black.opacity(0.15)
-                            .ignoresSafeArea(.all, edges: .all)
                     } else {
-                        // Plain gradient background (no wallpaper)
                         LinearGradient(
                             colors: theme.gradientColors,
                             startPoint: .topLeading,
                             endPoint: .bottomTrailing
                         )
-                        .ignoresSafeArea(.all, edges: .all)
                     }
-                    
-                    // STATIC LAYOUT - All containers have FIXED heights
-                    // NO overlap - each section has explicit size
+                }
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+            }
+            .edgesIgnoringSafeArea(.all)
+            
+            // LAYER 1: Main Dashboard Content - ScrollView so all content visible when window short
+            GeometryReader { geometry in
+                let safeWidth = geometry.size.width - (horizontalMargin * 2)
+                let safeHeight = geometry.size.height
+                let totalGaps: CGFloat = (sectionGap * 3) + 6 + 6
+                let availableHeight = safeHeight - totalGaps
+                let headerHeight: CGFloat = availableHeight * 0.20
+                let platformHeight: CGFloat = availableHeight * 0.13
+                let productsHeight: CGFloat = availableHeight * 0.18
+                let ordersHeight: CGFloat = availableHeight - headerHeight - platformHeight - productsHeight
+                
+                ScrollView(.vertical, showsIndicators: true) {
+                    // Content VStack
                     VStack(spacing: sectionGap) {
-                        // === CONTAINER 1: Header + Stats + Actions ===
+                        // Header
                         gridContainer {
                             HeaderView(
                                 viewModel: viewModel,
@@ -155,9 +146,8 @@ struct HomeScreenView: View {
                             )
                         }
                         .frame(width: safeWidth, height: headerHeight)
-                        .padding(.horizontal, horizontalMargin)
                         
-                        // === CONTAINER 2: Platform Section ===
+                        // Platform
                         gridContainer {
                             PlatformSelectorView(
                                 viewModel: viewModel,
@@ -166,9 +156,8 @@ struct HomeScreenView: View {
                             )
                         }
                         .frame(width: safeWidth, height: platformHeight)
-                        .padding(.horizontal, horizontalMargin)
                         
-                        // === CONTAINER 3: My Products ===
+                        // Products
                         gridContainer {
                             QuickAddView(
                                 viewModel: viewModel,
@@ -176,8 +165,6 @@ struct HomeScreenView: View {
                                 authManager: authManager,
                                 localization: localization,
                                 onLimitReached: {
-                                    // Different message for lapsed subscribers vs new users
-                                    // Apple reviewers using review@liveledger.app will see the lapsed subscriber message
                                     if authManager.currentUser?.isLapsedSubscriber == true {
                                         if let expiredDate = authManager.currentUser?.formattedExpirationDate {
                                             limitAlertMessage = "You've reached your free tier limit. Your Pro subscription expired on \(expiredDate). Resubscribe to Pro for unlimited orders!"
@@ -192,17 +179,13 @@ struct HomeScreenView: View {
                                 onProductSelected: { product in
                                     buyerName = ""
                                     orderQuantity = 1
-                                    withAnimation(.easeIn(duration: 0.2)) {
-                                        selectedProductForOrder = product
-                                    }
+                                    withAnimation(.easeIn(duration: 0.2)) { selectedProductForOrder = product }
                                 }
                             )
                         }
                         .frame(width: safeWidth, height: productsHeight)
-                        .padding(.horizontal, horizontalMargin)
                         
-                        // === CONTAINER 4: Orders ===
-                        // FIXED HEIGHT - internal scroll for content
+                        // Orders
                         gridContainer {
                             OrdersListView(
                                 viewModel: viewModel,
@@ -212,13 +195,14 @@ struct HomeScreenView: View {
                             )
                         }
                         .frame(width: safeWidth, height: ordersHeight)
-                        .padding(.horizontal, horizontalMargin)
                     }
                     .padding(.top, 6)
                     .padding(.bottom, 6)
+                    .padding()
+                    .frame(width: geometry.size.width)
                 }
             }
-            .ignoresSafeArea(.keyboard) // Main dashboard stays static when keyboard appears
+            .ignoresSafeArea(.keyboard)
             
             // LAYER 2: Buyer Popup - RESPONDS TO KEYBOARD (moves up when keyboard appears)
             if let product = selectedProductForOrder {

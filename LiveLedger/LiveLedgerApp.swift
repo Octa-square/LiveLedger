@@ -6,9 +6,13 @@
 //
 
 import SwiftUI
+#if os(iOS)
+import UIKit
+#endif
 
 @main
 struct LiveLedgerApp: App {
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
     @StateObject private var authManager = AuthManager()
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.scenePhase) private var scenePhase
@@ -22,15 +26,45 @@ struct LiveLedgerApp: App {
     
     var body: some Scene {
         WindowGroup {
-            RootView(authManager: authManager, localization: localization)
-                .environmentObject(localization)
-                .onChange(of: scenePhase) { oldPhase, newPhase in
-                    if newPhase == .background || newPhase == .inactive {
-                        // Auto-save when app goes to background
-                        NotificationCenter.default.post(name: .autoSaveData, object: nil)
+            Group {
+                if isLoggedIn {
+                    MainAppView(authManager: authManager, localization: localization)
+                } else {
+                    NavigationView {
+                        LoginView(authManager: authManager)
+                    }
+                    .onChange(of: authManager.isAuthenticated) { _, authenticated in
+                        if authenticated { isLoggedIn = true }
                     }
                 }
+            }
+            .environmentObject(localization)
+            .onAppear {
+                if authManager.isAuthenticated { isLoggedIn = true }
+                // Set minimum window size to prevent shrinking too small
+                setMinimumWindowSize()
+            }
+            .onChange(of: scenePhase) { oldPhase, newPhase in
+                if newPhase == .background || newPhase == .inactive {
+                    NotificationCenter.default.post(name: .autoSaveData, object: nil)
+                }
+            }
         }
+        #if os(iOS)
+        .defaultSize(width: 680, height: 1100)
+        .windowResizability(.contentMinSize)
+        #endif
+    }
+    
+    private func setMinimumWindowSize() {
+        #if os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // Set minimum window size - window cannot shrink below this
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
+                windowScene.sizeRestrictions?.minimumSize = CGSize(width: 660, height: 1000)
+            }
+        }
+        #endif
     }
     
     /// Clears all app data for fresh simulator testing
@@ -55,6 +89,15 @@ struct LiveLedgerApp: App {
         defaults.synchronize()
         
         print("🔄 Simulator: All data cleared for fresh start")
+    }
+}
+
+// MARK: - Login View (shown when not logged in)
+struct LoginView: View {
+    @ObservedObject var authManager: AuthManager
+    
+    var body: some View {
+        AuthView(authManager: authManager)
     }
 }
 
@@ -101,6 +144,17 @@ struct RootView: View {
         } message: {
             Text("Thanks for joining! Let us show you around the app.")
         }
+        #if os(iOS)
+        .frame(minWidth: UIDevice.current.userInterfaceIdiom == .pad ? 660 : nil, minHeight: UIDevice.current.userInterfaceIdiom == .pad ? 1000 : nil)
+        .onAppear {
+            if UIDevice.current.userInterfaceIdiom == .pad {
+                for scene in UIApplication.shared.connectedScenes {
+                    guard let windowScene = scene as? UIWindowScene else { continue }
+                    windowScene.sizeRestrictions?.minimumSize = CGSize(width: 660, height: 1000)
+                }
+            }
+        }
+        #endif
     }
 }
 

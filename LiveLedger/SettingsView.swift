@@ -441,6 +441,7 @@ class ThemeManager: ObservableObject {
 
 // MARK: - Settings View
 struct SettingsView: View {
+    @AppStorage("isLoggedIn") private var isLoggedIn = false
     @ObservedObject var themeManager: ThemeManager
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
@@ -859,6 +860,7 @@ struct SettingsView: View {
                     }
                     
                     Button {
+                        isLoggedIn = false
                         authManager.signOut()
                         dismiss()
                     } label: {
@@ -884,6 +886,7 @@ struct SettingsView: View {
             }
             .alert("Delete Account?", isPresented: $showDeleteConfirm) {
                 Button("Delete", role: .destructive) {
+                    isLoggedIn = false
                     authManager.deleteAccount()
                     dismiss()
                 }

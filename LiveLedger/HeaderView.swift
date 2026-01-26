@@ -7,6 +7,12 @@
 
 import SwiftUI
 
+enum HeaderViewMode {
+    case full
+    case titleBarOnly
+    case statsAndActionsOnly
+}
+
 struct HeaderView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var themeManager: ThemeManager
@@ -14,6 +20,7 @@ struct HeaderView: View {
     @ObservedObject var localization: LocalizationManager
     @Binding var showSettings: Bool
     @Binding var showSubscription: Bool
+    var mode: HeaderViewMode = .full
     @State private var showPrintOptions = false
     @State private var showExportOptions = false
     @State private var showClearOptions = false
@@ -40,145 +47,116 @@ struct HeaderView: View {
         viewModel.products.reduce(0) { $0 + $1.stock }
     }
     
-    var body: some View {
-        VStack(spacing: 6) {
-            // Title Row - COMPACT
-            HStack {
-                // LiveLedger logo - always shows app branding
-                LiveLedgerLogoMini()
-                
-                // App Info: LiveLedger + Store Name (both fit within logo height ~40pt)
-                VStack(alignment: .leading, spacing: 2) {
-                    // App name - LiveLedger branding
-                    Text("LiveLedger")
-                        .font(.system(size: 16, weight: .bold, design: .rounded))
-                        .foregroundColor(theme.successColor) // Green accent color
+    private var titleRow: some View {
+        HStack {
+            LiveLedgerLogoMini()
+            VStack(alignment: .leading, spacing: 2) {
+                Text("LiveLedger")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .foregroundColor(theme.successColor)
+                    .lineLimit(1)
+                if let user = authManager.currentUser {
+                    Text(user.companyName.isEmpty ? "My Shop" : user.companyName)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(theme.textPrimary.opacity(0.9))
                         .lineLimit(1)
-                    
-                    // Store name (directly below, no "Account:" prefix)
-                    if let user = authManager.currentUser {
-                        Text(user.companyName.isEmpty ? "My Shop" : user.companyName)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(theme.textPrimary.opacity(0.9))
-                            .lineLimit(1)
-                    } else {
-                        Text("My Shop")
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundColor(theme.textPrimary.opacity(0.9))
-                            .lineLimit(1)
-                    }
+                } else {
+                    Text("My Shop")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(theme.textPrimary.opacity(0.9))
+                        .lineLimit(1)
                 }
-                .frame(maxHeight: 40) // Constrain to logo height
-                
-                Spacer()
-                
-                // Right side - PRO badge + Auto-save indicator
-                VStack(alignment: .trailing, spacing: 3) {
-                    // PRO/FREE badge
-                    if let user = authManager.currentUser {
-                        if user.isPro {
-                            HStack(spacing: 3) {
-                                Image(systemName: "crown.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(theme.warningColor)
-                                Text("PRO")
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundColor(theme.warningColor)
-                            }
+            }
+            .frame(maxHeight: 40)
+            Spacer()
+            VStack(alignment: .trailing, spacing: 3) {
+                if let user = authManager.currentUser {
+                    if user.isPro {
+                        HStack(spacing: 3) {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 10))
+                                .foregroundColor(theme.warningColor)
+                            Text("PRO")
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundColor(theme.warningColor)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(Capsule().fill(theme.warningColor.opacity(0.15)))
+                    } else {
+                        Text("FREE")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(theme.textMuted)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(theme.warningColor.opacity(0.15))
-                            )
-                        } else {
-                            Text("FREE")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(theme.textMuted)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 3)
-                                .background(
-                                    Capsule()
-                                        .fill(theme.textMuted.opacity(0.15))
-                                )
-                        }
-                    }
-                    
-                    // Auto-save indicator
-                    HStack(spacing: 3) {
-                        Circle()
-                            .fill(theme.successColor)
-                            .frame(width: 6, height: 6)
-                        Text(localization.localized(.autoSaving))
-                            .font(.system(size: 9))
-                            .foregroundColor(theme.textSecondary)
+                            .background(Capsule().fill(theme.textMuted.opacity(0.15)))
                     }
                 }
-                
-                // Menu Button (replaces Settings)
-                Menu {
-                    // Analytics Option
-                    Button {
-                        showAnalytics = true
-                    } label: {
-                        Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
-                    }
-                    
-                    // Settings Option
-                    Button {
-                        showSettings = true
-                    } label: {
-                        Label(localization.localized(.settings), systemImage: "gearshape.fill")
-                    }
-                } label: {
-                    // 9-dot grid menu icon (more modern than hamburger)
-                    Image(systemName: "square.grid.3x3.fill")
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(theme.iconColor) // Adapts to theme
-                        .frame(width: 32, height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 8)
-                                .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .strokeBorder(theme.accentColor.opacity(0.5), lineWidth: 1)
-                        )
+                HStack(spacing: 3) {
+                    Circle().fill(theme.successColor).frame(width: 6, height: 6)
+                    Text(localization.localized(.autoSaving))
+                        .font(.system(size: 9))
+                        .foregroundColor(theme.textSecondary)
                 }
             }
-            
-            // Stats Row - Full width with 12pt spacing (aligned with Platform and Products)
-            // Left: Total Sales (left edge aligns with container left)
-            // Right: Total Orders (right edge aligns with container right)
-            HStack(spacing: 12) {
-                StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
-                StatCardText(title: localization.localized(.topSeller), text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
-                StatCard(title: localization.localized(.stockLeft), amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
-                StatCard(title: localization.localized(.totalOrders), amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
+            Menu {
+                Button { showAnalytics = true } label: {
+                    Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
+                }
+                Button { showSettings = true } label: {
+                    Label(localization.localized(.settings), systemImage: "gearshape.fill")
+                }
+            } label: {
+                Image(systemName: "square.grid.3x3.fill")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(theme.iconColor)
+                    .frame(width: 32, height: 32)
+                    .background(RoundedRectangle(cornerRadius: 8)
+                        .fill(theme.isDarkTheme ? Color.black.opacity(0.4) : Color.gray.opacity(0.15)))
+                    .overlay(RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(theme.accentColor.opacity(0.5), lineWidth: 1))
             }
-            .frame(maxWidth: .infinity) // Span full container width
-            
-            // Action Buttons Row - Full width, edges align with container edges
-            // Left: Clear (left edge aligns with container left)
-            // Right: Print (right edge aligns with container right)
-            HStack(spacing: 0) {
-                ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) {
-                    showClearOptions = true
+        }
+    }
+    
+    private var statsRow: some View {
+        HStack(spacing: 12) {
+            StatCard(title: localization.localized(.totalSales), amount: viewModel.totalRevenue, color: theme.successColor, icon: "dollarsign.circle.fill", symbol: currencySymbol, theme: theme)
+            StatCardText(title: localization.localized(.topSeller), text: topSellerName, color: theme.warningColor, icon: "flame.fill", theme: theme)
+            StatCard(title: localization.localized(.stockLeft), amount: Double(totalStockLeft), color: theme.accentColor, icon: "shippingbox.fill", symbol: "", isCount: true, theme: theme)
+            StatCard(title: localization.localized(.totalOrders), amount: Double(viewModel.orderCount), color: theme.secondaryColor, icon: "bag.fill", symbol: "", isCount: true, theme: theme)
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    private var actionButtonsRow: some View {
+        HStack(spacing: 0) {
+            ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) { showClearOptions = true }
+            Spacer()
+            ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) { showExportOptions = true }
+            Spacer()
+            ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) { showPrintOptions = true }
+        }
+        .frame(maxWidth: .infinity)
+    }
+    
+    var body: some View {
+        Group {
+            switch mode {
+            case .full:
+                VStack(spacing: 6) {
+                    titleRow
+                    statsRow
+                    actionButtonsRow
                 }
-                
-                Spacer()
-                
-                ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
-                    showExportOptions = true
-                }
-                
-                Spacer()
-                
-                ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) {
-                    showPrintOptions = true
+            case .titleBarOnly:
+                titleRow
+            case .statsAndActionsOnly:
+                VStack(spacing: 6) {
+                    statsRow
+                    actionButtonsRow
                 }
             }
-            .frame(maxWidth: .infinity) // Span full container width
         }
         // No internal background - container styling handled by parent gridContainer
         .sheet(isPresented: $showPrintOptions) {
