@@ -402,18 +402,6 @@ struct AddPlatformSheet: View {
     
     @State private var errorMessage: String?
     
-    private var usedColors: Set<String> {
-        Set(existingPlatforms.map { $0.color })
-    }
-    
-    private func isColorAvailable(_ color: String) -> Bool {
-        !usedColors.contains(color)
-    }
-    
-    private var firstAvailableColor: String? {
-        colorOptions.first { isColorAvailable($0) }
-    }
-    
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
@@ -441,7 +429,7 @@ struct AddPlatformSheet: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
-                        Text("(used colors greyed out)")
+                        Text("All colors available - reuse any color")
                             .font(.caption2)
                             .foregroundColor(.secondary.opacity(0.6))
                     }
@@ -449,35 +437,27 @@ struct AddPlatformSheet: View {
                     
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 44))], spacing: 12) {
                         ForEach(colorOptions, id: \.self) { color in
-                            let isUsed = !isColorAvailable(color)
                             let isSelected = platformColor == color
                             
                             ZStack {
                                 Circle()
-                                    .fill(colorToSwiftUI(color))
+                                    .fill(colorToSwiftUI(color))  // ALWAYS FULL BRIGHTNESS
                                     .frame(width: 40, height: 40)
-                                    .opacity(isUsed ? 0.3 : 1.0)
                                 
-                                if isSelected && !isUsed {
+                                if isSelected {
                                     Image(systemName: "checkmark")
                                         .font(.system(size: 16, weight: .bold))
                                         .foregroundColor(.white)
                                 }
                                 
-                                if isUsed {
-                                    Image(systemName: "xmark")
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
-                                
                                 Circle()
-                                    .strokeBorder(Color.white, lineWidth: isSelected && !isUsed ? 3 : 0)
+                                    .strokeBorder(Color.white, lineWidth: isSelected ? 3 : 0)
                                     .frame(width: 40, height: 40)
                             }
-                            .scaleEffect(isSelected && !isUsed ? 1.15 : 1.0)
+                            .scaleEffect(isSelected ? 1.15 : 1.0)
                             .animation(.spring(response: 0.3), value: isSelected)
                             .onTapGesture {
-                                if !isUsed { withAnimation { platformColor = color } }
+                                withAnimation { platformColor = color }
                             }
                         }
                     }
@@ -500,13 +480,11 @@ struct AddPlatformSheet: View {
                             errorMessage = "This platform already exists"
                         }
                     }
-                    .disabled(platformName.trimmingCharacters(in: .whitespaces).isEmpty || !isColorAvailable(platformColor))
+                    .disabled(platformName.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
             .onAppear {
-                if let available = firstAvailableColor, usedColors.contains(platformColor) {
-                    platformColor = available
-                }
+                // No need to change color - all colors are always available
             }
         }
     }

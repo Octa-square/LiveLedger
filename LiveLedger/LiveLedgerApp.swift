@@ -30,12 +30,10 @@ struct LiveLedgerApp: App {
                 if isLoggedIn {
                     MainAppView(authManager: authManager, localization: localization)
                 } else {
-                    NavigationView {
-                        LoginView(authManager: authManager)
-                    }
-                    .onChange(of: authManager.isAuthenticated) { _, authenticated in
-                        if authenticated { isLoggedIn = true }
-                    }
+                    SimpleAuthView(authManager: authManager)
+                        .onChange(of: authManager.isAuthenticated) { _, authenticated in
+                            if authenticated { isLoggedIn = true }
+                        }
                 }
             }
             .environmentObject(localization)
