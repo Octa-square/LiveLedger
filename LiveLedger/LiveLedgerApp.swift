@@ -30,13 +30,11 @@ struct LiveLedgerApp: App {
                         NotificationCenter.default.post(name: .autoSaveData, object: nil)
                     }
                 }
-                // MINIMUM SIZE CONSTRAINT: Prevents UI overlap on iPad when window is resized
-                .frame(minWidth: 320, minHeight: 568) // Minimum iPhone SE size
+            // NOTE: Do NOT use .frame(minWidth:minHeight:) here as it prevents
+            // iPad Split View/Slide Over from resizing the window properly.
+            // The adaptive layout in MainTabView handles all window sizes.
         }
-        #if os(iOS)
-        // iPad minimum window size to prevent UI overlap in Split View/Slide Over
-        .defaultSize(width: 768, height: 1024)
-        #endif
+        // NOTE: .defaultSize is macOS only - removed for iOS compatibility
     }
     
     /// Clears all app data for fresh simulator testing

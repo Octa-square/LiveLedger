@@ -42,6 +42,10 @@ struct AdaptiveHomeScreenView: View {
     @State private var limitAlertMessage = ""
     @State private var showAnalytics = false
     
+    // Environment for detecting size class changes (iPad Split View, etc.)
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
+    
     // Dynamic alert titles for lapsed vs new subscribers
     private var limitAlertTitle: String {
         authManager.currentUser?.isLapsedSubscriber == true ? "Subscription Expired" : "Upgrade Required"
@@ -106,16 +110,20 @@ struct AdaptiveHomeScreenView: View {
                 let height = geometry.size.height
                 let margin = horizontalMargin(for: width)
                 let gap = sectionGap(for: width)
-                let safeWidth = width - (margin * 2)
+                let safeWidth = max(280, width - (margin * 2)) // Ensure minimum content width
                 
                 // Determine layout mode based on width
+                // Use actual geometry width, not size class (more accurate for Split View)
                 let useTwoColumn = width >= 700
+                
+                // Debug: Log layout changes (remove in production)
+                let _ = print("📐 Layout: \(Int(width))x\(Int(height)), columns: \(useTwoColumn ? 2 : 1), sizeClass: \(horizontalSizeClass == .compact ? "compact" : "regular")")
                 
                 ZStack {
                     // Background
                     backgroundView(geometry: geometry)
                     
-                    // Content - wrapped in ScrollView for safety
+                    // Content - always in ScrollView to handle any size
                     ScrollView(.vertical, showsIndicators: false) {
                         if useTwoColumn {
                             // TWO-COLUMN LAYOUT (iPad landscape, wide windows)
@@ -125,7 +133,7 @@ struct AdaptiveHomeScreenView: View {
                             singleColumnLayout(width: width, safeWidth: safeWidth, height: height, margin: margin, gap: gap)
                         }
                     }
-                    .scrollDisabled(height > 600 && !useTwoColumn) // Disable scroll on tall single-column screens
+                    .scrollDisabled(height > 600 && !useTwoColumn && width >= 320) // Only disable when content fits
                 }
             }
             .ignoresSafeArea(.keyboard)
