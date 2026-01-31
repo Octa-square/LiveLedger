@@ -127,7 +127,7 @@ struct Product: Identifiable, Codable, Equatable {
     var barcode: String
     var imageData: Data?
     
-    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 5, criticalStockThreshold: Int = 2, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
+    init(id: UUID = UUID(), name: String = "", price: Double = 0, stock: Int = 0, lowStockThreshold: Int = 10, criticalStockThreshold: Int = 5, discountType: DiscountType = .none, discountValue: Double = 0, barcode: String = "", imageData: Data? = nil) {
         self.id = id
         self.name = name
         self.price = price
@@ -149,12 +149,14 @@ struct Product: Identifiable, Codable, Equatable {
     }
     
     var stockColor: Color {
-        if stock <= criticalStockThreshold {
+        if stock == 0 {
+            return .gray     // Out of stock - disabled
+        } else if stock <= criticalStockThreshold {
             return .red      // Critical - needs attention!
         } else if stock <= lowStockThreshold {
-            return .orange   // Low - warning
+            return .yellow   // Low - warning
         } else {
-            return .gray     // Plenty - no attention needed
+            return .green    // Plenty - healthy stock
         }
     }
     
@@ -178,6 +180,29 @@ struct Product: Identifiable, Codable, Equatable {
     }
 }
 
+// MARK: - Order Source (where the order came from)
+enum OrderSource: String, CaseIterable, Codable {
+    case liveStream = "Live Stream"
+    case instagramDM = "Instagram DM"
+    case facebookDM = "Facebook DM"
+    case tiktokDM = "TikTok DM"
+    case whatsApp = "WhatsApp"
+    case other = "Other"
+    
+    static var defaultSource: OrderSource { .liveStream }
+    
+    var shortLabel: String {
+        switch self {
+        case .liveStream: return "Live"
+        case .instagramDM: return "Instagram"
+        case .facebookDM: return "Facebook"
+        case .tiktokDM: return "TikTok"
+        case .whatsApp: return "WhatsApp"
+        case .other: return "Other"
+        }
+    }
+}
+
 // MARK: - Order
 struct Order: Identifiable, Codable, Equatable {
     let id: UUID
@@ -187,6 +212,8 @@ struct Order: Identifiable, Codable, Equatable {
     var buyerName: String
     var phoneNumber: String
     var address: String
+    var customerNotes: String?  // Optional notes (repeat buyers)
+    var orderSourceRaw: String? // Backward compat: nil = "Live Stream"
     var platform: Platform
     var quantity: Int
     var pricePerUnit: Double
@@ -195,7 +222,16 @@ struct Order: Identifiable, Codable, Equatable {
     var isFulfilled: Bool  // Simple: has order been completed/delivered?
     var timestamp: Date
     
-    init(id: UUID = UUID(), productId: UUID, productName: String, productBarcode: String = "", buyerName: String, phoneNumber: String = "", address: String = "", platform: Platform, quantity: Int, pricePerUnit: Double, wasDiscounted: Bool = false, paymentStatus: PaymentStatus = .unset, isFulfilled: Bool = false, timestamp: Date = Date()) {
+    /// Order source for display/filter (defaults to Live Stream)
+    var orderSource: OrderSource {
+        get {
+            guard let raw = orderSourceRaw, let s = OrderSource(rawValue: raw) else { return .liveStream }
+            return s
+        }
+        set { orderSourceRaw = newValue.rawValue }
+    }
+    
+    init(id: UUID = UUID(), productId: UUID, productName: String, productBarcode: String = "", buyerName: String, phoneNumber: String = "", address: String = "", customerNotes: String? = nil, orderSource: OrderSource = .liveStream, platform: Platform, quantity: Int, pricePerUnit: Double, wasDiscounted: Bool = false, paymentStatus: PaymentStatus = .unset, isFulfilled: Bool = false, timestamp: Date = Date()) {
         self.id = id
         self.productId = productId
         self.productName = productName
@@ -203,6 +239,8 @@ struct Order: Identifiable, Codable, Equatable {
         self.buyerName = buyerName
         self.phoneNumber = phoneNumber
         self.address = address
+        self.customerNotes = customerNotes
+        self.orderSourceRaw = orderSource.rawValue
         self.platform = platform
         self.quantity = quantity
         self.pricePerUnit = pricePerUnit
@@ -212,11 +250,62 @@ struct Order: Identifiable, Codable, Equatable {
         self.timestamp = timestamp
     }
     
+    enum CodingKeys: String, CodingKey {
+        case id, productId, productName, productBarcode, buyerName, phoneNumber, address, platform, quantity, pricePerUnit, wasDiscounted, paymentStatus, isFulfilled, timestamp
+        case customerNotes
+        case orderSourceRaw = "orderSource"
+    }
+    
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        productId = try c.decode(UUID.self, forKey: .productId)
+        productName = try c.decode(String.self, forKey: .productName)
+        productBarcode = try c.decodeIfPresent(String.self, forKey: .productBarcode) ?? ""
+        buyerName = try c.decode(String.self, forKey: .buyerName)
+        phoneNumber = try c.decodeIfPresent(String.self, forKey: .phoneNumber) ?? ""
+        address = try c.decodeIfPresent(String.self, forKey: .address) ?? ""
+        customerNotes = try c.decodeIfPresent(String.self, forKey: .customerNotes)
+        orderSourceRaw = try c.decodeIfPresent(String.self, forKey: .orderSourceRaw)
+        platform = try c.decode(Platform.self, forKey: .platform)
+        quantity = try c.decode(Int.self, forKey: .quantity)
+        pricePerUnit = try c.decode(Double.self, forKey: .pricePerUnit)
+        wasDiscounted = try c.decodeIfPresent(Bool.self, forKey: .wasDiscounted) ?? false
+        paymentStatus = try c.decodeIfPresent(PaymentStatus.self, forKey: .paymentStatus) ?? .unset
+        isFulfilled = try c.decodeIfPresent(Bool.self, forKey: .isFulfilled) ?? false
+        timestamp = try c.decode(Date.self, forKey: .timestamp)
+    }
+    
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(productId, forKey: .productId)
+        try c.encode(productName, forKey: .productName)
+        try c.encode(productBarcode, forKey: .productBarcode)
+        try c.encode(buyerName, forKey: .buyerName)
+        try c.encode(phoneNumber, forKey: .phoneNumber)
+        try c.encode(address, forKey: .address)
+        try c.encodeIfPresent(customerNotes, forKey: .customerNotes)
+        try c.encode(orderSourceRaw ?? OrderSource.liveStream.rawValue, forKey: .orderSourceRaw)
+        try c.encode(platform, forKey: .platform)
+        try c.encode(quantity, forKey: .quantity)
+        try c.encode(pricePerUnit, forKey: .pricePerUnit)
+        try c.encode(wasDiscounted, forKey: .wasDiscounted)
+        try c.encode(paymentStatus, forKey: .paymentStatus)
+        try c.encode(isFulfilled, forKey: .isFulfilled)
+        try c.encode(timestamp, forKey: .timestamp)
+    }
+    
     var hasBarcode: Bool {
         !productBarcode.isEmpty
     }
     
     var totalPrice: Double {
         Double(quantity) * pricePerUnit
+    }
+    
+    /// True when payment status is Paid
+    var isPaid: Bool {
+        paymentStatus == .paid
     }
 }

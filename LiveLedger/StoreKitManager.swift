@@ -13,9 +13,10 @@ import Combine
 typealias StoreProduct = StoreKit.Product
 
 // MARK: - Product Identifiers
+// Must match App Store Connect exactly for both subscriptions to work.
 enum ProductID: String, CaseIterable {
-    case proMonthly = "com.octasquare.liveledger.pro.monthly"
-    case proYearly = "com.octasquare.liveledger.pro.yearly"
+    case proMonthly = "com.octasquare.LiveLedger.monthly.subscription"
+    case proYearly = "com.octasquare.LiveLedger.yearly.subscription"
     
     var displayName: String {
         switch self {
@@ -28,6 +29,10 @@ enum ProductID: String, CaseIterable {
         self == .proYearly
     }
 }
+
+// Named constants for verification — must match App Store Connect exactly
+let monthlySubscriptionID = ProductID.proMonthly.rawValue   // "com.octasquare.LiveLedger.monthly.subscription"
+let yearlySubscriptionID = ProductID.proYearly.rawValue    // "com.octasquare.LiveLedger.yearly.subscription"
 
 // MARK: - Purchase Error
 enum PurchaseError: LocalizedError {
@@ -195,18 +200,46 @@ class StoreKitManager: ObservableObject {
         print("📱 Paywall dismissed - paywall flag reset")
     }
     
+    /// Result of restore attempt. Caller uses this to decide which alert to show.
+    enum RestoreResult {
+        case success
+        case noPurchases
+        case cancelled
+        case failed(String)
+    }
+
     // MARK: - Restore Purchases
-    func restorePurchases() async {
+    func restorePurchases() async -> RestoreResult {
         isLoading = true
         defer { isLoading = false }
-        
+        errorMessage = nil
+
         do {
             try await AppStore.sync()
             await updateSubscriptionStatus()
-            print("✅ Purchases restored")
+            if subscriptionStatus.isActive {
+                print("✅ Purchases restored")
+                return .success
+            } else {
+                return .noPurchases
+            }
+        } catch let error as StoreKitError {
+            if case .userCancelled = error {
+                print("⚠️ User cancelled restore")
+                return .cancelled
+            }
+            print("❌ Restore failed: \(error)")
+            errorMessage = "Failed to restore purchases. Please try again."
+            return .failed(error.localizedDescription)
         } catch {
+            let nsError = error as NSError
+            if nsError.domain == "SKErrorDomain" && nsError.code == 2 {
+                print("⚠️ User cancelled restore (SKError)")
+                return .cancelled
+            }
             print("❌ Failed to restore purchases: \(error)")
             errorMessage = "Failed to restore purchases. Please try again."
+            return .failed(error.localizedDescription)
         }
     }
     

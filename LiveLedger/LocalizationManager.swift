@@ -126,13 +126,28 @@ enum LocalizedKey: String {
     // Orders
     case noOrders = "no_orders"
     case customer = "customer"
+    case customerName = "customer_name"
     case quantity = "quantity"
     case total = "total"
     case paid = "paid"
+    case unpaid = "unpaid"
     case pending = "pending"
     case unset = "unset"
     case fulfilled = "fulfilled"
     case printReceipt = "print_receipt"
+    case orderSource = "order_source"
+    case orderSources = "order_sources"
+    case unpaidOrders = "unpaid_orders"
+    case allSources = "all_sources"
+    case phoneOptional = "phone_optional"
+    case notesOptional = "notes_optional"
+    case markAsPaid = "mark_as_paid"
+    case markAsUnpaid = "mark_as_unpaid"
+    case liveStream = "live_stream"
+    case instagramDM = "instagram_dm"
+    case facebookDM = "facebook_dm"
+    case tiktokDM = "tiktok_dm"
+    case whatsApp = "whatsapp"
     
     // Analytics
     case topSelling = "top_selling"
@@ -192,6 +207,153 @@ enum LocalizedKey: String {
     case letsGo = "lets_go"
     case next = "next"
     case skip = "skip"
+    
+    // Plan Selection
+    case choosePlan = "choose_plan"
+    case selectPlanDescription = "select_plan_description"
+    case basicPlan = "basic_plan"
+    case proPlan = "pro_plan"
+    case forever = "forever"
+    case perMonth = "per_month"
+    case greatForStarting = "great_for_starting"
+    case unlimited = "unlimited_everything"
+    case firstOrdersFree = "first_orders_free"
+    case basicInventory = "basic_inventory"
+    case csvExports = "csv_exports"
+    case standardReports = "standard_reports"
+    case limitedOrders = "limited_orders"
+    case noAdvancedFilters = "no_advanced_filters"
+    case noProductImages = "no_product_images"
+    case unlimitedOrders = "unlimited_orders"
+    case unlimitedExports = "unlimited_exports"
+    case productImages = "product_images"
+    case advancedAnalytics = "advanced_analytics"
+    case orderFilters = "order_filters"
+    case prioritySupport = "priority_support"
+    case allFutureFeatures = "all_future_features"
+    case continueWithPro = "continue_with_pro"
+    case continueWithBasic = "continue_with_basic"
+    case cancelAnytime = "cancel_anytime"
+    case dayFreeTrial = "day_free_trial"
+    case welcomeToPro = "welcome_to_pro"
+    case proSubscriptionActive = "pro_subscription_active"
+    case upgradeToPro = "upgrade_to_pro"
+    case subscribeNow = "subscribe_now"
+    case maybeLater = "maybe_later"
+    case benefits = "benefits"
+    
+    // Language Selection
+    case welcomeToLiveLedger = "welcome_to_liveledger"
+    case selectLanguage = "select_language"
+    case selectYourLanguage = "select_your_language"
+    case continueText = "continue"
+    
+    // Common UI Elements
+    case back = "back"
+    case getStartedText = "get_started_text"
+    case description = "description"
+    case developer = "developer"
+    case termsAndPrivacy = "terms_and_privacy"
+    case company = "company"
+    case yourName = "your_name"
+    case personalInformation = "personal_information"
+    case security = "security"
+    case changePassword = "change_password"
+    case currentPassword = "current_password"
+    case newPassword = "new_password"
+    case confirmNewPassword = "confirm_new_password"
+    case passwordMustContain = "password_must_contain"
+    case atLeastChars = "at_least_chars"
+    case atLeastOneLetter = "at_least_one_letter"
+    case atLeastOneSymbol = "at_least_one_symbol"
+    case currentPasswordIncorrect = "current_password_incorrect"
+    case storeInformation = "store_information"
+    case storeName = "store_name"
+    case address = "address"
+    case businessPhone = "business_phone"
+    case infoAppearsOnReceipts = "info_appears_on_receipts"
+    case currency = "currency"
+    case phoneNumber = "phone_number"
+    case changePhoto = "change_photo"
+    
+    // Feedback
+    case sendFeedbackTitle = "send_feedback_title"
+    case type = "type"
+    case feedbackType = "feedback_type"
+    case message = "message"
+    case suggestion = "suggestion"
+    case bugReport = "bug_report"
+    case question = "question"
+    case other = "other"
+    
+    // Network Test
+    case network = "network"
+    case connection = "connection"
+    case connectionStatus = "connection_status"
+    case connected = "connected"
+    case wifi = "wifi"
+    case speedTestResults = "speed_test_results"
+    case download = "download"
+    case upload = "upload"
+    case latency = "latency"
+    case assessment = "assessment"
+    case streamQuality = "stream_quality"
+    case notTested = "not_tested"
+    case excellent = "excellent"
+    case good = "good"
+    case fair = "fair"
+    case poor = "poor"
+    case testNetwork = "test_network"
+    case testingText = "testing"
+    case forBestStreaming = "for_best_streaming"
+    
+    // Display Settings
+    case display = "display"
+    case screenBrightness = "screen_brightness"
+    case useControlCenter = "use_control_center"
+    case swipeDownFromTop = "swipe_down_from_top"
+    case theme = "theme"
+    case chooseTheme = "choose_theme"
+    case reset = "reset"
+    case resetToDefaults = "reset_to_defaults"
+    
+    // Subscription Status
+    case subscriptionExpired = "subscription_expired"
+    case expiredOn = "expired_on"
+    case resubscribeMessage = "resubscribe_message"
+    case resubscribeToPro = "resubscribe_to_pro"
+    case freePlan = "free_plan"
+    case expired = "expired"
+    
+    // Privacy & Terms
+    case dataCollection = "data_collection"
+    case dataCollectionMessage = "data_collection_message"
+    case thirdPartyServices = "third_party_services"
+    case thirdPartyMessage = "third_party_message"
+    case privacySummary = "privacy_summary"
+    
+    // Alerts & Confirmations
+    case deleteAccountQuestion = "delete_account_question"
+    case deleteAccountMessage = "delete_account_message"
+    case cannotBeUndone = "cannot_be_undone"
+    
+    // Onboarding Extended
+    case welcomeMessage = "welcome_message"
+    case step1 = "step_1"
+    case step2 = "step_2"
+    case step3 = "step_3"
+    case step4 = "step_4"
+    case step5 = "step_5"
+    case step6 = "step_6"
+    case addYourProducts = "add_your_products"
+    case recordSales = "record_sales"
+    case startLiveSession = "start_live_session"
+    case selectYourPlatform = "select_your_platform"
+    case manageYourOrders = "manage_your_orders"
+    case exportYourData = "export_your_data"
+    case navigation = "navigation"
+    case customizeExperience = "customize_experience"
+    case proTips = "pro_tips"
 }
 
 // MARK: - Localization Manager
@@ -216,7 +378,12 @@ class LocalizationManager: ObservableObject {
     }
     
     func localized(_ key: LocalizedKey) -> String {
-        return translations[currentLanguage]?[key] ?? translations[.english]?[key] ?? key.rawValue
+        // Try current language first
+        if let translation = translations[currentLanguage]?[key] {
+            return translation
+        }
+        // Fallback to English if key doesn't exist in current language
+        return translations[.english]?[key] ?? key.rawValue
     }
     
     // MARK: - Translations Dictionary
@@ -281,6 +448,21 @@ class LocalizationManager: ObservableObject {
             .unset: "Unset",
             .fulfilled: "Done",
             .printReceipt: "Print Receipt",
+            .unpaid: "Unpaid",
+            .orderSource: "Order Source",
+            .orderSources: "Order Sources",
+            .unpaidOrders: "Unpaid Orders",
+            .allSources: "All Sources",
+            .customerName: "Customer Name",
+            .phoneOptional: "Phone (optional)",
+            .notesOptional: "Notes (optional)",
+            .markAsPaid: "Mark as Paid",
+            .markAsUnpaid: "Mark as Unpaid",
+            .liveStream: "Live Stream",
+            .instagramDM: "Instagram DM",
+            .facebookDM: "Facebook DM",
+            .tiktokDM: "TikTok DM",
+            .whatsApp: "WhatsApp",
             .topSelling: "Top Selling",
             .currentMonth: "This Month",
             .previousMonth: "Last Month",
@@ -316,7 +498,7 @@ class LocalizationManager: ObservableObject {
             .getStarted: "Get Started",
             .welcomeTo: "Welcome to",
             .tutorialProducts: "Add products before, during, or after your live streams. Tap to instantly create orders!",
-            .tutorialOrders: "Track orders with session timer, total sales, top seller, stock levels & order count",
+            .tutorialOrders: "Track orders with total sales, top seller, stock levels & order count",
             .tutorialPlatforms: "Switch between TikTok, Instagram, Facebook or add custom platforms",
             .tutorialAnalytics: "View real-time dashboard with sales analytics and inventory alerts",
             .tutorialExport: "Export orders to CSV, print receipts, and share reports with VoiceOver accessibility",
@@ -329,7 +511,134 @@ class LocalizationManager: ObservableObject {
             .chatOnWhatsApp: "Chat with us on WhatsApp",
             .emailSupport: "Email Support",
             .sendUsEmail: "Send us an email",
-            .supportResponseTime: "We typically respond within 24 hours"
+            .supportResponseTime: "We typically respond within 24 hours",
+            .choosePlan: "Choose Your Plan",
+            .selectPlanDescription: "Select how you want to use LiveLedger",
+            .basicPlan: "Basic",
+            .proPlan: "Pro",
+            .forever: "forever",
+            .perMonth: "/month",
+            .greatForStarting: "Great for getting started",
+            .unlimited: "Unlimited everything for serious sellers",
+            .firstOrdersFree: "First 20 orders free",
+            .basicInventory: "Basic inventory management",
+            .csvExports: "10 CSV exports",
+            .standardReports: "Standard reports",
+            .limitedOrders: "Limited orders",
+            .noAdvancedFilters: "No advanced filters",
+            .noProductImages: "No product images",
+            .unlimitedOrders: "Unlimited orders",
+            .unlimitedExports: "Unlimited exports",
+            .productImages: "Product images",
+            .advancedAnalytics: "Advanced analytics",
+            .orderFilters: "Order filters",
+            .prioritySupport: "Priority support",
+            .allFutureFeatures: "All future features",
+            .continueWithPro: "Continue with Pro",
+            .continueWithBasic: "Continue with Basic",
+            .cancelAnytime: "Cancel anytime",
+            .dayFreeTrial: "7-day free trial",
+            .welcomeToPro: "Welcome to Pro! 🎉",
+            .proSubscriptionActive: "Your Pro subscription is now active. Enjoy unlimited orders and all premium features!",
+            .upgradeToPro: "Upgrade to Pro",
+            .subscribeNow: "Subscribe Now",
+            .maybeLater: "Maybe Later",
+            .benefits: "Benefits",
+            .welcomeToLiveLedger: "Welcome to LiveLedger",
+            .selectLanguage: "Select Language",
+            .selectYourLanguage: "Select Your Language",
+            .continueText: "Continue",
+            .back: "Back",
+            .getStartedText: "Get Started!",
+            .description: "Description",
+            .developer: "Developer",
+            .termsAndPrivacy: "Terms & Privacy",
+            .company: "Company",
+            .yourName: "Your Name",
+            .personalInformation: "Personal Information",
+            .security: "Security",
+            .changePassword: "Change Password",
+            .currentPassword: "Current Password",
+            .newPassword: "New Password",
+            .confirmNewPassword: "Confirm New Password",
+            .passwordMustContain: "Password must contain:",
+            .atLeastChars: "At least 6 characters",
+            .atLeastOneLetter: "At least one letter",
+            .atLeastOneSymbol: "At least one symbol (!@#$%...)",
+            .currentPasswordIncorrect: "Current password is incorrect",
+            .storeInformation: "Store Information",
+            .storeName: "Store Name",
+            .address: "Address",
+            .businessPhone: "Business Phone",
+            .infoAppearsOnReceipts: "This information appears on receipts and reports",
+            .currency: "Currency",
+            .phoneNumber: "Phone Number",
+            .changePhoto: "Change Photo",
+            .sendFeedbackTitle: "Send Feedback",
+            .type: "Type",
+            .feedbackType: "Feedback Type",
+            .message: "Message",
+            .suggestion: "Suggestion",
+            .bugReport: "Bug Report",
+            .question: "Question",
+            .other: "Other",
+            .network: "Network",
+            .connection: "Connection",
+            .connectionStatus: "Connection Status",
+            .connected: "Connected",
+            .wifi: "Wi-Fi",
+            .speedTestResults: "Speed Test Results",
+            .download: "Download",
+            .upload: "Upload",
+            .latency: "Latency",
+            .assessment: "Assessment",
+            .streamQuality: "Stream Quality",
+            .notTested: "Not Tested",
+            .excellent: "Excellent",
+            .good: "Good",
+            .fair: "Fair",
+            .poor: "Poor",
+            .testNetwork: "Test Network Bandwidth",
+            .testingText: "Testing...",
+            .forBestStreaming: "For best streaming: Download > 50 Mbps, Upload > 10 Mbps, Latency < 50ms",
+            .display: "Display",
+            .screenBrightness: "Screen Brightness",
+            .useControlCenter: "Use iPhone Control Center to adjust brightness",
+            .swipeDownFromTop: "Swipe down from top-right corner to access Control Center",
+            .theme: "Theme",
+            .chooseTheme: "Choose your preferred visual theme",
+            .reset: "Reset",
+            .resetToDefaults: "Reset to Defaults",
+            .subscriptionExpired: "Your Pro subscription expired",
+            .expiredOn: "Expired on",
+            .resubscribeMessage: "Resubscribe to continue using unlimited orders, exports, and all Pro features.",
+            .resubscribeToPro: "Resubscribe to Pro",
+            .freePlan: "Free Plan",
+            .expired: "EXPIRED",
+            .dataCollection: "Data Collection",
+            .dataCollectionMessage: "LiveLedger stores all your data locally on your device. We do not collect, transmit, or store your sales data on any external servers.",
+            .thirdPartyServices: "Third-Party Services",
+            .thirdPartyMessage: "We use Apple's StoreKit for in-app purchases. No personal data is shared with third parties.",
+            .privacySummary: "Privacy Summary",
+            .deleteAccountQuestion: "Delete Account?",
+            .deleteAccountMessage: "This will permanently delete your account and all data.",
+            .cannotBeUndone: "This cannot be undone.",
+            .welcomeMessage: "Your complete live selling companion! Track orders in real-time, manage multiple platforms, and grow your business with powerful insights. Let's show you how it works.",
+            .step1: "Step 1",
+            .step2: "Step 2",
+            .step3: "Step 3",
+            .step4: "Step 4",
+            .step5: "Step 5",
+            .step6: "Step 6",
+            .addYourProducts: "Add Your Products",
+            .recordSales: "Record Sales",
+            .startLiveSession: "Start Your Live Session",
+            .selectYourPlatform: "Select Your Platform",
+            .manageYourOrders: "Manage Your Orders",
+            .exportYourData: "Export Your Data",
+            .navigation: "Using the Bottom Navigation",
+            .customizeExperience: "Customize Your Experience",
+            .proTips: "Pro Tips for Success"
         ],
         .french: [
             .appName: "LiveLedger",
@@ -391,6 +700,21 @@ class LocalizationManager: ObservableObject {
             .unset: "Non défini",
             .fulfilled: "Terminé",
             .printReceipt: "Imprimer Reçu",
+            .unpaid: "Impayé",
+            .orderSource: "Source de commande",
+            .orderSources: "Sources de commandes",
+            .unpaidOrders: "Commandes impayées",
+            .allSources: "Toutes sources",
+            .customerName: "Nom du client",
+            .phoneOptional: "Téléphone (optionnel)",
+            .notesOptional: "Notes (optionnel)",
+            .markAsPaid: "Marquer comme payé",
+            .markAsUnpaid: "Marquer comme impayé",
+            .liveStream: "Live Stream",
+            .instagramDM: "Instagram DM",
+            .facebookDM: "Facebook DM",
+            .tiktokDM: "TikTok DM",
+            .whatsApp: "WhatsApp",
             .topSelling: "Meilleures Ventes",
             .currentMonth: "Ce Mois",
             .previousMonth: "Mois Dernier",
@@ -439,7 +763,134 @@ class LocalizationManager: ObservableObject {
             .chatOnWhatsApp: "Discutez avec nous sur WhatsApp",
             .emailSupport: "Support par Email",
             .sendUsEmail: "Envoyez-nous un email",
-            .supportResponseTime: "Nous répondons généralement sous 24 heures"
+            .supportResponseTime: "Nous répondons généralement sous 24 heures",
+            .choosePlan: "Choisissez Votre Plan",
+            .selectPlanDescription: "Sélectionnez comment vous souhaitez utiliser LiveLedger",
+            .basicPlan: "Basique",
+            .proPlan: "Pro",
+            .forever: "pour toujours",
+            .perMonth: "/mois",
+            .greatForStarting: "Parfait pour commencer",
+            .unlimited: "Tout illimité pour les vendeurs sérieux",
+            .firstOrdersFree: "Premières 20 commandes gratuites",
+            .basicInventory: "Gestion basique d'inventaire",
+            .csvExports: "10 exportations CSV",
+            .standardReports: "Rapports standard",
+            .limitedOrders: "Commandes limitées",
+            .noAdvancedFilters: "Pas de filtres avancés",
+            .noProductImages: "Pas d'images de produits",
+            .unlimitedOrders: "Commandes illimitées",
+            .unlimitedExports: "Exportations illimitées",
+            .productImages: "Images de produits",
+            .advancedAnalytics: "Analyses avancées",
+            .orderFilters: "Filtres de commandes",
+            .prioritySupport: "Support prioritaire",
+            .allFutureFeatures: "Toutes les fonctionnalités futures",
+            .continueWithPro: "Continuer avec Pro",
+            .continueWithBasic: "Continuer avec Basique",
+            .cancelAnytime: "Annuler à tout moment",
+            .dayFreeTrial: "7 jours d'essai gratuit",
+            .welcomeToPro: "Bienvenue à Pro! 🎉",
+            .proSubscriptionActive: "Votre abonnement Pro est maintenant actif. Profitez de commandes illimitées et toutes les fonctionnalités premium!",
+            .upgradeToPro: "Passer à Pro",
+            .subscribeNow: "S'abonner Maintenant",
+            .maybeLater: "Peut-être Plus Tard",
+            .benefits: "Avantages",
+            .welcomeToLiveLedger: "Bienvenue sur LiveLedger",
+            .selectLanguage: "Sélectionner la Langue",
+            .selectYourLanguage: "Sélectionnez Votre Langue",
+            .continueText: "Continuer",
+            .back: "Retour",
+            .getStartedText: "Commencer!",
+            .description: "Description",
+            .developer: "Développeur",
+            .termsAndPrivacy: "Conditions et Confidentialité",
+            .company: "Entreprise",
+            .yourName: "Votre Nom",
+            .personalInformation: "Informations Personnelles",
+            .security: "Sécurité",
+            .changePassword: "Changer le Mot de Passe",
+            .currentPassword: "Mot de Passe Actuel",
+            .newPassword: "Nouveau Mot de Passe",
+            .confirmNewPassword: "Confirmer le Nouveau Mot de Passe",
+            .passwordMustContain: "Le mot de passe doit contenir:",
+            .atLeastChars: "Au moins 6 caractères",
+            .atLeastOneLetter: "Au moins une lettre",
+            .atLeastOneSymbol: "Au moins un symbole (!@#$%...)",
+            .currentPasswordIncorrect: "Le mot de passe actuel est incorrect",
+            .storeInformation: "Informations de Boutique",
+            .storeName: "Nom de Boutique",
+            .address: "Adresse",
+            .businessPhone: "Téléphone Professionnel",
+            .infoAppearsOnReceipts: "Ces informations apparaissent sur les reçus et rapports",
+            .currency: "Devise",
+            .phoneNumber: "Numéro de Téléphone",
+            .changePhoto: "Changer la Photo",
+            .sendFeedbackTitle: "Envoyer un Commentaire",
+            .type: "Type",
+            .feedbackType: "Type de Commentaire",
+            .message: "Message",
+            .suggestion: "Suggestion",
+            .bugReport: "Rapport de Bug",
+            .question: "Question",
+            .other: "Autre",
+            .network: "Réseau",
+            .connection: "Connexion",
+            .connectionStatus: "État de Connexion",
+            .connected: "Connecté",
+            .wifi: "Wi-Fi",
+            .speedTestResults: "Résultats du Test de Vitesse",
+            .download: "Téléchargement",
+            .upload: "Envoi",
+            .latency: "Latence",
+            .assessment: "Évaluation",
+            .streamQuality: "Qualité du Stream",
+            .notTested: "Non Testé",
+            .excellent: "Excellent",
+            .good: "Bon",
+            .fair: "Moyen",
+            .poor: "Faible",
+            .testNetwork: "Tester la Bande Passante",
+            .testingText: "Test en cours...",
+            .forBestStreaming: "Pour un meilleur streaming: Téléchargement > 50 Mbps, Envoi > 10 Mbps, Latence < 50ms",
+            .display: "Affichage",
+            .screenBrightness: "Luminosité de l'Écran",
+            .useControlCenter: "Utilisez le Centre de Contrôle de l'iPhone pour ajuster la luminosité",
+            .swipeDownFromTop: "Glissez vers le bas depuis le coin supérieur droit pour accéder au Centre de Contrôle",
+            .theme: "Thème",
+            .chooseTheme: "Choisissez votre thème visuel préféré",
+            .reset: "Réinitialiser",
+            .resetToDefaults: "Réinitialiser par Défaut",
+            .subscriptionExpired: "Votre abonnement Pro a expiré",
+            .expiredOn: "Expiré le",
+            .resubscribeMessage: "Réabonnez-vous pour continuer à utiliser les commandes illimitées, les exportations et toutes les fonctionnalités Pro.",
+            .resubscribeToPro: "Se Réabonner à Pro",
+            .freePlan: "Plan Gratuit",
+            .expired: "EXPIRÉ",
+            .dataCollection: "Collecte de Données",
+            .dataCollectionMessage: "LiveLedger stocke toutes vos données localement sur votre appareil. Nous ne collectons, ne transmettons ni ne stockons vos données de ventes sur des serveurs externes.",
+            .thirdPartyServices: "Services Tiers",
+            .thirdPartyMessage: "Nous utilisons StoreKit d'Apple pour les achats intégrés. Aucune donnée personnelle n'est partagée avec des tiers.",
+            .privacySummary: "Résumé de Confidentialité",
+            .deleteAccountQuestion: "Supprimer le Compte?",
+            .deleteAccountMessage: "Cela supprimera définitivement votre compte et toutes les données.",
+            .cannotBeUndone: "Cela ne peut pas être annulé.",
+            .welcomeMessage: "Votre compagnon complet de vente en direct! Suivez les commandes en temps réel, gérez plusieurs plateformes et développez votre entreprise avec des informations puissantes. Laissez-nous vous montrer comment cela fonctionne.",
+            .step1: "Étape 1",
+            .step2: "Étape 2",
+            .step3: "Étape 3",
+            .step4: "Étape 4",
+            .step5: "Étape 5",
+            .step6: "Étape 6",
+            .addYourProducts: "Ajoutez Vos Produits",
+            .recordSales: "Enregistrer les Ventes",
+            .startLiveSession: "Démarrez Votre Session en Direct",
+            .selectYourPlatform: "Sélectionnez Votre Plateforme",
+            .manageYourOrders: "Gérez Vos Commandes",
+            .exportYourData: "Exportez Vos Données",
+            .navigation: "Utiliser la Navigation Inférieure",
+            .customizeExperience: "Personnalisez Votre Expérience",
+            .proTips: "Conseils Pro pour Réussir"
         ],
         .spanish: [
             .appName: "LiveLedger",
@@ -501,6 +952,21 @@ class LocalizationManager: ObservableObject {
             .unset: "Sin definir",
             .fulfilled: "Hecho",
             .printReceipt: "Imprimir Recibo",
+            .unpaid: "Impago",
+            .orderSource: "Origen del pedido",
+            .orderSources: "Orígenes de pedidos",
+            .unpaidOrders: "Pedidos impagos",
+            .allSources: "Todos los orígenes",
+            .customerName: "Nombre del cliente",
+            .phoneOptional: "Teléfono (opcional)",
+            .notesOptional: "Notas (opcional)",
+            .markAsPaid: "Marcar como pagado",
+            .markAsUnpaid: "Marcar como impago",
+            .liveStream: "Transmisión en vivo",
+            .instagramDM: "Instagram DM",
+            .facebookDM: "Facebook DM",
+            .tiktokDM: "TikTok DM",
+            .whatsApp: "WhatsApp",
             .topSelling: "Más Vendidos",
             .currentMonth: "Este Mes",
             .previousMonth: "Mes Anterior",
@@ -549,7 +1015,134 @@ class LocalizationManager: ObservableObject {
             .chatOnWhatsApp: "Chatea con nosotros en WhatsApp",
             .emailSupport: "Soporte por Email",
             .sendUsEmail: "Envíanos un email",
-            .supportResponseTime: "Normalmente respondemos en 24 horas"
+            .supportResponseTime: "Normalmente respondemos en 24 horas",
+            .choosePlan: "Elige Tu Plan",
+            .selectPlanDescription: "Selecciona cómo quieres usar LiveLedger",
+            .basicPlan: "Básico",
+            .proPlan: "Pro",
+            .forever: "para siempre",
+            .perMonth: "/mes",
+            .greatForStarting: "Perfecto para empezar",
+            .unlimited: "Todo ilimitado para vendedores serios",
+            .firstOrdersFree: "Primeros 20 pedidos gratis",
+            .basicInventory: "Gestión básica de inventario",
+            .csvExports: "10 exportaciones CSV",
+            .standardReports: "Informes estándar",
+            .limitedOrders: "Pedidos limitados",
+            .noAdvancedFilters: "Sin filtros avanzados",
+            .noProductImages: "Sin imágenes de productos",
+            .unlimitedOrders: "Pedidos ilimitados",
+            .unlimitedExports: "Exportaciones ilimitadas",
+            .productImages: "Imágenes de productos",
+            .advancedAnalytics: "Análisis avanzado",
+            .orderFilters: "Filtros de pedidos",
+            .prioritySupport: "Soporte prioritario",
+            .allFutureFeatures: "Todas las funciones futuras",
+            .continueWithPro: "Continuar con Pro",
+            .continueWithBasic: "Continuar con Básico",
+            .cancelAnytime: "Cancela cuando quieras",
+            .dayFreeTrial: "7 días de prueba gratis",
+            .welcomeToPro: "¡Bienvenido a Pro! 🎉",
+            .proSubscriptionActive: "¡Tu suscripción Pro está activa! Disfruta de pedidos ilimitados y todas las funciones premium.",
+            .upgradeToPro: "Actualizar a Pro",
+            .subscribeNow: "Suscríbete Ahora",
+            .maybeLater: "Quizás Más Tarde",
+            .benefits: "Beneficios",
+            .welcomeToLiveLedger: "Bienvenido a LiveLedger",
+            .selectLanguage: "Seleccionar Idioma",
+            .selectYourLanguage: "Selecciona Tu Idioma",
+            .continueText: "Continuar",
+            .back: "Atrás",
+            .getStartedText: "¡Empezar!",
+            .description: "Descripción",
+            .developer: "Desarrollador",
+            .termsAndPrivacy: "Términos y Privacidad",
+            .company: "Empresa",
+            .yourName: "Tu Nombre",
+            .personalInformation: "Información Personal",
+            .security: "Seguridad",
+            .changePassword: "Cambiar Contraseña",
+            .currentPassword: "Contraseña Actual",
+            .newPassword: "Nueva Contraseña",
+            .confirmNewPassword: "Confirmar Nueva Contraseña",
+            .passwordMustContain: "La contraseña debe contener:",
+            .atLeastChars: "Al menos 6 caracteres",
+            .atLeastOneLetter: "Al menos una letra",
+            .atLeastOneSymbol: "Al menos un símbolo (!@#$%...)",
+            .currentPasswordIncorrect: "La contraseña actual es incorrecta",
+            .storeInformation: "Información de Tienda",
+            .storeName: "Nombre de Tienda",
+            .address: "Dirección",
+            .businessPhone: "Teléfono de Negocio",
+            .infoAppearsOnReceipts: "Esta información aparece en recibos e informes",
+            .currency: "Moneda",
+            .phoneNumber: "Número de Teléfono",
+            .changePhoto: "Cambiar Foto",
+            .sendFeedbackTitle: "Enviar Comentarios",
+            .type: "Tipo",
+            .feedbackType: "Tipo de Comentario",
+            .message: "Mensaje",
+            .suggestion: "Sugerencia",
+            .bugReport: "Reporte de Error",
+            .question: "Pregunta",
+            .other: "Otro",
+            .network: "Red",
+            .connection: "Conexión",
+            .connectionStatus: "Estado de Conexión",
+            .connected: "Conectado",
+            .wifi: "Wi-Fi",
+            .speedTestResults: "Resultados de Prueba de Velocidad",
+            .download: "Descarga",
+            .upload: "Subida",
+            .latency: "Latencia",
+            .assessment: "Evaluación",
+            .streamQuality: "Calidad de Transmisión",
+            .notTested: "Sin Probar",
+            .excellent: "Excelente",
+            .good: "Bueno",
+            .fair: "Regular",
+            .poor: "Malo",
+            .testNetwork: "Probar Ancho de Banda",
+            .testingText: "Probando...",
+            .forBestStreaming: "Para mejor transmisión: Descarga > 50 Mbps, Subida > 10 Mbps, Latencia < 50ms",
+            .display: "Pantalla",
+            .screenBrightness: "Brillo de Pantalla",
+            .useControlCenter: "Usa el Centro de Control del iPhone para ajustar el brillo",
+            .swipeDownFromTop: "Desliza desde arriba a la derecha para acceder al Centro de Control",
+            .theme: "Tema",
+            .chooseTheme: "Elige tu tema visual preferido",
+            .reset: "Restablecer",
+            .resetToDefaults: "Restablecer a Predeterminado",
+            .subscriptionExpired: "Tu suscripción Pro ha expirado",
+            .expiredOn: "Expiró el",
+            .resubscribeMessage: "Vuelve a suscribirte para continuar usando pedidos ilimitados, exportaciones y todas las funciones Pro.",
+            .resubscribeToPro: "Volver a Suscribir a Pro",
+            .freePlan: "Plan Gratuito",
+            .expired: "EXPIRADO",
+            .dataCollection: "Recopilación de Datos",
+            .dataCollectionMessage: "LiveLedger almacena todos tus datos localmente en tu dispositivo. No recopilamos, transmitimos ni almacenamos tus datos de ventas en servidores externos.",
+            .thirdPartyServices: "Servicios de Terceros",
+            .thirdPartyMessage: "Usamos StoreKit de Apple para compras dentro de la app. No se comparte información personal con terceros.",
+            .privacySummary: "Resumen de Privacidad",
+            .deleteAccountQuestion: "¿Eliminar Cuenta?",
+            .deleteAccountMessage: "Esto eliminará permanentemente tu cuenta y todos los datos.",
+            .cannotBeUndone: "Esto no se puede deshacer.",
+            .welcomeMessage: "¡Tu compañero completo de ventas en vivo! Rastrea pedidos en tiempo real, gestiona múltiples plataformas y haz crecer tu negocio con información poderosa. Te mostramos cómo funciona.",
+            .step1: "Paso 1",
+            .step2: "Paso 2",
+            .step3: "Paso 3",
+            .step4: "Paso 4",
+            .step5: "Paso 5",
+            .step6: "Paso 6",
+            .addYourProducts: "Añade Tus Productos",
+            .recordSales: "Registra Ventas",
+            .startLiveSession: "Inicia Tu Sesión en Vivo",
+            .selectYourPlatform: "Selecciona Tu Plataforma",
+            .manageYourOrders: "Gestiona Tus Pedidos",
+            .exportYourData: "Exporta Tus Datos",
+            .navigation: "Usar la Navegación Inferior",
+            .customizeExperience: "Personaliza Tu Experiencia",
+            .proTips: "Consejos Pro para el Éxito"
         ],
         .portuguese: [
             .appName: "LiveLedger",

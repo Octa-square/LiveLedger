@@ -10,13 +10,23 @@ import StoreKit
 
 struct SubscriptionView: View {
     @ObservedObject var authManager: AuthManager
+    /// When set, pre-selects this plan (e.g. from plan selection screen).
+    var initialPlan: SubscriptionPlan? = nil
+    /// Called when user completes a purchase or restore so the parent can advance (e.g. PlanSelectionView completes sign-up). Ensures Pro is only granted after Apple payment.
+    var onPurchaseSuccess: (() -> Void)? = nil
     @StateObject private var storeKit = StoreKitManager.shared
     @Environment(\.dismiss) var dismiss
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @State private var selectedPlan: SubscriptionPlan = .yearly  // Default to best value
     @State private var isPurchasing = false
     @State private var showError = false
     @State private var errorMessage = ""
     @State private var showSuccess = false
+    @State private var isRestoring = false
+    @State private var showRestoreConfirm = false
+    @State private var showRestoreSuccess = false
+    @State private var showRestoreNoPurchases = false
+    @State private var showRestoreError = false
     
     enum SubscriptionPlan {
         case free, monthly, yearly
@@ -37,256 +47,263 @@ struct SubscriptionView: View {
         return "Your Pro subscription is now active. Enjoy unlimited orders and all premium features!"
     }
     
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    // Header - Different messaging for lapsed vs new subscribers
-                    // Apple reviewers using review@liveledger.app will see "Welcome Back!" header
-                    VStack(spacing: 8) {
-                        Image(systemName: "crown.fill")
-                            .font(.system(size: 50))
-                            .foregroundStyle(
-                                LinearGradient(colors: [.yellow, .orange],
-                                              startPoint: .top, endPoint: .bottom)
-                            )
-                        
-                        // Show "Welcome Back!" for lapsed subscribers, "Upgrade to Pro" for new users
-                        if authManager.currentUser?.isLapsedSubscriber == true {
-                            Text("Welcome Back!")
-                                .font(.system(size: 28, weight: .bold))
-                            Text("Reactivate your Pro subscription")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        } else {
-                            Text("Upgrade to Pro")
-                                .font(.system(size: 28, weight: .bold))
-                            Text("Unlock all features and grow your business")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    .padding(.top)
-                    
-                    // Current Status (if Pro)
-                    if storeKit.subscriptionStatus.isActive {
-                        CurrentSubscriptionBanner(
-                            expirationDate: storeKit.expirationDateString
-                        )
-                        .padding(.horizontal)
-                    }
-                    
-                    // EXPIRED SUBSCRIPTION BANNER (for lapsed subscribers)
-                    // Apple reviewers using review@liveledger.app will see this banner
-                    if authManager.currentUser?.isLapsedSubscriber == true {
-                        ExpiredSubscriptionBanner(
-                            expirationDate: authManager.currentUser?.formattedExpirationDate,
-                            remainingOrders: authManager.currentUser?.remainingFreeOrders ?? 0,
-                            remainingExports: authManager.currentUser?.remainingFreeExports ?? 0
-                        )
-                        .padding(.horizontal)
-                    }
-                    
-                    // Subscription Options
-                    VStack(spacing: 12) {
-                        // Yearly Plan - Best Value
-                        SubscriptionOptionCard(
-                            title: "Yearly",
-                            price: storeKit.proYearlyProduct?.displayPrice ?? "$189.99",
-                            period: "/year",
-                            savings: "Save 20%",
-                            isSelected: selectedPlan == .yearly,
-                            isBestValue: true
-                        ) {
-                            selectedPlan = .yearly
-                        }
-                        
-                        // Monthly Plan
-                        SubscriptionOptionCard(
-                            title: "Monthly",
-                            price: storeKit.proMonthlyProduct?.displayPrice ?? "$19.99",
-                            period: "/month",
-                            savings: nil,
-                            isSelected: selectedPlan == .monthly,
-                            isBestValue: false
-                        ) {
-                            selectedPlan = .monthly
-                        }
-                        
-                        // Free Plan
-                        SubscriptionOptionCard(
-                            title: "Free",
-                            price: "$0",
-                            period: "",
-                            savings: "20 orders included",
-                            isSelected: selectedPlan == .free,
-                            isBestValue: false
-                        ) {
-                            selectedPlan = .free
-                        }
-                    }
-                    .padding(.horizontal)
-                    
-                    // Pro Features List
-                    if selectedPlan != .free {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("Pro includes:")
-                                .font(.headline)
-                                .padding(.bottom, 4)
-                            
-                            ProFeatureRow(icon: "infinity", text: "Unlimited orders")
-                            ProFeatureRow(icon: "square.and.arrow.up", text: "Unlimited CSV exports")
-                            ProFeatureRow(icon: "line.3.horizontal.decrease.circle", text: "Advanced order filters")
-                            ProFeatureRow(icon: "photo", text: "Product images")
-                            ProFeatureRow(icon: "barcode", text: "Barcode scanning")
-                            ProFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Advanced analytics")
-                            ProFeatureRow(icon: "headphones", text: "Priority support")
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                    }
-                    
-                    // Subscribe Button
-                    if selectedPlan != .free && !storeKit.subscriptionStatus.isActive {
-                        VStack(spacing: 12) {
-                            Button {
-                                Task {
-                                    await purchaseSubscription()
-                                }
-                            } label: {
-                                HStack {
-                                    if isPurchasing {
-                                        ProgressView()
-                                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                                    } else {
-                                        Image(systemName: "crown.fill")
-                                        if selectedPlan == .yearly {
-                                            Text("Subscribe - \(storeKit.proYearlyProduct?.displayPrice ?? "$189.99")/year")
-                                                .fontWeight(.bold)
-                                        } else {
-                                            Text("Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")/month")
-                                                .fontWeight(.bold)
-                                        }
-                                    }
-                                }
-                                .foregroundColor(.black)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    LinearGradient(colors: [.yellow, .orange],
-                                                  startPoint: .leading, endPoint: .trailing)
-                                )
-                                .cornerRadius(12)
-                            }
-                            .disabled(isPurchasing || (selectedPlan == .yearly && storeKit.proYearlyProduct == nil) || (selectedPlan == .monthly && storeKit.proMonthlyProduct == nil))
-                            
-                            Text("Cancel anytime • Secure payment via Apple")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                            
-                            // Restore Purchases
-                            Button {
-                                Task {
-                                    await storeKit.restorePurchases()
-                                }
-                            } label: {
-                                Text("Restore Purchases")
-                                    .font(.caption)
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Continue with Free
-                    if selectedPlan == .free && !storeKit.subscriptionStatus.isActive {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Text("Continue with Free Plan")
-                                .foregroundColor(.gray)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color(.systemGray5))
-                                .cornerRadius(12)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Already Pro - Manage Subscription
-                    if storeKit.subscriptionStatus.isActive {
-                        Button {
-                            openSubscriptionManagement()
-                        } label: {
-                            HStack {
-                                Image(systemName: "gear")
-                                Text("Manage Subscription")
-                            }
-                            .foregroundColor(.blue)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(Color.blue.opacity(0.1))
-                            .cornerRadius(12)
-                        }
-                        .padding(.horizontal)
-                    }
-                    
-                    // Why Pro Section
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("Why Go Pro?")
-                            .font(.headline)
-                        
-                        WhyProRow(icon: "infinity", color: .blue,
-                                 title: "Unlimited Everything",
-                                 subtitle: "No limits on orders or exports. Scale your business freely.")
-                        
-                        WhyProRow(icon: "photo.stack", color: .purple,
-                                 title: "Product Images",
-                                 subtitle: "Add photos to products for easy identification during live sales.")
-                        
-                        WhyProRow(icon: "barcode", color: .green,
-                                 title: "Barcode Support",
-                                 subtitle: "Scan barcodes to quickly find and add products.")
-                        
-                        WhyProRow(icon: "line.3.horizontal.decrease.circle", color: .orange,
-                                 title: "Order Filters",
-                                 subtitle: "Filter orders by platform and discount status for better insights.")
-                        
-                        WhyProRow(icon: "chart.line.uptrend.xyaxis", color: .pink,
-                                 title: "Advanced Analytics",
-                                 subtitle: "Deep insights into sales trends, top products, and more.")
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(16)
-                    .padding(.horizontal)
-                    
-                    // Terms
-                    VStack(spacing: 8) {
-                        Text("Subscription automatically renews monthly unless cancelled at least 24 hours before the end of the current period. Manage your subscription in iOS Settings.")
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                        
-                        HStack(spacing: 16) {
-                            Link("Terms of Service", destination: URL(string: "https://octa-square.github.io/LiveLedger/terms-of-service.html")!)
-                                .font(.caption2)
-                            Link("Privacy Policy", destination: URL(string: "https://octa-square.github.io/LiveLedger/privacy-policy.html")!)
-                                .font(.caption2)
-                        }
-                    }
-                    .padding()
-                    
-                    Spacer(minLength: 30)
-                }
+    @ViewBuilder private var headerSection: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "crown.fill")
+                .font(.system(size: 50))
+                .foregroundStyle(
+                    LinearGradient(colors: [.yellow, .orange],
+                                  startPoint: .top, endPoint: .bottom)
+                )
+            if authManager.currentUser?.isLapsedSubscriber == true {
+                Text("Welcome Back!")
+                    .font(.system(size: 28, weight: .bold))
+                Text("Reactivate your Pro subscription")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+            } else {
+                Text("Upgrade to Pro")
+                    .font(.system(size: 28, weight: .bold))
+                Text("Unlock all features and grow your business")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
             }
+        }
+        .padding(.top)
+    }
+
+    @ViewBuilder private var planOptionsSection: some View {
+        VStack(spacing: 12) {
+            SubscriptionOptionCard(
+                title: "Yearly",
+                price: storeKit.proYearlyProduct?.displayPrice ?? "$179.99",
+                period: "/year",
+                savings: "Best Value - Save $60",
+                isSelected: selectedPlan == .yearly,
+                isBestValue: true
+            ) { selectedPlan = .yearly }
+            SubscriptionOptionCard(
+                title: "Monthly",
+                price: storeKit.proMonthlyProduct?.displayPrice ?? "$19.99",
+                period: "/month",
+                savings: nil,
+                isSelected: selectedPlan == .monthly,
+                isBestValue: false
+            ) { selectedPlan = .monthly }
+            SubscriptionOptionCard(
+                title: "Free",
+                price: "$0",
+                period: "",
+                savings: "20 orders included",
+                isSelected: selectedPlan == .free,
+                isBestValue: false
+            ) { selectedPlan = .free }
+        }
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder private var proFeaturesSection: some View {
+        if selectedPlan != .free {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Pro includes:")
+                    .font(.headline)
+                    .padding(.bottom, 4)
+                ProFeatureRow(icon: "infinity", text: "Unlimited orders")
+                ProFeatureRow(icon: "square.and.arrow.up", text: "Unlimited CSV exports")
+                ProFeatureRow(icon: "photo", text: "Product images")
+                ProFeatureRow(icon: "headphones", text: "Priority support")
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            .padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder private var subscribeActionsSection: some View {
+        if selectedPlan != .free && authManager.currentUser?.isPro != true {
+            VStack(spacing: 12) {
+                Button {
+                    Task { await purchaseSubscription() }
+                } label: {
+                    HStack {
+                        if isPurchasing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .black))
+                        } else {
+                            Image(systemName: "crown.fill")
+                            Text(selectedPlan == .yearly
+                                ? "Subscribe - \(storeKit.proYearlyProduct?.displayPrice ?? "$179.99")/year"
+                                : "Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")/month")
+                                .fontWeight(.bold)
+                        }
+                    }
+                    .foregroundColor(.black)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(
+                        LinearGradient(colors: [.yellow, .orange],
+                                      startPoint: .leading, endPoint: .trailing)
+                    )
+                    .cornerRadius(12)
+                }
+                .disabled(isPurchasing || (selectedPlan == .yearly && storeKit.proYearlyProduct == nil) || (selectedPlan == .monthly && storeKit.proMonthlyProduct == nil))
+
+                Text("Cancel anytime • Secure payment via Apple")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+
+                Button { dismiss() } label: {
+                    Text("Maybe Later")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 4)
+
+                Button { showRestoreConfirm = true } label: {
+                    HStack {
+                        Text("Restore Purchases")
+                            .font(.caption)
+                            .foregroundColor(.blue)
+                        if isRestoring {
+                            Spacer()
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        }
+                    }
+                }
+                .disabled(isRestoring)
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder private var continueFreeSection: some View {
+        if selectedPlan == .free && !storeKit.subscriptionStatus.isActive {
+            Button { dismiss() } label: {
+                Text("Continue with Free Plan")
+                    .foregroundColor(.gray)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemGray5))
+                    .cornerRadius(12)
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder private var manageSubscriptionSection: some View {
+        if authManager.currentUser?.isPro == true {
+            Button { openSubscriptionManagement() } label: {
+                HStack {
+                    Image(systemName: "gear")
+                    Text("Manage Subscription")
+                }
+                .foregroundColor(.blue)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(12)
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    @ViewBuilder private var whyProSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Why Go Pro?")
+                .font(.headline)
+            WhyProRow(icon: "infinity", color: .blue,
+                     title: "Unlimited Everything",
+                     subtitle: "No limits on orders or exports. Scale your business freely.")
+            WhyProRow(icon: "photo.stack", color: .purple,
+                     title: "Product Images",
+                     subtitle: "Add photos to products for easy identification during live sales.")
+            WhyProRow(icon: "barcode.viewfinder", color: .green,
+                     title: "Barcode Scanning",
+                     subtitle: "Scan product barcodes with your camera for lightning-fast inventory and order entry.")
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(16)
+        .padding(.horizontal)
+    }
+
+    @ViewBuilder private var termsSection: some View {
+        VStack(spacing: 8) {
+            Text("Subscription automatically renews monthly unless cancelled at least 24 hours before the end of the current period. Manage your subscription in iOS Settings.")
+                .font(.caption2)
+                .foregroundColor(.gray)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 16) {
+                Link("Terms of Service", destination: URL(string: "https://octa-square.github.io/LiveLedger/terms-of-service.html")!)
+                    .font(.caption2)
+                Link("Privacy Policy", destination: URL(string: "https://octa-square.github.io/LiveLedger/privacy-policy.html")!)
+                    .font(.caption2)
+            }
+        }
+        .padding()
+    }
+
+    @ViewBuilder private var scrollContent: some View {
+        VStack(spacing: 24) {
+            headerSection
+
+            if authManager.currentUser?.isPro == true {
+                CurrentSubscriptionBanner(expirationDate: storeKit.expirationDateString)
+                    .padding(.horizontal)
+            } else if authManager.currentUser?.isLapsedSubscriber == true {
+                ExpiredSubscriptionBanner(
+                    expirationDate: authManager.currentUser?.formattedExpirationDate,
+                    remainingOrders: authManager.currentUser?.remainingFreeOrders ?? 0,
+                    remainingExports: authManager.currentUser?.remainingFreeExports ?? 0
+                )
+                .padding(.horizontal)
+            } else {
+                BasicPlanBanner()
+                    .padding(.horizontal)
+            }
+
+            planOptionsSection
+
+            proFeaturesSection
+            subscribeActionsSection
+            continueFreeSection
+            manageSubscriptionSection
+            whyProSection
+            termsSection
+
+            Spacer(minLength: 30)
+        }
+    }
+
+    private var navigationContent: some View {
+        (
+            ScrollView(.vertical, showsIndicators: true) {
+                scrollContent
+            }
+        )
+            .onAppear {
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+                print("🔍 PAYWALL:")
+                print("Plan: \(selectedPlan)")
+                print("StoreKit Active: \(storeKit.subscriptionStatus.isActive)")
+                print("Auth Pro: \(authManager.currentUser?.isPro ?? false)")
+                print("Monthly: \(storeKit.proMonthlyProduct?.displayPrice ?? "NIL")")
+                print("Yearly: \(storeKit.proYearlyProduct?.displayPrice ?? "NIL")")
+                print("Button Shows: \(selectedPlan != .free && authManager.currentUser?.isPro != true)")
+                print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+            }
+            .frame(maxWidth: horizontalSizeClass == .regular ? 600 : .infinity)
             .navigationTitle("Plans")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
+                    Button { dismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                    }
                 }
             }
             .alert("Purchase Error", isPresented: $showError) {
@@ -299,9 +316,54 @@ struct SubscriptionView: View {
             } message: {
                 Text(successAlertMessage)
             }
-            // CRITICAL: Mark paywall as shown when view appears
-            // This prevents auto-subscription bug reported by Apple
+            .confirmationDialog("Restore Purchases", isPresented: $showRestoreConfirm, titleVisibility: .visible) {
+                Button("Cancel", role: .cancel) {}
+                Button("OK") {
+                    Task {
+                        isRestoring = true
+                        let result = await storeKit.restorePurchases()
+                        isRestoring = false
+                        #if os(iOS)
+                        switch result {
+                        case .success:
+                            HapticManager.success()
+                            authManager.upgradeToPro()
+                            onPurchaseSuccess?()
+                            showRestoreSuccess = true
+                        case .noPurchases:
+                            HapticManager.selection()
+                            showRestoreNoPurchases = true
+                        case .cancelled:
+                            break
+                        case .failed:
+                            HapticManager.error()
+                            showRestoreError = true
+                        }
+                        #endif
+                    }
+                }
+            } message: {
+                Text("Restore your Pro subscription from your Apple ID? You may be asked to sign in.")
+            }
+            .alert("Success", isPresented: $showRestoreSuccess) {
+                Button("OK") { dismiss() }
+            } message: {
+                Text("Your Pro subscription has been restored!")
+            }
+            .alert("No Purchases Found", isPresented: $showRestoreNoPurchases) {
+                Button("OK") {}
+            } message: {
+                Text("We couldn't find any previous purchases for this Apple ID.")
+            }
+            .alert("Restore Failed", isPresented: $showRestoreError) {
+                Button("OK") {}
+            } message: {
+                Text(storeKit.errorMessage ?? "Please try again or contact support.")
+            }
             .onAppear {
+                if let plan = initialPlan {
+                    selectedPlan = plan
+                }
                 storeKit.markPaywallShown()
                 print("📱 SubscriptionView appeared - paywall marked as shown")
             }
@@ -309,6 +371,11 @@ struct SubscriptionView: View {
                 storeKit.resetPaywallState()
                 print("📱 SubscriptionView disappeared - paywall state reset")
             }
+    }
+
+    var body: some View {
+        NavigationStack {
+            navigationContent
         }
     }
     
@@ -333,9 +400,13 @@ struct SubscriptionView: View {
         
         do {
             try await storeKit.purchase(product)
-            // Update auth manager
+            // Update auth manager only after successful Apple purchase
             authManager.upgradeToPro()
             showSuccess = true
+            // Dismiss paywall after brief delay so user sees success message, then complete plan selection
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                onPurchaseSuccess?()
+            }
         } catch PurchaseError.purchaseCancelled {
             // User cancelled, no error message needed
         } catch {
@@ -349,6 +420,32 @@ struct SubscriptionView: View {
         if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
             UIApplication.shared.open(url)
         }
+    }
+}
+
+// MARK: - Basic Plan Banner
+struct BasicPlanBanner: View {
+    var body: some View {
+        HStack {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.gray)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Current Plan: Basic")
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Text("20 orders included • Upgrade for unlimited orders and Pro features")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+            }
+            Spacer()
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+        )
     }
 }
 

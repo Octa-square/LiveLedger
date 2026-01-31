@@ -1,0 +1,28 @@
+---
+description: QA rule – sample products MUST load for Apple Review test account. Do not remove or bypass without explicit product requirement.
+globs: ["**/*.swift"]
+---
+
+# QA Rule: Sample Products for applereview@liveledger.com
+
+## Rule (MUST)
+
+**Sample products MUST load when the user is applereview@liveledger.com.**
+
+- When this email signs in or signs up and reaches the main app (after onboarding and plan selection), the app MUST call `populateDemoData` so the user sees pre-populated products and orders.
+- Basic plan → sample data with no product images.
+- Pro plan → sample data with product images.
+- No other email may receive sample data; only applereview@liveledger.com.
+
+## Implementation (do not remove)
+
+1. **MainAppView** – `tryLoadSampleDataForReviewAccount()` in `onAppear` and in `onChange(of: authManager.currentUser?.id)` so products load when the main app is shown or when the current user is set.
+2. **PlanSelectionView (LiveLedgerApp)** – `completePlanSelection()` posts `.populateDemoData` for applereview@liveledger.com (delay 0.5s) so the observer can run after MainAppView exists.
+3. **SalesViewModel** – Observer for `.populateDemoData` and `populateDemoData(email:isPro:)` that only runs for applereview@liveledger.com and only if `!SampleDataGenerator.hasLoadedSampleData()`.
+4. **SampleDataGenerator** – `hasLoadedSampleData()`, `markSampleDataLoaded()`, `makeReviewProducts(isPro:)`, `makeReviewOrders(products:)`.
+
+## When changing auth or main app flow
+
+- Ensure applereview@liveledger.com still reaches `tryLoadSampleDataForReviewAccount()` or the notification observer.
+- Do not remove the notification post in `completePlanSelection` for this email.
+- Do not remove the sample-data check in MainAppView onAppear/onChange.

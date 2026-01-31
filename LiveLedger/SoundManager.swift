@@ -10,22 +10,6 @@ import AVFoundation
 import Combine
 
 // MARK: - Sound Types
-enum TimerSound: String, CaseIterable, Codable {
-    case beep = "Beep"
-    case ping = "Ping"
-    case chime = "Chime"
-    case bell = "Bell"
-    
-    var systemSoundID: SystemSoundID {
-        switch self {
-        case .beep: return 1052  // Tink
-        case .ping: return 1057  // Tink variation
-        case .chime: return 1025 // Glass
-        case .bell: return 1013  // Tock
-        }
-    }
-}
-
 enum OrderSound: String, CaseIterable, Codable {
     case cash = "Cash Register"
     case success = "Success"
@@ -42,33 +26,8 @@ enum OrderSound: String, CaseIterable, Codable {
     }
 }
 
-// MARK: - Timer Stop Sound
-enum TimerStopSound: String, CaseIterable, Codable {
-    case stop = "Stop"
-    case complete = "Complete"
-    case gong = "Gong"
-    case alert = "Alert"
-    
-    var systemSoundID: SystemSoundID {
-        switch self {
-        case .stop: return 1053    // Tock variation
-        case .complete: return 1025 // Glass
-        case .gong: return 1005    // Alarm
-        case .alert: return 1073   // Alert
-        }
-    }
-}
-
 // MARK: - Sound Settings
 struct SoundSettings: Codable {
-    var timerSoundEnabled: Bool = true
-    var timerSound: TimerSound = .chime
-    var timerVolume: Float = 0.7
-    
-    var timerStopSoundEnabled: Bool = true
-    var timerStopSound: TimerStopSound = .complete
-    var timerStopVolume: Float = 0.7
-    
     var orderSoundEnabled: Bool = true
     var orderSound: OrderSound = .cash
     var orderVolume: Float = 0.8
@@ -103,27 +62,9 @@ class SoundManager: ObservableObject {
     }
     
     // MARK: - Play Sounds
-    func playTimerStartSound() {
-        guard settings.timerSoundEnabled else { return }
-        playSystemSound(settings.timerSound.systemSoundID, volume: settings.timerVolume)
-    }
-    
-    func playTimerStopSound() {
-        guard settings.timerStopSoundEnabled else { return }
-        playSystemSound(settings.timerStopSound.systemSoundID, volume: settings.timerStopVolume)
-    }
-    
     func playOrderAddedSound() {
         guard settings.orderSoundEnabled else { return }
         playSystemSound(settings.orderSound.systemSoundID, volume: settings.orderVolume)
-    }
-    
-    func previewTimerSound() {
-        playSystemSound(settings.timerSound.systemSoundID, volume: settings.timerVolume)
-    }
-    
-    func previewTimerStopSound() {
-        playSystemSound(settings.timerStopSound.systemSoundID, volume: settings.timerStopVolume)
     }
     
     func previewOrderSound() {
@@ -145,106 +86,6 @@ struct SoundSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Timer Start Sound Section
-                Section {
-                    // Enable/Disable
-                    Toggle(isOn: $soundManager.settings.timerSoundEnabled) {
-                        Label("Timer Start Sound", systemImage: "play.fill")
-                    }
-                    
-                    if soundManager.settings.timerSoundEnabled {
-                        // Sound Selection
-                        Picker("Sound", selection: $soundManager.settings.timerSound) {
-                            ForEach(TimerSound.allCases, id: \.self) { sound in
-                                Text(sound.rawValue).tag(sound)
-                            }
-                        }
-                        
-                        // Volume Slider
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "speaker.fill")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                                Slider(value: $soundManager.settings.timerVolume, in: 0...1)
-                                    .tint(.green)
-                                Image(systemName: "speaker.wave.3.fill")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                            }
-                            
-                            Text("Volume: \(Int(soundManager.settings.timerVolume * 100))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Preview Button
-                        Button {
-                            soundManager.previewTimerSound()
-                        } label: {
-                            HStack {
-                                Image(systemName: "play.circle.fill")
-                                Text("Preview Sound")
-                            }
-                            .foregroundColor(.green)
-                        }
-                    }
-                } header: {
-                    Text("Timer Start Sound")
-                } footer: {
-                    Text("Plays when you start the session timer")
-                }
-                
-                // Timer Stop Sound Section
-                Section {
-                    // Enable/Disable
-                    Toggle(isOn: $soundManager.settings.timerStopSoundEnabled) {
-                        Label("Timer Stop Sound", systemImage: "stop.fill")
-                    }
-                    
-                    if soundManager.settings.timerStopSoundEnabled {
-                        // Sound Selection
-                        Picker("Sound", selection: $soundManager.settings.timerStopSound) {
-                            ForEach(TimerStopSound.allCases, id: \.self) { sound in
-                                Text(sound.rawValue).tag(sound)
-                            }
-                        }
-                        
-                        // Volume Slider
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Image(systemName: "speaker.fill")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                                Slider(value: $soundManager.settings.timerStopVolume, in: 0...1)
-                                    .tint(.red)
-                                Image(systemName: "speaker.wave.3.fill")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 12))
-                            }
-                            
-                            Text("Volume: \(Int(soundManager.settings.timerStopVolume * 100))%")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        // Preview Button
-                        Button {
-                            soundManager.previewTimerStopSound()
-                        } label: {
-                            HStack {
-                                Image(systemName: "play.circle.fill")
-                                Text("Preview Sound")
-                            }
-                            .foregroundColor(.red)
-                        }
-                    }
-                } header: {
-                    Text("Timer Stop Sound")
-                } footer: {
-                    Text("Plays when you stop/reset the session timer")
-                }
-                
                 // Order Sound Section
                 Section {
                     // Enable/Disable

@@ -24,11 +24,19 @@ class SalesViewModel: ObservableObject {
     // MARK: - Filter Properties (for DISPLAYING orders)
     @Published var filterPlatform: Platform? = nil // nil = All Platforms
     @Published var filterDiscount: DiscountFilter = .all
+    @Published var filterPayment: PaymentFilter = .all
+    @Published var filterOrderSource: OrderSource? = nil // nil = All Sources
     
     enum DiscountFilter: String, CaseIterable {
         case all = "All"
         case withDiscount = "With Discount"
         case withoutDiscount = "Without Discount"
+    }
+    
+    enum PaymentFilter: String, CaseIterable {
+        case all = "All"
+        case unpaid = "Unpaid"
+        case paid = "Paid"
     }
     
     // MARK: - Session Timer Properties
@@ -91,7 +99,34 @@ class SalesViewModel: ObservableObject {
             result = result.filter { !$0.wasDiscounted }
         }
         
+        // Filter by payment status
+        switch filterPayment {
+        case .all: break
+        case .unpaid: result = result.filter { $0.paymentStatus != .paid }
+        case .paid: result = result.filter { $0.paymentStatus == .paid }
+        }
+        
+        // Filter by order source
+        if let source = filterOrderSource {
+            result = result.filter { $0.orderSource == source }
+        }
+        
         return result
+    }
+    
+    /// Unpaid order count (across all orders, for dashboard)
+    var unpaidOrderCount: Int {
+        orders.filter { $0.paymentStatus != .paid }.count
+    }
+    
+    /// Order source breakdown: (source, count, percent) for dashboard
+    var orderSourceBreakdown: [(source: OrderSource, count: Int, percent: Double)] {
+        let total = Double(orders.count)
+        guard total > 0 else { return [] }
+        let bySource = Dictionary(grouping: orders) { $0.orderSource }
+        return bySource.map { source, list in
+            (source: source, count: list.count, percent: (Double(list.count) / total) * 100)
+        }.sorted { $0.percent > $1.percent }
     }
     
     var totalRevenue: Double {
@@ -114,18 +149,109 @@ class SalesViewModel: ObservableObject {
         filteredOrders.count
     }
     
-    // MARK: - UserDefaults Keys
-    private let catalogsKey = "livesales_catalogs"
-    private let selectedCatalogKey = "livesales_selected_catalog"
-    private let ordersKey = "livesales_orders"
-    private let platformsKey = "livesales_platforms"
-    // Timer keys
-    private let timerElapsedKey = "livesales_timer_elapsed"
-    private let timerIsActiveKey = "livesales_timer_active"
-    private let timerIsRunningKey = "livesales_timer_running"
-    private let timerManuallyPausedKey = "livesales_timer_manually_paused"
-    private let timerSessionEndedKey = "livesales_timer_session_ended"
-    private let timerLastUpdateKey = "livesales_timer_last_update"
+    // MARK: - Enhanced Statistics (for dashboard)
+    
+    /// Average Order Value: Total Sales ÷ Total Orders
+    var averageOrderValue: Double {
+        guard orderCount > 0 else { return 0 }
+        return totalRevenue / Double(orderCount)
+    }
+    
+    /// Total quantity of all items sold (across filtered orders)
+    var productsSoldQuantity: Int {
+        filteredOrders.reduce(0) { $0 + $1.quantity }
+    }
+    
+    /// Profit Margin: (Sales - Costs) ÷ Sales × 100. No cost data → show as N/A or 0.
+    var profitMarginPercent: Double? {
+        guard totalRevenue > 0 else { return nil }
+        // App does not track costs; could be extended later
+        return nil
+    }
+    
+    /// Count of products with stock < 10
+    var lowStockAlertCount: Int {
+        products.filter { !$0.isEmpty && $0.stock < 10 && $0.stock > 0 }.count
+    }
+    
+    /// Revenue from today only (calendar day, local timezone)
+    var todaySales: Double {
+        let cal = Calendar.current
+        let startOfToday = cal.startOfDay(for: Date())
+        return orders
+            .filter { $0.timestamp >= startOfToday }
+            .reduce(0) { $0 + $1.totalPrice }
+    }
+    
+    /// Revenue from current week (Monday–Sunday)
+    var thisWeekSales: Double {
+        let cal = Calendar.current
+        guard let startOfWeek = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())) else { return 0 }
+        let endOfWeek = cal.date(byAdding: .day, value: 7, to: startOfWeek) ?? Date()
+        return orders
+            .filter { $0.timestamp >= startOfWeek && $0.timestamp < endOfWeek }
+            .reduce(0) { $0 + $1.totalPrice }
+    }
+    
+    /// Revenue from current month
+    var thisMonthSales: Double {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: Date())
+        guard let startOfMonth = cal.date(from: comps),
+              let endOfMonth = cal.date(byAdding: DateComponents(month: 1, day: -1), to: startOfMonth) else { return 0 }
+        let endStart = cal.date(byAdding: .day, value: 1, to: endOfMonth) ?? Date()
+        return orders
+            .filter { $0.timestamp >= startOfMonth && $0.timestamp < endStart }
+            .reduce(0) { $0 + $1.totalPrice }
+    }
+    
+    /// Best day this month: (date, revenue)
+    var bestDayThisMonth: (date: Date, revenue: Double)? {
+        let cal = Calendar.current
+        let comps = cal.dateComponents([.year, .month], from: Date())
+        guard let startOfMonth = cal.date(from: comps) else { return nil }
+        let monthOrders = orders.filter { $0.timestamp >= startOfMonth }
+        let byDay = Dictionary(grouping: monthOrders) { cal.startOfDay(for: $0.timestamp) }
+        return byDay
+            .map { (date: $0.key, revenue: $0.value.reduce(0) { $0 + $1.totalPrice }) }
+            .max(by: { $0.revenue < $1.revenue })
+    }
+    
+    /// Top platform by revenue (filtered orders)
+    var topPlatformName: String? {
+        let byPlatform = Dictionary(grouping: filteredOrders) { $0.platform.name }
+        return byPlatform
+            .map { (name: $0.key, revenue: $0.value.reduce(0) { $0 + $1.totalPrice }) }
+            .max(by: { $0.revenue < $1.revenue })
+            .map { $0.name }
+    }
+    
+    /// Platform breakdown: name -> percentage (0–100)
+    var platformBreakdown: [(name: String, percent: Double)] {
+        guard totalRevenue > 0 else { return [] }
+        let byPlatform = Dictionary(grouping: filteredOrders) { $0.platform.name }
+        return byPlatform.map { name, orders in
+            let rev = orders.reduce(0) { $0 + $1.totalPrice }
+            return (name: name, percent: (rev / totalRevenue) * 100)
+        }.sorted { $0.percent > $1.percent }
+    }
+    
+    /// Set from MainAppView/MainTabView so notification observer can read current Pro status for sample data images.
+    weak var authManager: AuthManager?
+    
+    // MARK: - UserDefaults Keys (per-user to isolate data across accounts)
+    private var userDataSuffix: String { "\(authManager?.currentUser?.id ?? "default")" }
+    private var catalogsKey: String { "livesales_catalogs_\(userDataSuffix)" }
+    private var selectedCatalogKey: String { "livesales_selected_catalog_\(userDataSuffix)" }
+    private var ordersKey: String { "livesales_orders_\(userDataSuffix)" }
+    private var platformsKey: String { "livesales_platforms_\(userDataSuffix)" }
+    // Timer keys (per-user)
+    private var timerElapsedKey: String { "livesales_timer_elapsed_\(userDataSuffix)" }
+    private var timerIsActiveKey: String { "livesales_timer_active_\(userDataSuffix)" }
+    private var timerIsRunningKey: String { "livesales_timer_running_\(userDataSuffix)" }
+    private var timerManuallyPausedKey: String { "livesales_timer_manually_paused_\(userDataSuffix)" }
+    private var timerSessionEndedKey: String { "livesales_timer_session_ended_\(userDataSuffix)" }
+    private var timerLastUpdateKey: String { "livesales_timer_last_update_\(userDataSuffix)" }
     
     // MARK: - Initialization
     init() {
@@ -133,6 +259,8 @@ class SalesViewModel: ObservableObject {
         loadTimerState()
         setupAppLifecycleObservers()
         setupDemoDataObserver()
+        print("[SampleData] SalesViewModel init – .populateDemoData observer registered")
+        setupClearDataObserver()
         
         // Initialize with one default catalog if empty
         if catalogs.isEmpty {
@@ -153,97 +281,45 @@ class SalesViewModel: ObservableObject {
             forName: .populateDemoData,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
-            self?.populateDemoData()
+        ) { [weak self] notification in
+            let email = notification.userInfo?["email"] as? String
+            guard let email = email, email.lowercased() == "applereview@liveledger.com" else { return }
+            let currentIsPro = self?.authManager?.currentUser?.isPro ?? false
+            self?.populateDemoData(email: email, isPro: currentIsPro)
         }
     }
     
-    /// Populates the app with sample demo data for App Store review
-    func populateDemoData() {
-        // Create demo products
-        let demoProducts = [
-            Product(name: "Vintage T-Shirt", price: 29.99, stock: 15, lowStockThreshold: 5, criticalStockThreshold: 2),
-            Product(name: "Handmade Candle", price: 18.50, stock: 25, lowStockThreshold: 8, criticalStockThreshold: 3),
-            Product(name: "Organic Face Cream", price: 45.00, stock: 8, lowStockThreshold: 5, criticalStockThreshold: 2, discountType: .percentage, discountValue: 10),
-            Product(name: "Beaded Bracelet", price: 12.99, stock: 40, lowStockThreshold: 10, criticalStockThreshold: 5),
-            Product(name: "Art Print (Large)", price: 35.00, stock: 12, lowStockThreshold: 4, criticalStockThreshold: 2),
-            Product(name: "Handmade Soap Set", price: 22.00, stock: 3, lowStockThreshold: 5, criticalStockThreshold: 2), // Low stock demo
-        ]
-        
-        // Create demo catalog
-        let demoCatalog = ProductCatalog(name: "Demo Products", products: demoProducts)
-        catalogs = [demoCatalog]
-        selectedCatalogId = demoCatalog.id
-        
-        // Create demo orders with variety of statuses
-        let demoOrders: [Order] = [
-            Order(
-                productId: demoProducts[0].id,
-                productName: demoProducts[0].name,
-                buyerName: "Sarah M.",
-                phoneNumber: "(555) 123-4567",
-                address: "123 Main St, Austin TX",
-                platform: .tiktok,
-                quantity: 2,
-                pricePerUnit: demoProducts[0].price,
-                paymentStatus: .paid,
-                isFulfilled: true,
-                timestamp: Date().addingTimeInterval(-3600) // 1 hour ago
-            ),
-            Order(
-                productId: demoProducts[1].id,
-                productName: demoProducts[1].name,
-                buyerName: "John D.",
-                phoneNumber: "(555) 234-5678",
-                address: "456 Oak Ave, Portland OR",
-                platform: .instagram,
-                quantity: 1,
-                pricePerUnit: demoProducts[1].price,
-                paymentStatus: .paid,
-                isFulfilled: false,
-                timestamp: Date().addingTimeInterval(-1800) // 30 min ago
-            ),
-            Order(
-                productId: demoProducts[2].id,
-                productName: demoProducts[2].name,
-                buyerName: "Emily R.",
-                phoneNumber: "(555) 345-6789",
-                address: "",
-                platform: .facebook,
-                quantity: 1,
-                pricePerUnit: demoProducts[2].finalPrice,
-                wasDiscounted: true,
-                paymentStatus: .pending,
-                isFulfilled: false,
-                timestamp: Date().addingTimeInterval(-900) // 15 min ago
-            ),
-            Order(
-                productId: demoProducts[3].id,
-                productName: demoProducts[3].name,
-                buyerName: "SN-42",
-                platform: .tiktok,
-                quantity: 3,
-                pricePerUnit: demoProducts[3].price,
-                paymentStatus: .unset,
-                timestamp: Date().addingTimeInterval(-300) // 5 min ago
-            ),
-            Order(
-                productId: demoProducts[4].id,
-                productName: demoProducts[4].name,
-                buyerName: "Alex T.",
-                phoneNumber: "(555) 456-7890",
-                platform: .instagram,
-                quantity: 1,
-                pricePerUnit: demoProducts[4].price,
-                paymentStatus: .paid,
-                isFulfilled: true,
-                timestamp: Date().addingTimeInterval(-120) // 2 min ago
-            ),
-        ]
-        
-        orders = demoOrders
-        
-        // Save all demo data
+    // MARK: - Clear Data on Sign-Out (data isolation)
+    private func setupClearDataObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .clearAllData,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self = self else { return }
+            self.orders = []
+            self.catalogs = [ProductCatalog(name: "My Products")]
+            self.selectedCatalogId = self.catalogs.first?.id
+            self.platforms = Platform.defaultPlatforms
+            // Clear in-memory only; do not save to avoid overwriting another user's bucket
+            // Next user's data loads via loadData() when they log in
+        }
+    }
+    
+    /// Populates the app with sample data ONLY for Apple Review test account (applereview@liveledger.com). All other emails get no sample data.
+    /// Products are ALWAYS generated WITH images so that: Basic users see placeholders; Pro users see images; when they upgrade/resubscribe, images appear.
+    func populateDemoData(email: String?, isPro: Bool = false) {
+        let normalized = (email ?? "").lowercased()
+        guard normalized == "applereview@liveledger.com" else { return }
+        let hasProducts = !products.isEmpty && !products.allSatisfy { $0.isEmpty }
+        guard !hasProducts else { return }
+        // Always generate products WITH images. Display is gated by isPro (Basic hides, Pro shows).
+        let reviewProducts = SampleDataGenerator.makeReviewProducts(isPro: true)
+        let reviewOrders = SampleDataGenerator.makeReviewOrders(products: reviewProducts)
+        let catalog = ProductCatalog(name: "Sample Products", products: reviewProducts)
+        catalogs = [catalog]
+        selectedCatalogId = catalog.id
+        orders = reviewOrders
         saveData()
     }
     
@@ -353,6 +429,42 @@ class SalesViewModel: ObservableObject {
         saveData()
     }
     
+    /// Load state from a backup (used after Restore from Backup).
+    func loadFromBackup(_ backup: BackupData) {
+        orders = backup.orders
+        catalogs = backup.catalogs
+        platforms = backup.platforms
+        selectedCatalogId = catalogs.first?.id
+        saveData()
+    }
+    
+    /// Reset to empty state and persist (used for "Delete My Data").
+    func resetToEmptyState() {
+        orders = []
+        catalogs = [ProductCatalog(name: "My Products")]
+        selectedCatalogId = catalogs.first?.id
+        platforms = Platform.defaultPlatforms
+        saveData()
+    }
+    
+    /// Returns true if current catalogs/orders look like the sample data (e.g. "Sample Products" catalog or "Blue Cotton T-Shirt").
+    private func currentDataLooksLikeSampleData() -> Bool {
+        let hasSampleCatalog = catalogs.contains { $0.name == "Sample Products" }
+        let hasSampleProduct = catalogs.contains { catalog in
+            catalog.products.contains { $0.name == "Blue Cotton T-Shirt" }
+        }
+        return hasSampleCatalog || hasSampleProduct
+    }
+    
+    /// If current user is NOT applereview@liveledger.com and loaded data looks like sample data (e.g. from previous session), clear it so they see empty app.
+    func clearSampleDataForNonReviewUser(currentEmail: String?) {
+        let normalized = (currentEmail ?? "").lowercased()
+        guard normalized != "applereview@liveledger.com" else { return }
+        guard currentDataLooksLikeSampleData() else { return }
+        print("[SampleData] Clearing sample data for non-review user (email: \(currentEmail ?? "nil"))")
+        resetToEmptyState()
+    }
+    
     func addNewProduct() -> Bool {
         guard let id = selectedCatalogId ?? catalogs.first?.id,
               let index = catalogs.firstIndex(where: { $0.id == id }) else { return false }
@@ -419,18 +531,35 @@ class SalesViewModel: ObservableObject {
     // MARK: - Order Management
     
     /// Convenience method for quick order entry (used by overlay)
-    func addOrder(product: Product, quantity: Int, buyerName: String?) {
+    func addOrder(product: Product, quantity: Int, buyerName: String?, phoneNumber: String = "", customerNotes: String? = nil, orderSource: OrderSource = .liveStream) {
         createOrder(
             product: product,
             buyerName: buyerName ?? "Customer",
-            phoneNumber: "",
+            phoneNumber: phoneNumber,
             address: "",
+            customerNotes: customerNotes,
+            orderSource: orderSource,
             platform: selectedPlatform ?? platforms.first ?? Platform(name: "TikTok", icon: "music.note", color: "#ff0050"),
             quantity: quantity
         )
     }
     
-    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, platform: Platform, quantity: Int = 1) {
+    /// Unique previous customers (name, phone, notes) for autocomplete - from existing orders, most recent first
+    func previousCustomers(prefix: String = "") -> [(name: String, phone: String, notes: String)] {
+        var seen = Set<String>()
+        let normalized = prefix.trimmingCharacters(in: .whitespaces).lowercased()
+        return orders
+            .filter { !$0.buyerName.isEmpty }
+            .filter { normalized.isEmpty || $0.buyerName.lowercased().hasPrefix(normalized) || $0.buyerName.lowercased().contains(normalized) }
+            .compactMap { order -> (name: String, phone: String, notes: String)? in
+                let key = order.buyerName.lowercased()
+                guard !seen.contains(key) else { return nil }
+                seen.insert(key)
+                return (order.buyerName, order.phoneNumber, order.customerNotes ?? "")
+            }
+    }
+    
+    func createOrder(product: Product, buyerName: String, phoneNumber: String, address: String, customerNotes: String? = nil, orderSource: OrderSource = .liveStream, platform: Platform, quantity: Int = 1) {
         // Timer is now manually controlled - no auto-start
         
         let order = Order(
@@ -440,6 +569,8 @@ class SalesViewModel: ObservableObject {
             buyerName: buyerName,
             phoneNumber: phoneNumber,
             address: address,
+            customerNotes: customerNotes,
+            orderSource: orderSource,
             platform: platform,
             quantity: quantity,
             pricePerUnit: product.finalPrice,
@@ -448,8 +579,8 @@ class SalesViewModel: ObservableObject {
         orders.insert(order, at: 0)
         decrementStock(for: product.id, by: quantity)
         
-        // Play order added sound
         SoundManager.shared.playOrderAddedSound()
+        HapticManager.success()
     }
     
     func updateOrder(_ order: Order) {
@@ -486,7 +617,9 @@ class SalesViewModel: ObservableObject {
             let currentStatus = orders[index].paymentStatus
             switch currentStatus {
             case .unset: orders[index].paymentStatus = .pending
-            case .pending: orders[index].paymentStatus = .paid
+            case .pending:
+                orders[index].paymentStatus = .paid
+                HapticManager.success()
             case .paid: orders[index].paymentStatus = .unset
             }
         }
@@ -571,9 +704,6 @@ class SalesViewModel: ObservableObject {
         lastTimerUpdateDate = Date()
         startTimerLoop()
         saveTimerState()
-        
-        // Play timer start sound
-        SoundManager.shared.playTimerStartSound()
     }
     
     /// Manually pause the timer
@@ -597,11 +727,6 @@ class SalesViewModel: ObservableObject {
     
     /// Stop and reset timer to 00:00:00
     func resetTimer() {
-        // Play stop sound when timer was active
-        if isTimerRunning || isTimerPaused || sessionElapsedTime > 0 {
-            SoundManager.shared.playTimerStopSound()
-        }
-        
         stopTimerLoop()
         sessionElapsedTime = 0
         isSessionActive = false

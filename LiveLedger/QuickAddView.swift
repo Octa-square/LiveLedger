@@ -14,6 +14,7 @@ struct QuickAddView: View {
     @ObservedObject var localization: LocalizationManager
     var onLimitReached: () -> Void = {}
     var onProductSelected: (Product) -> Void = { _ in }  // Callback when product tapped
+    var onUpgrade: (() -> Void)? = nil  // Show subscription when Pro feature tapped
     @State private var editingProduct: Product?
     @State private var showMaxProductsAlert: Bool = false
     @State private var showCreateCatalogAlert: Bool = false
@@ -126,6 +127,7 @@ struct QuickAddView: View {
             HorizontalProductGrid(
                 products: viewModel.products,
                 theme: theme,
+                isPro: authManager.currentUser?.isPro ?? false,
                 onTap: handleProductTap,
                 onLongPress: { editingProduct = $0 }
             )
@@ -136,18 +138,24 @@ struct QuickAddView: View {
                 product: product,
                 onSave: { updated in
                     viewModel.updateProduct(updated)
+                    viewModel.saveData()
                     editingProduct = nil
                 },
                 onDelete: {
                     if let index = viewModel.products.firstIndex(where: { $0.id == product.id }) {
-                        viewModel.products.remove(at: index)
+                        var updated = viewModel.products
+                        updated.remove(at: index)
+                        viewModel.products = updated
+                        viewModel.saveData()
                     }
                     editingProduct = nil
                 },
                 onCancel: {
                     editingProduct = nil
                 },
-                isPro: authManager.currentUser?.isPro ?? false
+                isPro: authManager.currentUser?.isPro ?? false,
+                onUpgrade: onUpgrade,
+                authManager: authManager
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -195,7 +203,9 @@ struct QuickAddView: View {
                 onCancel: {
                     newProductToAdd = nil
                 },
-                isPro: authManager.currentUser?.isPro ?? false
+                isPro: authManager.currentUser?.isPro ?? false,
+                onUpgrade: onUpgrade,
+                authManager: authManager
             )
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
@@ -221,30 +231,36 @@ struct QuickAddView: View {
 }
 
 // MARK: - Buyer Popup View
-// Overlay that appears at bottom - adjusts position when keyboard appears
+// Overlay that appears at bottom - order entry with customer autocomplete, phone, notes, order source
 struct BuyerPopupView: View {
     let product: Product
+    @ObservedObject var viewModel: SalesViewModel
     @Binding var buyerName: String
     @Binding var orderQuantity: Int
+    @Binding var phoneNumber: String
+    @Binding var customerNotes: String
+    @Binding var orderSource: OrderSource
     let onCancel: () -> Void
     let onAdd: () -> Void
     
     @FocusState private var isBuyerNameFocused: Bool
+    @FocusState private var isQuantityFocused: Bool
     @State private var keyboardHeight: CGFloat = 0
     @State private var safeAreaBottom: CGFloat = 0
+    @State private var quantityInput: String = "1"
+    
+    private var autocompleteSuggestions: [(name: String, phone: String, notes: String)] {
+        viewModel.previousCustomers(prefix: buyerName)
+    }
     
     var totalAmount: Double {
         product.finalPrice * Double(orderQuantity)
     }
     
-    // Calculate bottom padding: popup sits just above keyboard
     private var bottomPadding: CGFloat {
         if keyboardHeight > 0 {
-            // Keyboard visible: position popup 10pt above keyboard
-            // Subtract safe area because keyboard height includes it
             return keyboardHeight - safeAreaBottom + 10
         } else {
-            // Keyboard hidden: 20pt from bottom of safe area
             return 20
         }
     }
@@ -252,7 +268,6 @@ struct BuyerPopupView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack(alignment: .bottom) {
-                // Semi-transparent backdrop - tap to dismiss (fills entire screen)
                 Color.black.opacity(0.4)
                     .ignoresSafeArea()
                     .onTapGesture {
@@ -262,110 +277,197 @@ struct BuyerPopupView: View {
                     .onAppear {
                         safeAreaBottom = geometry.safeAreaInsets.bottom
                     }
-            
-            // Popup content - positioned at bottom, animates up when keyboard appears
-            VStack(spacing: 10) {
-                // Drag indicator
-                RoundedRectangle(cornerRadius: 3)
-                    .fill(Color.gray.opacity(0.5))
-                    .frame(width: 40, height: 5)
-                    .padding(.top, 8)
                 
-                // Product name header
-                Text(product.name.uppercased())
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(.white)
-                
-                // Buyer name field
-                HStack(spacing: 6) {
-                    Image(systemName: "pencil")
-                        .font(.system(size: 12))
-                        .foregroundColor(.gray)
-                    TextField("Buyer Name", text: $buyerName)
-                        .font(.system(size: 14))
-                        .foregroundColor(.white)
-                        .focused($isBuyerNameFocused)
-                        .submitLabel(.done)
-                        .onSubmit {
-                            onAdd()
-                        }
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(8)
-                
-                // Quantity row
-                HStack(spacing: 16) {
-                    Button { if orderQuantity > 1 { orderQuantity -= 1 } } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
-                    }
-                    
-                    Text("\(orderQuantity)")
-                        .font(.system(size: 22, weight: .bold, design: .rounded))
-                        .foregroundColor(.white)
-                        .frame(width: 32)
-                    
-                    Button { if orderQuantity < product.stock { orderQuantity += 1 } } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 28))
-                            .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
-                    }
-                    
-                    Spacer()
-                    
-                    Text("$\(totalAmount, specifier: "%.0f")")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.green)
-                }
-                
-                // Action buttons
-                HStack(spacing: 12) {
-                    Button {
-                        isBuyerNameFocused = false
-                        onCancel()
-                    } label: {
-                        Text("Cancel")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.gray.opacity(0.3))
-                            .cornerRadius(8)
-                    }
-                    
-                    Button {
-                        isBuyerNameFocused = false
-                        onAdd()
-                    } label: {
-                        Text("Add")
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 10) {
+                        RoundedRectangle(cornerRadius: 3)
+                            .fill(Color.gray.opacity(0.5))
+                            .frame(width: 40, height: 5)
+                            .padding(.top, 8)
+                        
+                        Text(product.name.uppercased())
                             .font(.system(size: 14, weight: .bold))
                             .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
+                        
+                        // Customer name with autocomplete
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "person.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                TextField(LocalizationManager.shared.localized(.customerName), text: $buyerName)
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                    .focused($isBuyerNameFocused)
+                                    .submitLabel(.next)
+                            }
+                            .padding(.horizontal, 12)
                             .padding(.vertical, 10)
-                            .background(Color.green)
+                            .background(Color.white.opacity(0.1))
                             .cornerRadius(8)
+                            
+                            if !autocompleteSuggestions.isEmpty && !buyerName.isEmpty {
+                                VStack(alignment: .leading, spacing: 0) {
+                                    ForEach(Array(autocompleteSuggestions.prefix(5).enumerated()), id: \.offset) { _, customer in
+                                        Button {
+                                            buyerName = customer.name
+                                            phoneNumber = customer.phone
+                                            customerNotes = customer.notes
+                                            isBuyerNameFocused = false
+                                        } label: {
+                                            HStack {
+                                                Text(customer.name)
+                                                    .font(.system(size: 13))
+                                                    .foregroundColor(.white)
+                                                Spacer()
+                                                if !customer.phone.isEmpty {
+                                                    Text(customer.phone)
+                                                        .font(.system(size: 11))
+                                                        .foregroundColor(.white.opacity(0.7))
+                                                }
+                                            }
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 8)
+                                        }
+                                        .background(Color.white.opacity(0.08))
+                                    }
+                                }
+                                .cornerRadius(8)
+                            }
+                        }
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "phone.fill")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                            TextField(LocalizationManager.shared.localized(.phoneOptional), text: $phoneNumber)
+                                .font(.system(size: 14))
+                                .foregroundColor(.white)
+                                .keyboardType(.phonePad)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(8)
+                        
+                        HStack(spacing: 6) {
+                            Image(systemName: "note.text")
+                                .font(.system(size: 12))
+                                .foregroundColor(.gray)
+                            TextField(LocalizationManager.shared.localized(.notesOptional), text: $customerNotes)
+                                .font(.system(size: 14))
+                                .foregroundColor(.white)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(8)
+                        
+                        // Order source picker
+                        Menu {
+                            ForEach(OrderSource.allCases, id: \.self) { source in
+                                Button(source.rawValue) { orderSource = source }
+                            }
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.branch")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                Text("\(LocalizationManager.shared.localized(.orderSource)): \(orderSource.rawValue)")
+                                    .font(.system(size: 14))
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(.gray)
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(Color.white.opacity(0.1))
+                            .cornerRadius(8)
+                        }
+                        
+                        // Quantity row - type or use +/-
+                        HStack(spacing: 16) {
+                            Button { if orderQuantity > 1 { orderQuantity -= 1; quantityInput = "\(orderQuantity)" } } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(orderQuantity > 1 ? .blue : .gray.opacity(0.3))
+                            }
+                            TextField("Qty", text: $quantityInput)
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                                .keyboardType(.numberPad)
+                                .frame(width: 64)
+                                .focused($isQuantityFocused)
+                                .onChange(of: quantityInput) { _, s in
+                                    if s.isEmpty { orderQuantity = 1; return }
+                                    let n = Int(s) ?? orderQuantity
+                                    let clamped = min(max(n, 1), max(1, product.stock))
+                                    orderQuantity = clamped
+                                    if "\(clamped)" != s { quantityInput = "\(clamped)" }
+                                }
+                                .onChange(of: isQuantityFocused) { _, focused in
+                                    if focused { quantityInput = "" }
+                                    else if quantityInput.isEmpty { quantityInput = "1"; orderQuantity = 1 }
+                                }
+                            Button { if orderQuantity < product.stock { orderQuantity += 1; quantityInput = "\(orderQuantity)" } } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 28))
+                                    .foregroundColor(orderQuantity < product.stock ? .blue : .gray.opacity(0.3))
+                            }
+                            Spacer()
+                            Text("$\(totalAmount, specifier: "%.0f")")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.green)
+                        }
+                        .onAppear { quantityInput = "\(orderQuantity)" }
+                        .onChange(of: orderQuantity) { _, v in if !isQuantityFocused { quantityInput = "\(v)" } }
+                        
+                        HStack(spacing: 12) {
+                            Button {
+                                isBuyerNameFocused = false
+                                onCancel()
+                            } label: {
+                                Text("Cancel")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.gray.opacity(0.3))
+                                    .cornerRadius(8)
+                            }
+                            Button {
+                                isBuyerNameFocused = false
+                                onAdd()
+                            } label: {
+                                Text("Add")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(Color.green)
+                                    .cornerRadius(8)
+                            }
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
                 }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(Color(white: 0.15))
-                    .shadow(color: .black.opacity(0.3), radius: 10)
-            )
-            .padding(.horizontal, 16)
-            // Position: sits directly above keyboard with 10pt gap, or 20pt from bottom when no keyboard
-            .padding(.bottom, bottomPadding)
-            .animation(.easeOut(duration: 0.25), value: keyboardHeight)
+                .frame(maxHeight: geometry.size.height * 0.7)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(Color(white: 0.15))
+                        .shadow(color: .black.opacity(0.3), radius: 10)
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, bottomPadding)
+                .animation(.easeOut(duration: 0.25), value: keyboardHeight)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .onAppear {
-            // Listen for keyboard show/hide
             NotificationCenter.default.addObserver(
                 forName: UIResponder.keyboardWillShowNotification,
                 object: nil,
@@ -382,7 +484,6 @@ struct BuyerPopupView: View {
             ) { _ in
                 keyboardHeight = 0
             }
-            // Auto-focus the text field
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 isBuyerNameFocused = true
             }
@@ -395,106 +496,92 @@ struct BuyerPopupView: View {
 struct HorizontalProductGrid: View {
     let products: [Product]
     let theme: AppTheme
+    let isPro: Bool
     let onTap: (Product) -> Void
     let onLongPress: (Product) -> Void
     
-    // ALIGNMENT CONSTANTS - Must match PlatformSelectorView exactly
     private let maxProducts = 12
-    private let visibleCount: CGFloat = 4
-    private let itemSpacing: CGFloat = 8    // 8pt between items (tighter)
-    private let cardHeight: CGFloat = 58    // Product card height (bigger to fit content)
+    private let itemSpacing: CGFloat = 8
+    private let cardWidth: CGFloat = 84
+    private let cardHeight: CGFloat = 58
+    
+    private var displayProducts: [Product] { Array(products.prefix(maxProducts)) }
+    private var isEmpty: Bool { displayProducts.isEmpty }
     
     var body: some View {
-        let displayProducts = Array(products.prefix(maxProducts))
-        let hasMoreProducts = displayProducts.count > Int(visibleCount)
-        
-        VStack(spacing: 2) {
-            GeometryReader { geo in
-                let availableWidth = geo.size.width
-                let totalSpacing = itemSpacing * (visibleCount - 1) // 36pt for 3 gaps
-                let itemWidth = (availableWidth - totalSpacing) / visibleCount
-                
+        if isEmpty {
+            Color.clear
+                .frame(height: 0)
+        } else {
+            let hasMoreProducts = displayProducts.count > 4
+            
+            VStack(spacing: 2) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: itemSpacing) {
                         ForEach(displayProducts, id: \.id) { product in
                             FastProductCard(
                                 product: product,
                                 theme: theme,
+                                isPro: isPro,
                                 onTap: { onTap(product) },
                                 onLongPress: { onLongPress(product) }
                             )
-                            .frame(width: itemWidth, height: cardHeight)
+                            .frame(width: cardWidth, height: cardHeight)
                         }
                     }
                 }
-                .frame(width: availableWidth) // Clip to exactly 4 items width
-            }
-            .frame(height: cardHeight)
-            
-            // Scroll indicator - ALWAYS visible (permanent)
-            HStack(spacing: 4) {
-                Spacer()
+                .frame(height: cardHeight)
                 
-                // Page dots - show based on product count
-                let pageCount = max(1, min((displayProducts.count - 1) / Int(visibleCount) + 1, 4))
-                ForEach(0..<pageCount, id: \.self) { index in
-                    Circle()
-                        .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
-                        .frame(width: 5, height: 5)
+                // Scroll indicator - ALWAYS visible (permanent)
+                HStack(spacing: 4) {
+                    Spacer()
+                    
+                    // Page dots - show based on product count
+                    let pageCount = max(1, min((displayProducts.count - 1) / 4 + 1, 4))
+                    ForEach(0..<pageCount, id: \.self) { index in
+                        Circle()
+                            .fill(index == 0 ? theme.accentColor : Color.white.opacity(0.4))
+                            .frame(width: 5, height: 5)
+                    }
+                    
+                    // Scroll arrow indicator
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(hasMoreProducts ? theme.textMuted : theme.textMuted.opacity(0.3))
+                    
+                    Spacer()
                 }
-                
-                // Scroll arrow indicator
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundColor(hasMoreProducts ? theme.textMuted : theme.textMuted.opacity(0.3))
-                
-                Spacer()
             }
         }
     }
 }
 
-// Keep old FlexibleProductGrid for backwards compatibility
+// Keep old FlexibleProductGrid for backwards compatibility - fixed layout, no GeometryReader
 struct FlexibleProductGrid: View {
     let products: [Product]
     let theme: AppTheme
+    let isPro: Bool
     let onTap: (Product) -> Void
     let onLongPress: (Product) -> Void
     
-    // Max 12 products, max 4 per row
     private let maxProducts = 12
     private let maxPerRow = 4
     private let spacing: CGFloat = 6
+    private let cardHeight: CGFloat = 65
+    
+    private var displayProducts: [Product] { Array(products.prefix(maxProducts)) }
     
     var body: some View {
-        let displayProducts = Array(products.prefix(maxProducts))
-        
-        GeometryReader { geometry in
-            let totalSpacing = spacing * CGFloat(maxPerRow - 1)
-            let cardWidth = (geometry.size.width - totalSpacing) / CGFloat(maxPerRow)
-            let rows = createRows(from: displayProducts)
-            
-            VStack(spacing: spacing) {
-                ForEach(0..<rows.count, id: \.self) { rowIndex in
-                    HStack(spacing: spacing) {
-                        ForEach(rows[rowIndex], id: \.id) { product in
-                            FastProductCard(
-                                product: product,
-                                theme: theme,
-                                onTap: { onTap(product) },
-                                onLongPress: { onLongPress(product) }
-                            )
-                            .frame(width: cardWidth, height: 65)
-                        }
-                        
-                        // Fill empty spaces in incomplete rows
-                        if rows[rowIndex].count < maxPerRow {
-                            ForEach(0..<(maxPerRow - rows[rowIndex].count), id: \.self) { index in
-                                Color.clear.frame(width: cardWidth, height: 65)
-                            }
-                        }
-                    }
-                }
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: spacing), count: maxPerRow), spacing: spacing) {
+            ForEach(displayProducts, id: \.id) { product in
+                FastProductCard(
+                    product: product,
+                    theme: theme,
+                    isPro: isPro,
+                    onTap: { onTap(product) },
+                    onLongPress: { onLongPress(product) }
+                )
+                .frame(height: cardHeight)
             }
         }
         .frame(height: calculateHeight(for: displayProducts.count))
@@ -502,29 +589,7 @@ struct FlexibleProductGrid: View {
     
     private func calculateHeight(for productCount: Int) -> CGFloat {
         let rowCount = ceil(Double(productCount) / Double(maxPerRow))
-        let cardHeight: CGFloat = 65
         return CGFloat(rowCount) * cardHeight + CGFloat(max(0, Int(rowCount) - 1)) * spacing
-    }
-    
-    private func createRows(from displayProducts: [Product]) -> [[Product]] {
-        guard !displayProducts.isEmpty else { return [] }
-        
-        var rows: [[Product]] = []
-        var currentRow: [Product] = []
-        
-        for product in displayProducts {
-            currentRow.append(product)
-            if currentRow.count == maxPerRow {
-                rows.append(currentRow)
-                currentRow = []
-            }
-        }
-        
-        if !currentRow.isEmpty {
-            rows.append(currentRow)
-        }
-        
-        return rows
     }
 }
 
@@ -532,6 +597,7 @@ struct FlexibleProductGrid: View {
 struct FastProductCard: View {
     let product: Product
     let theme: AppTheme
+    let isPro: Bool
     let onTap: () -> Void
     let onLongPress: () -> Void
     @ObservedObject var localization = LocalizationManager.shared
@@ -557,88 +623,89 @@ struct FastProductCard: View {
     
     var body: some View {
         Button(action: {}) {
-            GeometryReader { geo in
-                ZStack {
-                    if product.isEmpty {
-                        // Empty product state - simple "Hold to add product" text
-                        VStack(spacing: 4) {
-                            Image(systemName: "plus.circle.dashed")
-                                .font(.system(size: 18, weight: .light))
-                                .foregroundColor(theme.textMuted.opacity(0.4))
-                            
-                            Text(localization.localized(.holdToAddProduct))
-                                .font(.system(size: 9, weight: .medium))
-                                .foregroundColor(theme.textMuted.opacity(0.5))
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(width: geo.size.width, height: geo.size.height)
-                    } else if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
-                        // WITH IMAGE - image fills card
-                        ZStack {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                            
-                            // Gradient overlay
-                            LinearGradient(
-                                colors: [.black.opacity(0.7), .black.opacity(0.3), .black.opacity(0.7)],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                            
-                            // Content - Name (big) → Price (medium) → Stock (small)
-                            VStack(spacing: 2) {
-                                // Name - LARGEST (ALL CAPS, 2 lines)
-                                Text(product.name.uppercased())
-                                    .font(.system(size: 12, weight: .heavy))
-                                    .foregroundColor(.white)
-                                    .lineLimit(2)
-                                    .minimumScaleFactor(0.8)
-                                    .multilineTextAlignment(.center)
-                                    .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
-                                    .frame(width: geo.size.width - 6)
-                                
-                                // Price - MEDIUM (abbreviated for large numbers)
-                                Text(formattedPrice)
-                                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                                    .foregroundColor(product.hasDiscount ? .orange : .green)
-                                    .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
-                                    .lineLimit(1)
-                                
-                                // Stock (color shows status)
-                                Text("\(product.stock)")
-                                    .font(.system(size: 10, weight: .semibold))
-                                    .foregroundColor(product.stockColor)
-                                    .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
-                            }
-                        }
-                        .frame(width: geo.size.width, height: geo.size.height)
-                        .clipped()
-                    } else {
-                        // NO IMAGE - Name (big) → Price (medium) → Stock
+            ZStack {
+                if product.isEmpty {
+                    // Empty product state - helpful copy
+                    VStack(spacing: 6) {
+                        Text("📦")
+                            .font(.system(size: 22))
+                        Image(systemName: "plus.circle.dashed")
+                            .font(.system(size: 16, weight: .light))
+                            .foregroundColor(theme.textMuted.opacity(0.4))
+                        Text(localization.localized(.holdToAddProduct))
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundColor(theme.textMuted.opacity(0.5))
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if isPro, let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
+                    // WITH IMAGE - Pro only; image fills card
+                    ZStack {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                        
+                        // Gradient overlay
+                        LinearGradient(
+                            colors: [.black.opacity(0.7), .black.opacity(0.3), .black.opacity(0.7)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        
+                        // Content - Name (big) → Price (medium) → Stock badge or count
                         VStack(spacing: 2) {
-                            // Name - LARGEST (ALL CAPS, 2 lines)
                             Text(product.name.uppercased())
                                 .font(.system(size: 12, weight: .heavy))
-                                .foregroundColor(theme.textPrimary)
+                                .foregroundColor(.white)
                                 .lineLimit(2)
-                                .minimumScaleFactor(0.8)
                                 .multilineTextAlignment(.center)
-                                .frame(width: geo.size.width - 6)
+                                .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
+                                .frame(maxWidth: .infinity)
                             
-                            // Price - MEDIUM (abbreviated for large numbers)
                             Text(formattedPrice)
                                 .font(.system(size: 11, weight: .bold, design: .rounded))
-                                .foregroundColor(product.hasDiscount ? theme.warningColor : theme.successColor)
+                                .foregroundColor(product.stock == 0 ? .gray : (product.hasDiscount ? .orange : .green))
+                                .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
                                 .lineLimit(1)
                             
-                            // Stock (color shows status)
                             Text("\(product.stock)")
                                 .font(.system(size: 10, weight: .semibold))
                                 .foregroundColor(product.stockColor)
+                                .shadow(color: .black.opacity(0.8), radius: 2, x: 0, y: 1)
                         }
-                        .frame(width: geo.size.width, height: geo.size.height)
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+                } else {
+                    // NO IMAGE - Name (big) → Price (medium) → Stock badge or count
+                    VStack(spacing: 2) {
+                        Text(product.name.uppercased())
+                            .font(.system(size: 12, weight: .heavy))
+                            .foregroundColor(theme.textPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: .infinity)
+                        
+                        Text(formattedPrice)
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(product.stock == 0 ? theme.textMuted : (product.hasDiscount ? theme.warningColor : theme.successColor))
+                            .lineLimit(1)
+                        
+                        Text("\(product.stock)")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(product.stockColor)
+                        if product.hasBarcode {
+                            HStack(spacing: 2) {
+                                Image(systemName: "barcode")
+                                    .font(.system(size: 8))
+                                Text(product.barcode)
+                                    .font(.system(size: 8))
+                                    .foregroundColor(theme.textMuted)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
@@ -692,6 +759,8 @@ struct AddOrderSheet: View {
     let theme: AppTheme
     let onCancel: () -> Void
     let onAdd: () -> Void
+    @FocusState private var isQuantityFocused: Bool
+    @State private var quantityInput: String = "1"
     
     var totalPrice: Double {
         product.finalPrice * Double(quantity)
@@ -729,16 +798,15 @@ struct AddOrderSheet: View {
                         .autocorrectionDisabled()
                 }
                 
-                // Quantity Selector
+                // Quantity Selector - type or use +/-
                 VStack(alignment: .leading, spacing: 6) {
                     Text("QUANTITY")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(theme.textSecondary)
                     
                     HStack(spacing: 20) {
-                        // Minus button
                         Button {
-                            if quantity > 1 { quantity -= 1 }
+                            if quantity > 1 { quantity -= 1; quantityInput = "\(quantity)" }
                         } label: {
                             Image(systemName: "minus.circle.fill")
                                 .font(.system(size: 32))
@@ -746,14 +814,26 @@ struct AddOrderSheet: View {
                         }
                         .disabled(quantity <= 1)
                         
-                        // Quantity display
-                        Text("\(quantity)")
+                        TextField("Qty", text: $quantityInput)
                             .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .frame(minWidth: 50)
+                            .multilineTextAlignment(.center)
+                            .keyboardType(.numberPad)
+                            .frame(minWidth: 64)
+                            .focused($isQuantityFocused)
+                            .onChange(of: quantityInput) { _, s in
+                                if s.isEmpty { quantity = 1; return }
+                                let n = Int(s) ?? quantity
+                                let clamped = min(max(n, 1), max(1, maxStock))
+                                quantity = clamped
+                                if "\(clamped)" != s { quantityInput = "\(clamped)" }
+                            }
+                            .onChange(of: isQuantityFocused) { _, focused in
+                                if focused { quantityInput = "" }
+                                else if quantityInput.isEmpty { quantityInput = "1"; quantity = 1 }
+                            }
                         
-                        // Plus button
                         Button {
-                            if quantity < maxStock { quantity += 1 }
+                            if quantity < maxStock { quantity += 1; quantityInput = "\(quantity)" }
                         } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 32))
@@ -763,7 +843,6 @@ struct AddOrderSheet: View {
                         
                         Spacer()
                         
-                        // Total
                         VStack(alignment: .trailing) {
                             Text("TOTAL")
                                 .font(.system(size: 10, weight: .semibold))
@@ -776,6 +855,8 @@ struct AddOrderSheet: View {
                     .padding()
                     .background(theme.cardBackground)
                     .cornerRadius(10)
+                    .onAppear { quantityInput = "\(quantity)" }
+                    .onChange(of: quantity) { _, v in if !isQuantityFocused { quantityInput = "\(v)" } }
                 }
                 
                 Spacer()
@@ -802,6 +883,8 @@ struct EditProductSheet: View {
     let onDelete: () -> Void
     let onCancel: () -> Void
     var isPro: Bool = false
+    var onUpgrade: (() -> Void)? = nil
+    var authManager: AuthManager?
     
     @State private var stockText = ""
     @State private var priceText = ""
@@ -809,227 +892,237 @@ struct EditProductSheet: View {
     @State private var lowStockText = ""
     @State private var criticalStockText = ""
     @State private var showImagePicker = false
-    @State private var showBarcodeScanner = false
     @State private var showProAlert = false
+    @State private var showBarcodeProAlert = false
+    @State private var showBarcodeScanner = false
     @State private var showAbbreviateAlert = false
+    @State private var showSubscriptionView = false
+    
+    @ViewBuilder
+    private var productImagePreview: some View {
+        // Pro only: show image; Free users see placeholder (images hidden even if stored)
+        if isPro, let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
+            Image(uiImage: uiImage)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 80, height: 80)
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.gray.opacity(0.3), lineWidth: 1))
+        } else {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color(.systemGray5))
+                    .frame(width: 80, height: 80)
+                Image(systemName: "photo")
+                    .font(.system(size: 24))
+                    .foregroundColor(.gray)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var productImageButtons: some View {
+        Button {
+            if isPro { showImagePicker = true } else { showProAlert = true }
+        } label: {
+            HStack {
+                Image(systemName: "photo.badge.plus")
+                Text(product.imageData == nil ? "Add Image" : "Change Image")
+            }
+            .font(.system(size: 14, weight: .medium))
+            .foregroundColor(isPro ? .blue : .gray)
+        }
+        // Remove image only for Pro (Free users don't see image, so no Remove)
+        if isPro && product.imageData != nil {
+            Button {
+                var updated = product
+                updated.imageData = nil
+                product = updated
+            } label: {
+                HStack {
+                    Image(systemName: "trash")
+                    Text("Remove")
+                }
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(.red)
+            }
+        }
+    }
+    
+    private var productImageSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("PRODUCT IMAGE")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.gray)
+                if !isPro {
+                    Label("PRO", systemImage: "crown.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+            }
+            HStack(spacing: 12) {
+                productImagePreview
+                VStack(alignment: .leading, spacing: 8) {
+                    productImageButtons
+                }
+                Spacer()
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+    }
+    
+    private var productDetailsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("PRODUCT")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.gray)
+            VStack(spacing: 10) {
+                HStack {
+                    Text("Name").foregroundColor(.gray).frame(width: 70, alignment: .leading)
+                    TextField("Name (max 15)", text: $product.name)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: product.name) { _, newValue in
+                            if newValue.count > 15 {
+                                product.name = String(newValue.prefix(15))
+                                showAbbreviateAlert = true
+                            }
+                        }
+                    Text("\(product.name.count)/15")
+                        .font(.system(size: 10))
+                        .foregroundColor(product.name.count >= 15 ? .red : .gray)
+                }
+                HStack {
+                    Text("Price $").foregroundColor(.gray).frame(width: 70, alignment: .leading)
+                    TextField("0", text: $priceText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
+                        .onChange(of: priceText) { _, v in if let d = Double(v) { product.price = d } }
+                }
+                HStack {
+                    Text("Stock").foregroundColor(.gray).frame(width: 70, alignment: .leading)
+                    TextField("0", text: $stockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
+                        .onChange(of: stockText) { _, v in if let i = Int(v) { product.stock = i } }
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+    }
+    
+    private var barcodeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("BARCODE (OPTIONAL)")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.gray)
+                if !isPro {
+                    Label("PRO", systemImage: "crown.fill")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundColor(.orange)
+                }
+            }
+            HStack(spacing: 10) {
+                TextField("Enter or scan barcode", text: $product.barcode)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.numbersAndPunctuation)
+                if isPro {
+                    Button { showBarcodeScanner = true } label: {
+                        Image(systemName: "barcode.viewfinder")
+                            .font(.system(size: 22))
+                            .foregroundColor(.blue)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(8)
+                    }
+                } else {
+                    Button { showBarcodeProAlert = true } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "barcode.viewfinder")
+                            Text("PRO").font(.system(size: 10, weight: .bold))
+                        }
+                        .foregroundColor(.orange)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 8)
+                        .background(Color.orange.opacity(0.15))
+                        .cornerRadius(8)
+                    }
+                }
+            }
+            if product.hasBarcode {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                    Text("Barcode saved – will appear on receipts")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(10)
+    }
+    
+    private var discountSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("DISCOUNT")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.gray)
+            VStack(spacing: 10) {
+                Picker("Type", selection: $product.discountType) {
+                    ForEach(DiscountType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented)
+                if product.discountType != .none {
+                    HStack {
+                        Text(product.discountType == .percentage ? "%" : "$")
+                            .foregroundColor(.gray).frame(width: 30)
+                        TextField("0", text: $discountText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
+                            .onChange(of: discountText) { _, v in if let d = Double(v) { product.discountValue = d } }
+                        Text("= $\(product.finalPrice, specifier: "%.2f")").foregroundColor(.orange).fontWeight(.bold)
+                    }
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+    }
+    
+    private var alertsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("ALERTS")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.gray)
+            VStack(spacing: 10) {
+                HStack {
+                    Circle().fill(Color.yellow).frame(width: 8, height: 8)
+                    Text("Low").foregroundColor(.gray).frame(width: 60, alignment: .leading)
+                    TextField("10", text: $lowStockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
+                        .onChange(of: lowStockText) { _, v in if let i = Int(v) { product.lowStockThreshold = max(1, i) } }
+                }
+                HStack {
+                    Circle().fill(Color.red).frame(width: 8, height: 8)
+                    Text("Critical").foregroundColor(.gray).frame(width: 60, alignment: .leading)
+                    TextField("5", text: $criticalStockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
+                        .onChange(of: criticalStockText) { _, v in if let i = Int(v) { product.criticalStockThreshold = max(0, i) } }
+                }
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+        }
+    }
     
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    // Product Image (Pro Feature)
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("PRODUCT IMAGE")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.gray)
-                            
-                            if !isPro {
-                                Label("PRO", systemImage: "crown.fill")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                        
-                        HStack(spacing: 12) {
-                            // Image preview
-                            if let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 80, height: 80)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.gray.opacity(0.3), lineWidth: 1)
-                                    )
-                            } else {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(.systemGray5))
-                                        .frame(width: 80, height: 80)
-                                    Image(systemName: "photo")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 8) {
-                                Button {
-                                    if isPro {
-                                        showImagePicker = true
-                                    } else {
-                                        showProAlert = true
-                                    }
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "photo.badge.plus")
-                                        Text(product.imageData == nil ? "Add Image" : "Change Image")
-                                    }
-                                    .font(.system(size: 14, weight: .medium))
-                                    .foregroundColor(isPro ? .blue : .gray)
-                                }
-                                
-                                if product.imageData != nil {
-                                    Button {
-                                        product.imageData = nil
-                                    } label: {
-                                        HStack {
-                                            Image(systemName: "trash")
-                                            Text("Remove")
-                                        }
-                                        .font(.system(size: 14, weight: .medium))
-                                        .foregroundColor(.red)
-                                    }
-                                }
-                            }
-                            
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                    }
-                    
-                    // Product Details
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("PRODUCT")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 10) {
-                            HStack {
-                                Text("Name").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("Name (max 15)", text: $product.name)
-                                    .textFieldStyle(.roundedBorder)
-                                    .onChange(of: product.name) { _, newValue in
-                                        if newValue.count > 15 {
-                                            product.name = String(newValue.prefix(15))
-                                            showAbbreviateAlert = true
-                                        }
-                                    }
-                                Text("\(product.name.count)/15")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(product.name.count >= 15 ? .red : .gray)
-                            }
-                            HStack {
-                                Text("Price $").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $priceText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
-                                    .onChange(of: priceText) { _, v in if let d = Double(v) { product.price = d } }
-                            }
-                            HStack {
-                                Text("Stock").foregroundColor(.gray).frame(width: 70, alignment: .leading)
-                                TextField("0", text: $stockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
-                                    .onChange(of: stockText) { _, v in if let i = Int(v) { product.stock = i } }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                    }
-                    
-                    // Barcode (Pro Feature)
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("BARCODE")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundColor(.gray)
-                            
-                            if !isPro {
-                                Label("PRO", systemImage: "crown.fill")
-                                    .font(.system(size: 9, weight: .bold))
-                                    .foregroundColor(.orange)
-                            }
-                        }
-                        
-                        VStack(spacing: 10) {
-                            HStack {
-                                TextField("Enter or scan barcode", text: $product.barcode)
-                                    .textFieldStyle(.roundedBorder)
-                                    .disabled(!isPro)
-                                
-                                Button {
-                                    if isPro {
-                                        showBarcodeScanner = true
-                                    } else {
-                                        showProAlert = true
-                                    }
-                                } label: {
-                                    Image(systemName: "barcode.viewfinder")
-                                        .font(.system(size: 20))
-                                        .foregroundColor(isPro ? .blue : .gray)
-                                        .frame(width: 44, height: 36)
-                                        .background(Color(.systemGray5))
-                                        .cornerRadius(8)
-                                }
-                            }
-                            
-                            if product.hasBarcode {
-                                HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundColor(.green)
-                                    Text("Barcode saved - will appear on receipts")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                    }
-                    
-                    // Discount
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("DISCOUNT")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 10) {
-                            Picker("Type", selection: $product.discountType) {
-                                ForEach(DiscountType.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                            }.pickerStyle(.segmented)
-                            
-                            if product.discountType != .none {
-                                HStack {
-                                    Text(product.discountType == .percentage ? "%" : "$")
-                                        .foregroundColor(.gray).frame(width: 30)
-                                    TextField("0", text: $discountText).textFieldStyle(.roundedBorder).keyboardType(.decimalPad)
-                                        .onChange(of: discountText) { _, v in if let d = Double(v) { product.discountValue = d } }
-                                    Text("= $\(product.finalPrice, specifier: "%.2f")").foregroundColor(.orange).fontWeight(.bold)
-                                }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                    }
-                    
-                    // Alerts
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("ALERTS")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(.gray)
-                        
-                        VStack(spacing: 10) {
-                            HStack {
-                                Circle().fill(Color.orange).frame(width: 8, height: 8)
-                                Text("Low").foregroundColor(.gray).frame(width: 60, alignment: .leading)
-                                TextField("5", text: $lowStockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
-                                    .onChange(of: lowStockText) { _, v in if let i = Int(v) { product.lowStockThreshold = max(1, i) } }
-                            }
-                            HStack {
-                                Circle().fill(Color.red).frame(width: 8, height: 8)
-                                Text("Critical").foregroundColor(.gray).frame(width: 60, alignment: .leading)
-                                TextField("2", text: $criticalStockText).textFieldStyle(.roundedBorder).keyboardType(.numberPad)
-                                    .onChange(of: criticalStockText) { _, v in if let i = Int(v) { product.criticalStockThreshold = max(0, i) } }
-                            }
-                        }
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(10)
-                    }
-                    
+                    productImageSection
+                    productDetailsSection
+                    barcodeSection
+                    discountSection
+                    alertsSection
                     Button(role: .destructive) { onDelete() } label: {
                         HStack { Image(systemName: "trash"); Text("Delete") }
                             .frame(maxWidth: .infinity).padding()
@@ -1053,20 +1146,47 @@ struct EditProductSheet: View {
             }
             .sheet(isPresented: $showImagePicker) {
                 ProductImagePicker { image in
-                    if let data = image.jpegData(compressionQuality: 0.6) {
-                        product.imageData = data
+                    let data = image.jpegData(compressionQuality: 0.6) ?? image.pngData()
+                    if let data = data {
+                        DispatchQueue.main.async {
+                            var updated = product
+                            updated.imageData = data
+                            product = updated
+                        }
                     }
                 }
             }
-            .sheet(isPresented: $showBarcodeScanner) {
-                BarcodeScannerView(scannedCode: $product.barcode) { code in
-                    product.barcode = code
+            .alert("Pro Feature", isPresented: $showProAlert) {
+                Button("Upgrade to Pro") {
+                    showProAlert = false
+                    showSubscriptionView = true
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Product images are a Pro feature. Upgrade to access.")
+            }
+            .alert("Upgrade to Pro", isPresented: $showBarcodeProAlert) {
+                Button("Upgrade Now") {
+                    showBarcodeProAlert = false
+                    showSubscriptionView = true
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Barcode scanning is a Pro feature. Upgrade to scan barcodes instantly and manage inventory faster!")
+            }
+            .fullScreenCover(isPresented: $showSubscriptionView) {
+                if let auth = authManager {
+                    SubscriptionView(authManager: auth)
                 }
             }
-            .alert("Pro Feature", isPresented: $showProAlert) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Product images and barcode scanning are Pro features. Upgrade to access these features.")
+            .sheet(isPresented: $showBarcodeScanner) {
+                BarcodeScannerView(onBarcodeScanned: { code in
+                    var updated = product
+                    updated.barcode = code
+                    product = updated
+                    showBarcodeScanner = false
+                    HapticManager.success()
+                })
             }
             .alert("Name Too Long", isPresented: $showAbbreviateAlert) {
                 Button("OK", role: .cancel) {}
@@ -1104,16 +1224,25 @@ struct ProductImagePicker: UIViewControllerRepresentable {
         }
         
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
+            let image: UIImage?
             if let edited = info[.editedImage] as? UIImage {
-                parent.onImageSelected(edited)
+                image = edited
             } else if let original = info[.originalImage] as? UIImage {
-                parent.onImageSelected(original)
+                image = original
+            } else {
+                image = nil
             }
-            parent.dismiss()
+            if let image = image {
+                self.parent.onImageSelected(image)
+            }
+            // Dismiss after a short delay so the parent view can process the state update before the sheet closes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.parent.dismiss()
+            }
         }
         
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            parent.dismiss()
+            self.parent.dismiss()
         }
     }
 }

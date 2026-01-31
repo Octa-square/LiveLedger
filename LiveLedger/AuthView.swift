@@ -151,9 +151,30 @@ struct AppUser: Codable {
 class AuthManager: ObservableObject {
     @Published var currentUser: AppUser?
     @Published var isAuthenticated: Bool = false
+    @Published var signUpError: String?
     
     private let userKey = "liveledger_user"
     private let accountsKey = "liveledger_accounts"
+    
+    /// Password validation for sign-up: min 8 characters, at least 1 uppercase, 1 lowercase, 1 number.
+    static func isValidPassword(_ password: String) -> Bool {
+        let minLength = password.count >= 8
+        let hasUppercase = password.range(of: "[A-Z]", options: .regularExpression) != nil
+        let hasLowercase = password.range(of: "[a-z]", options: .regularExpression) != nil
+        let hasNumber = password.range(of: "[0-9]", options: .regularExpression) != nil
+        return minLength && hasUppercase && hasLowercase && hasNumber
+    }
+    
+    /// Email validation for sign-up: must contain @ and valid domain (.com, .org, etc).
+    /// Rejects: "deh@gma", "test", "abc@". Accepts: "test@gmail.com", "user@yahoo.com".
+    static func isValidEmail(_ email: String) -> Bool {
+        let trimmed = email.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return false }
+        let pattern = "^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$"
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return false }
+        let range = NSRange(trimmed.startIndex..., in: trimmed)
+        return regex.firstMatch(in: trimmed, options: [], range: range) != nil
+    }
     
     init() {
         loadUser()
@@ -201,6 +222,38 @@ class AuthManager: ObservableObject {
             updateAccountInStorage(demoUser)
         }
         
+        // ACCOUNT 3: Apple Review test account (sample products with images + orders on login)
+        // Skip re-creating if user explicitly deleted it via "Remove account to sign up again"
+        let appleReviewEmail = "applereview@liveledger.com"
+        let applereviewWasDeletedByUser = UserDefaults.standard.bool(forKey: Self.applereviewDeletedByUserKey)
+        if getAccountByEmail(appleReviewEmail) == nil && !applereviewWasDeletedByUser {
+            let appleReviewUser = AppUser(
+                id: "applereview-user",
+                email: appleReviewEmail,
+                passwordHash: simpleHash("Review123!"),
+                name: "Apple Review",
+                phoneNumber: nil,
+                companyName: "Review Store",
+                storeAddress: "1 Infinite Loop",
+                businessPhone: nil,
+                currency: "USD ($)",
+                isPro: true,
+                ordersUsed: 0,
+                exportsUsed: 0,
+                referralCode: "REVIEWAPP",
+                createdAt: Date(),
+                profileImageData: nil,
+                securityQuestions: [
+                    SecurityQuestion(id: "q1", question: "What city were you born in?", answer: "review"),
+                    SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: "review"),
+                    SecurityQuestion(id: "q3", question: "What is your mother's maiden name?", answer: "review")
+                ],
+                loginAttempts: 0,
+                accountLocked: false
+            )
+            updateAccountInStorage(appleReviewUser)
+        }
+
         // ACCOUNT 2: EXPIRED SUBSCRIPTION Account for Testing Purchase Flow
         // =====================================================================
         // Apple App Store Review requires testing the EXPIRED subscription flow.
@@ -259,16 +312,16 @@ class AuthManager: ObservableObject {
     }
     
     // Listen for subscription status changes from StoreKit
+    // NOTE: We do NOT set currentUser?.isPro from this notification. StoreKit status is device/Apple ID level.
+    // Granting Pro from it would give FREE app users Pro when the device has a subscription (e.g. same Apple ID).
+    // Pro is only set via upgradeToPro() after explicit purchase or Restore in UI.
     private func setupSubscriptionObserver() {
         NotificationCenter.default.addObserver(
             forName: .subscriptionStatusChanged,
             object: nil,
             queue: .main
-        ) { [weak self] notification in
-            if let isPro = notification.userInfo?["isPro"] as? Bool {
-                self?.currentUser?.isPro = isPro
-                self?.saveUser()
-            }
+        ) { _ in
+            // No-op: do not sync notification isPro to currentUser (prevents FREE users getting Pro on launch)
         }
     }
     
@@ -317,13 +370,24 @@ class AuthManager: ObservableObject {
     
     private func getAccountByEmail(_ email: String) -> AppUser? {
         let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespaces)
-        return getAllAccounts().first(where: { $0.email == normalizedEmail })
+        return getAllAccounts().first(where: { $0.email.lowercased() == normalizedEmail })
     }
     
     // MARK: - Sign Up with Security Questions
     
     func signUp(email: String, name: String, password: String, companyName: String, currency: String, referralCode: String, phoneNumber: String = "", securityQuestions: [SecurityQuestion]) {
+        signUpError = nil
         let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespaces)
+        guard Self.isValidEmail(normalizedEmail) else {
+            signUpError = "Please enter a valid email (e.g. name@example.com)"
+            return
+        }
+        
+        // Check if email already exists (prevent duplicate accounts)
+        if getAccountByEmail(normalizedEmail) != nil {
+            signUpError = "An account with this email already exists. Please sign in instead."
+            return
+        }
         
         let user = AppUser(
             id: UUID().uuidString,
@@ -351,11 +415,16 @@ class AuthManager: ObservableObject {
         
         currentUser = user
         isAuthenticated = true
+        signUpError = nil
         saveUser()
         
-        // Reset onboarding and plan selection for new users
-        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-        UserDefaults.standard.set(false, forKey: "hasSelectedPlan")
+        // New user: must see tutorial and plan selection (per-user keys)
+        UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding_\(user.id)")
+        UserDefaults.standard.set(false, forKey: "hasSelectedPlan_\(user.id)")
+        // Clear "deleted by user" flag so applereview can be re-seeded if they delete again later (e.g. reinstall)
+        if normalizedEmail == "applereview@liveledger.com" {
+            UserDefaults.standard.removeObject(forKey: Self.applereviewDeletedByUserKey)
+        }
     }
     
     // Legacy signup without security questions (for backwards compatibility)
@@ -425,29 +494,17 @@ class AuthManager: ObservableObject {
             isAuthenticated = true
             saveUser()
             
-            // If this is the demo account, show full onboarding experience, then populate demo data
-            if normalizedEmail == "demo@liveledger.app" {
-                // Reset onboarding so they see the full demo experience
-                UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-                UserDefaults.standard.set(true, forKey: "hasSelectedPlan") // Skip plan selection (already Pro)
-                // Populate demo data after a small delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    NotificationCenter.default.post(name: .populateDemoData, object: nil)
-                }
-            }
-            
             return .success
             
         } else {
             // WRONG PASSWORD - Increment attempts
             account.loginAttempts += 1
+            updateAccountInStorage(account)
             
             if account.loginAttempts >= 4 {
-                // 4th+ failed attempt - Require security questions
-                updateAccountInStorage(account)
+                // 4th+ failed attempt - Ask for email to reset password
                 return .requiresSecurityQuestions(account)
             } else {
-                updateAccountInStorage(account)
                 let attemptsLeft = 4 - account.loginAttempts
                 return .error("Incorrect password. \(attemptsLeft) attempt(s) remaining.")
             }
@@ -590,6 +647,7 @@ class AuthManager: ObservableObject {
         currentUser = nil
         isAuthenticated = false
         UserDefaults.standard.removeObject(forKey: userKey)
+        NotificationCenter.default.post(name: .clearAllData, object: nil)
     }
     
     func deleteAccount() {
@@ -607,6 +665,46 @@ class AuthManager: ObservableObject {
         UserDefaults.standard.removeObject(forKey: "livesales_platforms")
     }
     
+    private static let applereviewDeletedByUserKey = "applereview_account_deleted_by_user"
+
+    /// Removes the account for the given email so the user can sign up again (e.g. forgot password). If that account was the current user, signs out.
+    /// Also clears legacy single-user storage (userKey) when it contains this email, so "account exists" cannot appear after delete.
+    /// For applereview@liveledger.com, sets a flag so ensureDemoAccountExists() won't re-create it on next app launch.
+    func deleteAccountByEmail(_ email: String) {
+        let normalizedEmail = email.lowercased().trimmingCharacters(in: .whitespaces)
+        signUpError = nil
+        var accounts = getAllAccounts()
+        let countBefore = accounts.count
+        accounts.removeAll(where: { $0.email.lowercased() == normalizedEmail })
+        if accounts.isEmpty {
+            UserDefaults.standard.removeObject(forKey: accountsKey)
+        } else if countBefore != accounts.count {
+            saveAllAccounts(accounts)
+        }
+        if currentUser?.email.lowercased() == normalizedEmail {
+            currentUser = nil
+            isAuthenticated = false
+        }
+        // Always clear legacy single-user storage if it holds this email (so sign-up doesn’t see “account exists” after delete)
+        if let data = UserDefaults.standard.data(forKey: userKey),
+           let savedUser = try? JSONDecoder().decode(AppUser.self, from: data),
+           savedUser.email.lowercased() == normalizedEmail {
+            UserDefaults.standard.removeObject(forKey: userKey)
+        }
+        // Prevent ensureDemoAccountExists() from re-creating applereview on next app launch
+        if normalizedEmail == "applereview@liveledger.com" {
+            UserDefaults.standard.set(true, forKey: Self.applereviewDeletedByUserKey)
+        }
+        // Force sync so sign-up immediately sees the delete
+        UserDefaults.standard.synchronize()
+    }
+    
+    /// Call after "Delete My Data" — clears in-memory user state. UserDefaults already cleared by DataManager.
+    func signOutAfterDeleteAllData() {
+        currentUser = nil
+        isAuthenticated = false
+    }
+    
     func updatePassword(newPassword: String) {
         currentUser?.passwordHash = simpleHash(newPassword)
         saveUser()
@@ -615,50 +713,6 @@ class AuthManager: ObservableObject {
     func updateSecurityQuestions(_ questions: [SecurityQuestion]) {
         currentUser?.securityQuestions = questions
         saveUser()
-    }
-    
-    /// Try Demo Mode - creates a TRIAL account with FREE tier limits
-    /// Different from Apple demo (demo@liveledger.app) which has Pro for testing
-    /// Trial users get 20 orders max, then must upgrade to Pro
-    func startDemoMode() {
-        // Generate unique trial email so each trial is fresh
-        let trialID = UUID().uuidString.prefix(8).lowercased()
-        let trialEmail = "trial-\(trialID)@liveledger.app"
-        
-        // Create trial user with FREE tier (20 orders limit)
-        let trialUser = AppUser(
-            id: "trial-user-\(trialID)",
-            email: trialEmail,
-            passwordHash: simpleHash("trial"),
-            name: "Trial User",
-            phoneNumber: nil,
-            companyName: "My Store",
-            storeAddress: nil,
-            businessPhone: nil,
-            currency: "USD ($)",
-            isPro: false, // FREE tier - 20 orders max, then must upgrade
-            ordersUsed: 0,
-            exportsUsed: 0,
-            referralCode: "TRIAL\(trialID.uppercased())",
-            createdAt: Date(),
-            profileImageData: nil,
-            securityQuestions: nil,
-            loginAttempts: 0,
-            accountLocked: false
-        )
-        
-        currentUser = trialUser
-        isAuthenticated = true
-        saveUser()
-        
-        // Skip onboarding for trial
-        UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
-        
-        // Show plan selection so they see upgrade options
-        UserDefaults.standard.set(false, forKey: "hasSelectedPlan")
-        
-        // Trigger demo data population
-        NotificationCenter.default.post(name: .populateDemoData, object: nil)
     }
     
     // MARK: - Check if email exists
@@ -673,9 +727,10 @@ class AuthManager: ObservableObject {
     }
 }
 
-// Notification for demo data population
+// Notifications
 extension Notification.Name {
     static let populateDemoData = Notification.Name("populateDemoData")
+    static let clearAllData = Notification.Name("clearAllData")
 }
 
 // MARK: - Logo View (Simplified for better rendering)
@@ -739,6 +794,9 @@ struct AuthView: View {
     @State private var showConfirmPassword = false
     @State private var showErrors = false
     @State private var loginError: String?
+    @State private var emailError: String?
+    @State private var passwordError: String?
+    @State private var confirmError: String?
     @State private var passwordFieldTouched = false
     @State private var showPasswordRequirements = false
     
@@ -760,12 +818,9 @@ struct AuthView: View {
     @State private var confirmNewPassword = ""
     @State private var showForgotPasswordSheet = false
     
-    // Password validation
+    // Password validation: min 8 chars, 1 uppercase, 1 lowercase, 1 number
     private var isPasswordValid: Bool {
-        let hasLetter = password.rangeOfCharacter(from: .letters) != nil
-        let hasSymbol = password.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?")) != nil
-        let hasMinLength = password.count >= 6
-        return hasLetter && hasSymbol && hasMinLength
+        AuthManager.isValidPassword(password)
     }
     
     var body: some View {
@@ -800,11 +855,12 @@ struct AuthView: View {
                                 .font(.system(size: isLoginMode ? 28 : 24, weight: .bold, design: .rounded))
                                 .foregroundColor(.white)
                             
-                            if isLoginMode {
-                                Text("Track sales in real-time")
-                                    .font(.caption)
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
+                            Text("Complete sales and inventory management for social sellers")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.7))
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .padding(.horizontal, 16)
                         }
                         .padding(.bottom, isLoginMode ? 16 : 8)
                         
@@ -852,39 +908,6 @@ struct AuthView: View {
                             } else {
                                 signUpFormContent
                             }
-                            
-                            // Compact Divider
-                            HStack {
-                                Rectangle().fill(Color.white.opacity(0.3)).frame(height: 1)
-                                Text("or").font(.caption2).foregroundColor(.white.opacity(0.5))
-                                Rectangle().fill(Color.white.opacity(0.3)).frame(height: 1)
-                            }
-                            .padding(.vertical, 4)
-                            
-                            // Demo Mode Button
-                            Button {
-                                authManager.startDemoMode()
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: "play.circle.fill")
-                                        .font(.caption)
-                                    Text("Try Demo Mode")
-                                        .font(.caption.weight(.semibold))
-                                }
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 10)
-                                .background(Color.white.opacity(0.15))
-                                .cornerRadius(8)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 8)
-                                        .strokeBorder(Color.white.opacity(0.3), lineWidth: 1)
-                                )
-                            }
-                            
-                            Text("Explore all features with sample data")
-                                .font(.system(size: 10))
-                                .foregroundColor(.white.opacity(0.5))
                         }
                         .padding(.horizontal, 16)
                         .padding(.vertical, 14)
@@ -915,7 +938,7 @@ struct AuthView: View {
                                 ], spacing: 3) {
                                     CompactFeatureItem(icon: "chart.line.uptrend.xyaxis", text: "Real-time tracking")
                                     CompactFeatureItem(icon: "apps.iphone", text: "Multi-platform")
-                                    CompactFeatureItem(icon: "timer", text: "Live timer")
+                                    CompactFeatureItem(icon: "dollarsign.circle.fill", text: "Payment tracking")
                                     CompactFeatureItem(icon: "network", text: "Network analyzer")
                                     CompactFeatureItem(icon: "bell.badge", text: "Smart alerts")
                                     CompactFeatureItem(icon: "chart.pie", text: "Analytics")
@@ -991,10 +1014,7 @@ struct AuthView: View {
     }
     
     private var isNewPasswordValid: Bool {
-        let hasLetter = newPassword.rangeOfCharacter(from: .letters) != nil
-        let hasSymbol = newPassword.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?")) != nil
-        let hasMinLength = newPassword.count >= 6
-        return hasLetter && hasSymbol && hasMinLength
+        AuthManager.isValidPassword(newPassword)
     }
     
     // MARK: - Login Form
@@ -1063,13 +1083,13 @@ struct AuthView: View {
                 case .error(let message):
                     loginError = message
                 case .requiresSecurityQuestions(let account):
-                    pendingAccount = account
-                    verifyAnswer1 = ""
-                    verifyAnswer2 = ""
-                    verifyAnswer3 = ""
-                    showSecurityQuestionsModal = true
+                    resetEmail = account.email
+                    showForgotPasswordSheet = true
+                    loginError = nil
                 case .accountLocked:
-                    loginError = "Account locked. Use 'Forgot Password?' to reset."
+                    resetEmail = email
+                    showForgotPasswordSheet = true
+                    loginError = "Account locked. Enter your email to reset your password."
                 }
             } label: {
                 Text("Log In")
@@ -1109,6 +1129,19 @@ struct AuthView: View {
                 HStack(spacing: 8) {
                     CompactTextField(placeholder: "Full Name", text: $name, icon: "person.fill")
                     CompactTextField(placeholder: "Email", text: $email, icon: "envelope.fill", keyboardType: .emailAddress)
+                        .onChange(of: email) { _, newValue in
+                            if !newValue.isEmpty && !AuthManager.isValidEmail(newValue) {
+                                emailError = "Please enter a valid email (e.g. name@example.com)"
+                            } else {
+                                emailError = nil
+                            }
+                        }
+                }
+                if let error = emailError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 
                 // Phone number
@@ -1128,12 +1161,26 @@ struct AuthView: View {
                             .onChange(of: password) { _, _ in
                                 if !password.isEmpty { showPasswordRequirements = true }
                             }
+                            .onSubmit {
+                                if !AuthManager.isValidPassword(password) {
+                                    passwordError = "Password must be 8+ characters with uppercase, lowercase, and number"
+                                } else {
+                                    passwordError = nil
+                                }
+                            }
                     } else {
                         SecureField("Password", text: $password)
                             .font(.caption)
                             .foregroundColor(.white)
                             .onChange(of: password) { _, _ in
                                 if !password.isEmpty { showPasswordRequirements = true }
+                            }
+                            .onSubmit {
+                                if !AuthManager.isValidPassword(password) {
+                                    passwordError = "Password must be 8+ characters with uppercase, lowercase, and number"
+                                } else {
+                                    passwordError = nil
+                                }
                             }
                     }
                     Button { showPassword.toggle() } label: {
@@ -1158,11 +1205,16 @@ struct AuthView: View {
                     HStack(spacing: 4) {
                         Image(systemName: "info.circle.fill")
                             .font(.system(size: 9))
-                        Text("Must contain at least one letter and one symbol (!@#$%...)")
+                        Text("Password must be at least 8 characters with uppercase, lowercase, and number")
                             .font(.system(size: 9))
                     }
                     .foregroundColor(.orange)
                     .padding(.horizontal, 4)
+                }
+                if let error = passwordError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
                 }
             }
             
@@ -1178,11 +1230,25 @@ struct AuthView: View {
                             .font(.caption)
                             .foregroundColor(.white)
                             .onTapGesture { passwordFieldTouched = true }
+                            .onChange(of: confirmPassword) { _, newValue in
+                                if !newValue.isEmpty && newValue != password {
+                                    confirmError = "Passwords must match"
+                                } else {
+                                    confirmError = nil
+                                }
+                            }
                     } else {
                         SecureField("Confirm Password", text: $confirmPassword)
                             .font(.caption)
                             .foregroundColor(.white)
                             .onTapGesture { passwordFieldTouched = true }
+                            .onChange(of: confirmPassword) { _, newValue in
+                                if !newValue.isEmpty && newValue != password {
+                                    confirmError = "Passwords must match"
+                                } else {
+                                    confirmError = nil
+                                }
+                            }
                     }
                     Button { showConfirmPassword.toggle() } label: {
                         Image(systemName: showConfirmPassword ? "eye.slash.fill" : "eye.fill")
@@ -1204,6 +1270,11 @@ struct AuthView: View {
                     }
                     .foregroundColor(password == confirmPassword ? .green : .red)
                     .padding(.horizontal, 4)
+                }
+                if let error = confirmError {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.red)
                 }
             }
             
@@ -1315,12 +1386,13 @@ struct AuthView: View {
             // Error Summary
             if showErrors {
                 VStack(alignment: .leading, spacing: 2) {
+                    if let error = authManager.signUpError { errorText(error) }
                     if signupStep == 1 {
                         // Step 1 validation errors
                         if name.isEmpty { errorText("Full name required") }
-                        if email.isEmpty || !email.contains("@") { errorText("Valid email required") }
+                        if email.isEmpty || !AuthManager.isValidEmail(email) { errorText("Valid email required (e.g. name@domain.com)") }
                         if authManager.emailExists(email) { errorText("Email already registered") }
-                        if !isPasswordValid { errorText("Password needs letter + symbol") }
+                        if !isPasswordValid { errorText("Password must be at least 8 characters with uppercase, lowercase, and number") }
                         if password != confirmPassword { errorText("Passwords must match") }
                         if !agreedToTerms { errorText("Accept terms to continue") }
                     } else {
@@ -1342,7 +1414,7 @@ struct AuthView: View {
                 if signupStep == 1 {
                     // Step 1: Validate basic info, then go to step 2
                     let step1Valid = !name.isEmpty && 
-                                     !email.isEmpty && email.contains("@") && 
+                                     !email.isEmpty && AuthManager.isValidEmail(email) && 
                                      !authManager.emailExists(email) &&
                                      isPasswordValid && 
                                      password == confirmPassword && 
@@ -1355,7 +1427,7 @@ struct AuthView: View {
                     }
                 } else {
                     // Step 2: Validate security questions, then create account
-                    if areSecurityQuestionsAnswered {
+                    if areSecurityQuestionsAnswered, AuthManager.isValidEmail(email) {
                         let questions = [
                             SecurityQuestion(id: "q1", question: "What city were you born in?", answer: securityAnswer1.lowercased().trimmingCharacters(in: .whitespaces)),
                             SecurityQuestion(id: "q2", question: "What is the name of your first pet?", answer: securityAnswer2.lowercased().trimmingCharacters(in: .whitespaces)),
@@ -1372,6 +1444,7 @@ struct AuthView: View {
                             phoneNumber: phoneNumber,
                             securityQuestions: questions
                         )
+                        if authManager.signUpError != nil { showErrors = true }
                     }
                 }
             } label: {
@@ -1415,6 +1488,9 @@ struct AuthView: View {
         securityAnswer3 = ""
         showErrors = false
         loginError = nil
+        emailError = nil
+        passwordError = nil
+        confirmError = nil
         showPassword = false
         showConfirmPassword = false
         passwordFieldTouched = false
@@ -1566,10 +1642,7 @@ struct PasswordResetSheet: View {
     @State private var showPassword = false
     
     var isPasswordValid: Bool {
-        let hasLetter = newPassword.rangeOfCharacter(from: .letters) != nil
-        let hasSymbol = newPassword.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?")) != nil
-        let hasMinLength = newPassword.count >= 6
-        return hasLetter && hasSymbol && hasMinLength
+        AuthManager.isValidPassword(newPassword)
     }
     
     var body: some View {
@@ -1607,7 +1680,7 @@ struct PasswordResetSheet: View {
                         .textFieldStyle(.roundedBorder)
                         
                         if !newPassword.isEmpty && !isPasswordValid {
-                            Text("Must contain at least one letter and one symbol")
+                            Text("Password must be at least 8 characters with uppercase, lowercase, and number")
                                 .font(.caption)
                                 .foregroundColor(.orange)
                         }
@@ -1832,10 +1905,7 @@ struct ForgotPasswordSheet: View {
     }
     
     private var isNewPasswordValid: Bool {
-        let hasLetter = newPassword.rangeOfCharacter(from: .letters) != nil
-        let hasSymbol = newPassword.rangeOfCharacter(from: CharacterSet(charactersIn: "!@#$%^&*()_+-=[]{}|;':\",./<>?")) != nil
-        let hasMinLength = newPassword.count >= 6
-        return hasLetter && hasSymbol && hasMinLength
+        AuthManager.isValidPassword(newPassword)
     }
 }
 

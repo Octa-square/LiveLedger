@@ -10,8 +10,15 @@ import SwiftUI
 struct MainContentView: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
-    @StateObject private var viewModel = SalesViewModel()
-    @StateObject private var themeManager = ThemeManager()
+    @StateObject private var viewModel: SalesViewModel
+    @StateObject private var themeManager: ThemeManager
+
+    init(authManager: AuthManager, localization: LocalizationManager) {
+        self.authManager = authManager
+        self.localization = localization
+        _viewModel = StateObject(wrappedValue: SalesViewModel())
+        _themeManager = StateObject(wrappedValue: ThemeManager(userId: authManager.currentUser?.id ?? ""))
+    }
     @State private var showSettings = false
     @State private var showSubscription = false
     @State private var showLimitAlert = false
@@ -30,6 +37,9 @@ struct MainContentView: View {
     @State private var selectedProductForOrder: Product?
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
+    @State private var buyerPhone: String = ""
+    @State private var buyerNotes: String = ""
+    @State private var orderSource: OrderSource = .liveStream
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -105,6 +115,18 @@ struct MainContentView: View {
                             )
                         }
                         
+                        // CONTAINER: Enhanced Statistics Dashboard
+                        gridContainer {
+                            StatisticsDashboardView(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization,
+                                authManager: authManager,
+                                showSubscription: $showSubscription,
+                                currencySymbol: authManager.currentUser?.currencySymbol ?? "$"
+                            )
+                        }
+                        
                         // FREE TIER BANNER (if applicable) - same styling
                         if let user = authManager.currentUser, !user.isPro {
                             gridContainer {
@@ -141,7 +163,8 @@ struct MainContentView: View {
                                     withAnimation(.easeIn(duration: 0.2)) {
                                         selectedProductForOrder = product
                                     }
-                                }
+                                },
+                                onUpgrade: { showSubscription = true }
                             )
                         }
                         
@@ -160,6 +183,10 @@ struct MainContentView: View {
                     .padding(.top, 4)  // Minimal top padding - start near status bar
                     .padding(.bottom, 12) // Small gap at bottom for wallpaper peek
                 }
+                .refreshable {
+                    // Force stats to recalc when user pulls to refresh
+                    try? await Task.sleep(nanoseconds: 400_000_000)
+                }
                 .ignoresSafeArea(.keyboard) // Keep screen static - keyboard hovers over content
             }
         }
@@ -168,34 +195,45 @@ struct MainContentView: View {
             if let product = selectedProductForOrder {
                 BuyerPopupView(
                     product: product,
+                    viewModel: viewModel,
                     buyerName: $buyerName,
                     orderQuantity: $orderQuantity,
+                    phoneNumber: $buyerPhone,
+                    customerNotes: $buyerNotes,
+                    orderSource: $orderSource,
                     onCancel: {
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     },
                     onAdd: {
-                        // Create the order
                         let platform = viewModel.selectedPlatform ?? .all
                         let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
                         viewModel.createOrder(
                             product: product,
                             buyerName: finalName,
-                            phoneNumber: "",
+                            phoneNumber: buyerPhone,
                             address: "",
+                            customerNotes: buyerNotes.isEmpty ? nil : buyerNotes,
+                            orderSource: orderSource,
                             platform: platform,
                             quantity: orderQuantity
                         )
                         authManager.incrementOrderCount()
-                        // Dismiss popup
+                        #if os(iOS)
+                        AppReviewHelper.notifyOrderCountReached(viewModel.orders.count)
+                        #endif
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     }
                 )
                 .ignoresSafeArea()
@@ -244,14 +282,17 @@ struct MainContentView: View {
                     ShareSheet(items: [url])
                         .onAppear {
                             authManager.incrementExportCount()
+                            #if os(iOS)
+                            AppReviewHelper.notifyExportCompleted()
+                            #endif
                         }
                 }
             }
         }
         .sheet(isPresented: $showSettings) {
-            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization)
+            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization, viewModel: viewModel)
         }
-        .sheet(isPresented: $showSubscription) {
+        .fullScreenCover(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
         }
     }

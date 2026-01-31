@@ -6,19 +6,26 @@
 //
 
 import SwiftUI
+import StoreKit
 #if os(iOS)
 import UIKit
 #endif
 
+/// Per-user keys so returning users skip onboarding/plan selection
+private func onboardingKey(_ userId: String) -> String { "hasCompletedOnboarding_\(userId)" }
+private func planKey(_ userId: String) -> String { "hasSelectedPlan_\(userId)" }
+
 @main
 struct LiveLedgerApp: App {
     @AppStorage("isLoggedIn") private var isLoggedIn = false
+    @AppStorage("hasSelectedLanguage") private var hasSelectedLanguage = false
+    @State private var hasCompletedOnboarding = false
+    @State private var hasSelectedPlan = false
     @StateObject private var authManager = AuthManager()
     @StateObject private var localization = LocalizationManager.shared
     @Environment(\.scenePhase) private var scenePhase
     
     init() {
-        // DEBUG: Reset all data on simulator launch for fresh testing
         #if targetEnvironment(simulator)
         resetForSimulator()
         #endif
@@ -27,20 +34,41 @@ struct LiveLedgerApp: App {
     var body: some Scene {
         WindowGroup {
             Group {
-                if isLoggedIn {
-                    MainAppView(authManager: authManager, localization: localization)
-                } else {
+                if !hasSelectedLanguage {
+                    LanguageSelectionView(localization: localization, hasSelectedLanguage: $hasSelectedLanguage)
+                } else if !isLoggedIn {
                     SimpleAuthView(authManager: authManager)
                         .onChange(of: authManager.isAuthenticated) { _, authenticated in
                             if authenticated { isLoggedIn = true }
                         }
+                } else if !hasCompletedOnboarding {
+                    OnboardingView(authManager: authManager, localization: localization, hasCompletedOnboarding: Binding(
+                        get: { hasCompletedOnboarding },
+                        set: { v in
+                            hasCompletedOnboarding = v
+                            if let id = authManager.currentUser?.id { UserDefaults.standard.set(v, forKey: onboardingKey(id)) }
+                        }
+                    ))
+                } else if !hasSelectedPlan {
+                    PlanSelectionView(authManager: authManager, hasSelectedPlan: Binding(
+                        get: { hasSelectedPlan },
+                        set: { v in
+                            hasSelectedPlan = v
+                            if let id = authManager.currentUser?.id { UserDefaults.standard.set(v, forKey: planKey(id)) }
+                        }
+                    ))
+                } else {
+                    MainAppView(authManager: authManager, localization: localization)
                 }
             }
             .environmentObject(localization)
             .onAppear {
                 if authManager.isAuthenticated { isLoggedIn = true }
-                // Set minimum window size to prevent shrinking too small
+                refreshPerUserFlags()
                 setMinimumWindowSize()
+            }
+            .onChange(of: authManager.currentUser?.id) { _, _ in
+                refreshPerUserFlags()
             }
             .onChange(of: scenePhase) { oldPhase, newPhase in
                 if newPhase == .background || newPhase == .inactive {
@@ -52,12 +80,19 @@ struct LiveLedgerApp: App {
         .defaultSize(width: 680, height: 1100)
         .windowResizability(.contentMinSize)
         #endif
+        // Only open when user taps the app icon – do not auto-open from external events (e.g. URL, Handoff)
+        .handlesExternalEvents(matching: Set<String>())
+    }
+    
+    private func refreshPerUserFlags() {
+        let userId = authManager.currentUser?.id ?? ""
+        hasCompletedOnboarding = userId.isEmpty ? false : UserDefaults.standard.bool(forKey: onboardingKey(userId))
+        hasSelectedPlan = userId.isEmpty ? false : UserDefaults.standard.bool(forKey: planKey(userId))
     }
     
     private func setMinimumWindowSize() {
         #if os(iOS)
         if UIDevice.current.userInterfaceIdiom == .pad {
-            // Set minimum window size - window cannot shrink below this
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
                 windowScene.sizeRestrictions?.minimumSize = CGSize(width: 660, height: 1000)
             }
@@ -77,6 +112,8 @@ struct LiveLedgerApp: App {
         // Clear specific keys
         defaults.removeObject(forKey: "hasCompletedOnboarding")
         defaults.removeObject(forKey: "hasSelectedPlan")
+        defaults.removeObject(forKey: "sample_data_loaded_for_review_account")
+        defaults.removeObject(forKey: "hasSelectedLanguage")
         defaults.removeObject(forKey: "currentUser")
         defaults.removeObject(forKey: "allAccounts")
         defaults.removeObject(forKey: "savedProducts")
@@ -84,6 +121,7 @@ struct LiveLedgerApp: App {
         defaults.removeObject(forKey: "selectedTheme")
         defaults.removeObject(forKey: "overlay_position_x")
         defaults.removeObject(forKey: "overlay_position_y")
+        defaults.removeObject(forKey: "app_language")
         defaults.synchronize()
         
         print("🔄 Simulator: All data cleared for fresh start")
@@ -119,7 +157,7 @@ struct RootView: View {
                         PlanSelectionView(authManager: authManager, hasSelectedPlan: $hasSelectedPlan)
                     }
                 } else {
-                    OnboardingView(localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
+                    OnboardingView(authManager: authManager, localization: localization, hasCompletedOnboarding: $hasCompletedOnboarding)
                 }
             } else {
                 AuthView(authManager: authManager)
@@ -159,14 +197,15 @@ struct RootView: View {
 // MARK: - Plan Selection View (Shown before entering app)
 struct PlanSelectionView: View {
     @ObservedObject var authManager: AuthManager
+    @ObservedObject var localization = LocalizationManager.shared
     @Binding var hasSelectedPlan: Bool
-    @State private var selectedPlan: PlanType = .pro
-    @State private var isProcessing = false
-    @State private var showSuccess = false
-    @State private var showSubscribeConfirmation = false
+    @StateObject private var storeKit = StoreKitManager.shared
+    @State private var selectedPlan: PlanType? = nil  // No default – user must choose
+    @State private var isPurchasing = false
+    @State private var purchaseError: String? = nil
     
     enum PlanType {
-        case basic, pro
+        case basic, monthly, yearly
     }
     
     var body: some View {
@@ -199,33 +238,34 @@ struct PlanSelectionView: View {
                             }
                         }
                         
-                        Text("Choose Your Plan")
+                        Text(localization.localized(.choosePlan))
                             .font(.system(size: 22, weight: .bold))
                         
-                        Text("Select how you want to use LiveLedger")
+                        Text(localization.localized(.selectPlanDescription))
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
                     .padding(.top, 10)
                     
-                    // Plan Cards - Compact
+                    // Plan Cards - 3 options: Basic, Monthly, Yearly
                     VStack(spacing: 10) {
-                        // Basic Plan Card
+                        // 1. Basic Plan Card
                         SelectablePlanCard(
-                            title: "Basic",
-                            price: "Free",
-                            period: "forever",
-                            description: "Great for getting started",
+                            localization: localization,
+                            title: localization.localized(.basicPlan),
+                            price: localization.localized(.free),
+                            period: localization.localized(.forever),
+                            description: localization.localized(.greatForStarting),
                             features: [
-                                "First 20 orders free",
-                                "Basic inventory management",
-                                "10 CSV exports",
-                                "Standard reports"
+                                localization.localized(.firstOrdersFree),
+                                localization.localized(.basicInventory),
+                                localization.localized(.csvExports),
+                                localization.localized(.standardReports)
                             ],
                             limitations: [
-                                "Limited orders",
-                                "No advanced filters",
-                                "No product images"
+                                localization.localized(.limitedOrders),
+                                localization.localized(.noAdvancedFilters),
+                                localization.localized(.noProductImages)
                             ],
                             isSelected: selectedPlan == .basic,
                             isPro: false
@@ -233,63 +273,87 @@ struct PlanSelectionView: View {
                             withAnimation { selectedPlan = .basic }
                         }
                         
-                        // Pro Plan Card (Recommended)
+                        // 2. Pro Monthly Card (same Pro features as Yearly; only billing differs)
                         SelectablePlanCard(
-                            title: "Pro",
+                            localization: localization,
+                            title: "Pro Monthly",
                             price: "$19.99",
-                            period: "/month",
-                            description: "Unlimited everything for serious sellers",
+                            period: localization.localized(.perMonth),
+                            description: localization.localized(.unlimited),
                             features: [
-                                "Unlimited orders",
-                                "Unlimited exports",
-                                "Product images",
-                                "Advanced analytics",
-                                "Order filters",
-                                "Priority support",
-                                "All future features"
+                                localization.localized(.unlimitedOrders),
+                                localization.localized(.unlimitedExports),
+                                localization.localized(.productImages),
+                                localization.localized(.prioritySupport),
+                                localization.localized(.allFutureFeatures)
                             ],
                             limitations: [],
-                            isSelected: selectedPlan == .pro,
-                            isPro: true
+                            isSelected: selectedPlan == .monthly,
+                            isPro: false
                         ) {
-                            withAnimation { selectedPlan = .pro }
+                            withAnimation { selectedPlan = .monthly }
+                        }
+                        
+                        // 3. Pro Yearly Card (same Pro features as Monthly)
+                        SelectablePlanCard(
+                            localization: localization,
+                            title: "Pro Yearly",
+                            price: "$179.99",
+                            period: "/year",
+                            description: "Save $60 vs monthly",
+                            features: [
+                                localization.localized(.unlimitedOrders),
+                                localization.localized(.unlimitedExports),
+                                localization.localized(.productImages),
+                                localization.localized(.prioritySupport),
+                                localization.localized(.allFutureFeatures)
+                            ],
+                            limitations: [],
+                            isSelected: selectedPlan == .yearly,
+                            isPro: false
+                        ) {
+                            withAnimation { selectedPlan = .yearly }
                         }
                     }
                     .padding(.horizontal)
                     
-                    // Continue Button
+                    // Continue / Subscribe Button
                     Button {
-                        Task {
-                            await selectPlan()
+                        if let plan = selectedPlan {
+                            if plan == .basic {
+                                completePlanSelection()
+                            } else if plan == .monthly {
+                                Task { await purchasePro(monthly: true) }
+                            } else if plan == .yearly {
+                                Task { await purchasePro(monthly: false) }
+                            }
                         }
                     } label: {
                         HStack {
-                            if isProcessing {
+                            if isPurchasing {
                                 ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: selectedPlan == .pro ? .black : .white))
-                            } else {
-                                if selectedPlan == .pro {
-                                    Image(systemName: "crown.fill")
-                                }
-                                Text(selectedPlan == .pro ? "Continue with Pro" : "Continue with Basic")
-                                    .fontWeight(.bold)
+                                    .progressViewStyle(CircularProgressViewStyle(tint: selectedPlan == .basic ? .white : .black))
+                            } else if selectedPlan != .basic && selectedPlan != nil {
+                                Image(systemName: "crown.fill")
                             }
+                            Text(buttonTitle)
+                                .fontWeight(.bold)
                         }
-                        .foregroundColor(selectedPlan == .pro ? .black : .white)
+                        .foregroundColor(selectedPlan == .basic ? .white : .black)
                         .frame(maxWidth: .infinity)
                         .padding()
                         .background(
-                            selectedPlan == .pro ?
-                            LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing) :
-                            LinearGradient(colors: [Color(hex: "00CC88"), Color(hex: "00AA77")], startPoint: .leading, endPoint: .trailing)
+                            selectedPlan == .basic ?
+                            LinearGradient(colors: [Color(hex: "00CC88"), Color(hex: "00AA77")], startPoint: .leading, endPoint: .trailing) :
+                            LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
                         )
                         .cornerRadius(12)
                     }
-                    .disabled(isProcessing)
+                    .disabled(selectedPlan == nil || isPurchasing)
                     .padding(.horizontal)
                     
-                    if selectedPlan == .pro {
-                        Text("Cancel anytime • 7-day free trial")
+                    if selectedPlan == .monthly || selectedPlan == .yearly {
+                        Text("\(localization.localized(.cancelAnytime)) • \(localization.localized(.dayFreeTrial))")
                             .font(.caption)
                             .foregroundColor(.gray)
                     }
@@ -298,139 +362,79 @@ struct PlanSelectionView: View {
                 }
             }
             .navigationTitle("")
-            .navigationBarHidden(true)
-            .alert("Welcome to Pro! 🎉", isPresented: $showSuccess) {
-                Button("Let's Go!") {
-                    completePlanSelection()
-                }
-            } message: {
-                Text("Your Pro subscription is now active. Enjoy unlimited orders and all premium features!")
-            }
-            .sheet(isPresented: $showSubscribeConfirmation) {
-                subscriptionConfirmationSheet
-            }
-        }
-    }
-    
-    // MARK: - Subscription Confirmation Sheet
-    private var subscriptionConfirmationSheet: some View {
-        VStack(spacing: 20) {
-            // Header
-            VStack(spacing: 8) {
-                Image(systemName: "crown.fill")
-                    .font(.system(size: 50))
-                    .foregroundColor(.yellow)
-                
-                Text("Upgrade to Pro")
-                    .font(.title2.bold())
-                
-                Text("$19.99/month")
-                    .font(.title3)
-                    .foregroundColor(.orange)
-            }
-            .padding(.top, 30)
-            
-            // Benefits
-            VStack(alignment: .leading, spacing: 10) {
-                benefitRow(icon: "infinity", text: "Unlimited orders")
-                benefitRow(icon: "photo.fill", text: "Product images")
-                benefitRow(icon: "chart.bar.fill", text: "Advanced analytics")
-                benefitRow(icon: "arrow.down.doc.fill", text: "Unlimited exports")
-                benefitRow(icon: "star.fill", text: "Priority support")
-            }
-            .padding()
-            .background(Color.gray.opacity(0.1))
-            .cornerRadius(12)
-            .padding(.horizontal)
-            
-            Spacer()
-            
-            // Subscribe Button
-            Button {
-                Task {
-                    await processSubscription()
-                }
-            } label: {
-                HStack {
-                    if isProcessing {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
-                    } else {
-                        Image(systemName: "creditcard.fill")
-                        Text("Subscribe Now")
-                            .fontWeight(.bold)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Skip") {
+                        selectedPlan = .basic
+                        completePlanSelection()
                     }
                 }
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    LinearGradient(colors: [.yellow, .orange], startPoint: .leading, endPoint: .trailing)
-                )
-                .cornerRadius(12)
             }
-            .disabled(isProcessing)
-            .padding(.horizontal)
-            
-            // Cancel Button
-            Button {
-                showSubscribeConfirmation = false
-            } label: {
-                Text("Maybe Later")
-                    .foregroundColor(.gray)
+            .onAppear {
+                storeKit.markPaywallShown()
             }
-            .disabled(isProcessing)
-            .padding(.bottom, 30)
-        }
-        .presentationDetents([.medium])
-    }
-    
-    private func benefitRow(icon: String, text: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 16))
-                .foregroundColor(.green)
-                .frame(width: 24)
-            
-            Text(text)
-                .font(.subheadline)
+            .alert("Purchase Error", isPresented: Binding(get: { purchaseError != nil }, set: { if !$0 { purchaseError = nil } })) {
+                Button("OK") { purchaseError = nil }
+            } message: {
+                Text(purchaseError ?? "")
+            }
         }
     }
     
-    private func selectPlan() async {
-        if selectedPlan == .basic {
-            // Continue with Basic - no subscription needed
-            completePlanSelection()
-        } else {
-            // Show subscription confirmation for Pro
-            showSubscribeConfirmation = true
+    private var buttonTitle: String {
+        if selectedPlan == nil { return "Select a Plan" }
+        if selectedPlan == .basic { return localization.localized(.continueWithBasic) }
+        if selectedPlan == .monthly {
+            return "Subscribe - \(storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")/month"
         }
-    }
-    
-    private func processSubscription() async {
-        isProcessing = true
-        
-        // Simulate subscription processing
-        try? await Task.sleep(nanoseconds: 1_500_000_000) // 1.5 seconds
-        
-        // Upgrade to Pro
-        authManager.upgradeToPro()
-        
-        // Play success sound
-        SoundManager.shared.playOrderAddedSound()
-        
-        isProcessing = false
-        showSuccess = true
+        return "Subscribe - \(storeKit.proYearlyProduct?.displayPrice ?? "$179.99")/year"
     }
     
     private func completePlanSelection() {
-        UserDefaults.standard.set(true, forKey: "hasSelectedPlan")
         hasSelectedPlan = true
+        // QA RULE: Sample products MUST load for applereview@liveledger.com. Post notification so observer loads after MainAppView exists.
+        let email = (authManager.currentUser?.email ?? "").lowercased()
+        if email == "applereview@liveledger.com" {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NotificationCenter.default.post(name: .populateDemoData, object: nil, userInfo: ["email": authManager.currentUser?.email ?? "", "isPro": authManager.currentUser?.isPro ?? false])
+            }
+        }
+    }
+    
+    private func purchasePro(monthly: Bool) async {
+        isPurchasing = true
+        purchaseError = nil
+        defer { isPurchasing = false }
+        
+        let product = monthly ? storeKit.proMonthlyProduct : storeKit.proYearlyProduct
+        guard let product = product else {
+            purchaseError = "Product not available. Please try again later."
+            return
+        }
+        
+        do {
+            try await storeKit.purchase(product)
+            await MainActor.run {
+                authManager.upgradeToPro()
+                completePlanSelection()
+            }
+        } catch let error as PurchaseError {
+            await MainActor.run {
+                if case .purchaseCancelled = error { return }
+                purchaseError = error.localizedDescription
+            }
+        } catch {
+            await MainActor.run {
+                purchaseError = error.localizedDescription
+            }
+        }
     }
 }
 
 // MARK: - Selectable Plan Card
 struct SelectablePlanCard: View {
+    let localization: LocalizationManager
     let title: String
     let price: String
     let period: String

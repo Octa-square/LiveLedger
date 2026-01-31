@@ -109,7 +109,7 @@ struct PlatformSelectorView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            // ROW 1: "Platform" | Timer (center) | "+ Add"
+            // ROW 1: "Platform" | elapsed time (center) | "+ Add"
             HStack(alignment: .center, spacing: 0) {
                 Text(localization.localized(.platform))
                     .font(.system(size: 13, weight: .bold))

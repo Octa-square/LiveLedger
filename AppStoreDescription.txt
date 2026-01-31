@@ -17,47 +17,58 @@ live sales,tiktok shop,instagram live,facebook live,order tracker,pos,inventory,
                               DESCRIPTION
 ================================================================================
 
-Selling on TikTok, Instagram, or Facebook Live? Stop scrambling with pen and paper. LiveLedger lets you track every sale with a single tap while you're streaming.
+LIVELEDGER - Sales Tracking for Social Sellers
 
-🎯 BUILT FOR LIVE SELLERS
-Designed specifically for live stream sellers who need to capture orders fast. Tap a product, add a customer — done. No forms, no delays, no missed sales.
+Perfect for live sellers on TikTok, Instagram, and Facebook. Track sales, manage inventory, and grow your social commerce business.
 
-⚡ LIGHTNING-FAST ORDER ENTRY
-• Tap-to-sell — add orders in under 2 seconds
-• Track multiple platforms (TikTok, Instagram, Facebook, YouTube)
-• Auto-save keeps your data safe even if you swipe away
+✨ KEY FEATURES
 
-📊 REAL-TIME DASHBOARD
-• See total sales, stock levels, and top sellers at a glance
-• Live session timer to track your streaming time
-• Track fulfilled vs pending orders instantly
+📊 Real-Time Sales Tracking
+- Quick-add orders during live streams
+- Track sales across all platforms
+- See total revenue, orders, and top products
 
-🧾 PRINT & EXPORT
-• Print daily sales reports
-• Export orders to CSV
-• Generate POS-style receipts for customers
+🎯 Smart Organization
+- Track order sources (Live, Instagram DM, Facebook, etc.)
+- Save customer information for repeat buyers
+- Mark orders as paid/unpaid
+- Product inventory management with stock alerts
 
-📦 INVENTORY MANAGEMENT
-• Monitor stock levels with color-coded alerts
-• Low stock warnings before you oversell
-• Manage up to 12 products per session
+📈 Business Insights
+- Sales analytics and performance metrics
+- Platform breakdown (which platform sells most)
+- Export data to CSV for reports
+- Print summaries for record-keeping
 
-🌍 WORKS IN YOUR LANGUAGE
-• 13 languages supported
-• Use your local currency
+💎 PRO FEATURES (Optional Upgrade)
+- Unlimited orders (Free: 20 orders)
+- Unlimited exports (Free: 10 exports)
+- Product images
+- Barcode scanning (scan barcodes with camera for fast inventory)
+- Advanced analytics
+- Priority support
 
-💎 GO PRO FOR MORE
-Free plan includes 20 orders. Upgrade to Pro for:
-✓ Unlimited orders
-✓ Advanced order filters (by platform & discount)
-✓ Product images & barcode scanning
-✓ Advanced analytics
-✓ Unlimited exports
-✓ Priority support
+🎨 DESIGNED FOR SELLERS
+- Fast, intuitive interface
+- Works offline
+- Dark mode support
+- iPhone and iPad optimized
 
-Whether you're selling clothes, cosmetics, jewelry, or crafts — LiveLedger helps you focus on your customers while we handle the numbers.
+Perfect for:
+- TikTok live sellers
+- Instagram boutiques
+- Facebook marketplace sellers
+- Social media entrepreneurs
+- Small business owners
 
-Download now and never miss another sale!
+Download free and start tracking your sales today!
+
+---
+
+Pro subscription: $19.99/month, auto-renews unless canceled. Payment charged to Apple ID. Manage in Settings.
+
+Privacy Policy: https://octa-square.github.io/LiveLedger/privacy-policy.html
+Terms of Use: https://octa-square.github.io/LiveLedger/terms-of-service.html
 
 ================================================================================
                            WHAT'S NEW (Version 1.0)
@@ -68,6 +79,8 @@ Download now and never miss another sale!
 • Tap-to-sell order entry
 • Multi-platform support (TikTok, Instagram, Facebook)
 • Real-time sales dashboard
+• Order source & payment status
+• Customer autocomplete for repeat buyers
 • Inventory tracking with alerts
 • Print receipts and daily reports
 • Export to CSV
@@ -79,9 +92,9 @@ Download now and never miss another sale!
                               SUPPORT INFO
 ================================================================================
 
-SUPPORT URL: https://octasquare.github.io/liveledger/support.html
-PRIVACY POLICY URL: https://octasquare.github.io/liveledger/privacy-policy.html
-MARKETING URL: https://octasquare.com
+SUPPORT URL: https://octa-square.github.io/LiveLedger/support.html
+PRIVACY POLICY URL: https://octa-square.github.io/LiveLedger/privacy-policy.html
+MARKETING URL: https://octa-square.com
 SUPPORT EMAIL: admin@octasquare.com
 
 ================================================================================
@@ -94,4 +107,3 @@ Age Rating: 4+
 - Contains in-app purchases (subscription)
 
 ================================================================================
-

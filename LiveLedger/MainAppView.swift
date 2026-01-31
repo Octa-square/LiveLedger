@@ -13,15 +13,27 @@ import UIKit
 struct MainAppView: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
-    @StateObject private var viewModel = SalesViewModel()
-    @StateObject private var themeManager = ThemeManager()
+    @StateObject private var viewModel: SalesViewModel
+    @StateObject private var themeManager: ThemeManager
+
+    init(authManager: AuthManager, localization: LocalizationManager) {
+        self.authManager = authManager
+        self.localization = localization
+        _viewModel = StateObject(wrappedValue: SalesViewModel())
+        _themeManager = StateObject(wrappedValue: ThemeManager(userId: authManager.currentUser?.id ?? ""))
+    }
     @State private var selectedPlatform = "All"
     @State private var selectedStatus = "All"
     @State private var selectedProductForOrder: Product?
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
+    @State private var buyerPhone: String = ""
+    @State private var buyerNotes: String = ""
+    @State private var orderSource: OrderSource = .liveStream
     @State private var showLimitAlert = false
     @State private var limitAlertMessage = ""
+    @State private var showSubscription = false
+    @State private var showAnalytics = false
     
     private var limitAlertTitle: String {
         authManager.currentUser?.isLapsedSubscriber == true ? "Subscription Expired" : "Upgrade Required"
@@ -31,27 +43,42 @@ struct MainAppView: View {
         authManager.currentUser?.isLapsedSubscriber == true ? "Resubscribe to Pro" : "Upgrade to Pro"
     }
     
+    /// QA RULE: applereview@liveledger.com gets sample products when they reach the main app. Other emails stay blank.
+    private func tryLoadSampleDataForReviewAccount() {
+        guard let email = authManager.currentUser?.email else { return }
+        if email.lowercased() == "applereview@liveledger.com" {
+            let hasProducts = !viewModel.products.isEmpty && !viewModel.products.allSatisfy { $0.isEmpty }
+            if !hasProducts {
+                viewModel.populateDemoData(email: email, isPro: authManager.currentUser?.isPro ?? false)
+            }
+        } else {
+            viewModel.clearSampleDataForNonReviewUser(currentEmail: email)
+        }
+    }
+    
     var body: some View {
         ZStack {
-                VStack(spacing: 0) {
-                    // FIXED HEADER - WITH TIMER INTEGRATED (centered in header)
-                    FixedHeaderView(
-                        authManager: authManager,
-                        viewModel: viewModel,
-                        themeManager: themeManager,
-                        localization: localization
-                    )
-                    
-                    // MAIN CONTENT - NO GAPS, ORDERS FILLS TO BOTTOM
-                VStack(spacing: 0) {
-                    // Scrollable sections - Stats, Platform, Products
-                    ScrollView(.vertical, showsIndicators: false) {
-                        VStack(spacing: 15) {  // CRITICAL: 15px spacing between ALL sections
-                            StatsAndActionsSection(
-                                viewModel: viewModel,
-                                authManager: authManager,
-                                localization: localization
-                            )
+            VStack(spacing: 0) {
+                // FIXED HEADER - Logo left, Menu (Analytics + Settings) right
+                FixedHeaderView(
+                    viewModel: viewModel,
+                    authManager: authManager,
+                    themeManager: themeManager,
+                    localization: localization,
+                    showAnalytics: $showAnalytics,
+                    showSubscription: $showSubscription
+                )
+                
+                // MAIN CONTENT - All sections flow together, Orders extends to bottom
+                GeometryReader { geometry in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(spacing: 12) {
+                        StatsAndActionsSection(
+                            viewModel: viewModel,
+                            themeManager: themeManager,
+                            authManager: authManager,
+                            localization: localization
+                        )
                             
                             PlatformSection(
                                 viewModel: viewModel,
@@ -82,66 +109,95 @@ struct MainAppView: View {
                                         orderQuantity = 1
                                         withAnimation(.easeIn(duration: 0.2)) { selectedProductForOrder = product }
                                     }
-                                }
+                                },
+                                onUpgrade: { showSubscription = true }
                             )
+                            
+                            // Orders Section - extends to bottom of screen
+                            OrdersFlexibleSection(
+                                viewModel: viewModel,
+                                themeManager: themeManager,
+                                localization: localization,
+                                authManager: authManager,
+                                selectedPlatform: $selectedPlatform,
+                                selectedStatus: $selectedStatus
+                            )
+                            .frame(minHeight: max(300, geometry.size.height - 380))
+                            // 380 = compact Stats + Platform + Products + spacing (more room for Orders)
                         }
                         .padding(.horizontal, 15)
                         .padding(.top, 15)
-                        .padding(.bottom, 0)  // CRITICAL: No bottom padding - eliminates gap
+                        .padding(.bottom, 0)  // No bottom padding - Orders touches bottom
                     }
-                    .layoutPriority(1)  // CRITICAL: Allows this to shrink
-                    
-                    // Orders Section - FILLS REMAINING SPACE TO BOTTOM
-                    OrdersFlexibleSection(
-                        viewModel: viewModel,
-                        themeManager: themeManager,
-                        localization: localization,
-                        authManager: authManager,
-                        selectedPlatform: $selectedPlatform,
-                        selectedStatus: $selectedStatus
-                    )
-                    .frame(maxHeight: .infinity)  // CRITICAL: Expands to fill all remaining space
-                    .padding(.horizontal, 15)
-                    .padding(.top, 15)  // CRITICAL: Only 15px gap from Products
-                    .padding(.bottom, 0)  // CRITICAL: Extends to bottom edge - no padding
                 }
             }
-            .background(Color.black.edgesIgnoringSafeArea(.all))
-                
-                // Buyer Popup - Overlay on top
-                if let product = selectedProductForOrder {
-                    BuyerPopupView(
-                        product: product,
-                        buyerName: $buyerName,
-                        orderQuantity: $orderQuantity,
-                        onCancel: {
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                selectedProductForOrder = nil
-                            }
-                            buyerName = ""
-                            orderQuantity = 1
-                        },
-                        onAdd: {
-                            let platform = viewModel.selectedPlatform ?? .all
-                            let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
-                            viewModel.createOrder(
-                                product: product,
-                                buyerName: finalName,
-                                phoneNumber: "",
-                                address: "",
-                                platform: platform,
-                                quantity: orderQuantity
-                            )
-                            authManager.incrementOrderCount()
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                selectedProductForOrder = nil
-                            }
-                            buyerName = ""
-                            orderQuantity = 1
-                        }
+            .background(
+                ZStack {
+                    // Theme gradient background
+                    LinearGradient(
+                        colors: themeManager.currentTheme.gradientColors,
+                        startPoint: .top,
+                        endPoint: .bottom
                     )
-                    .transition(.opacity)
+                    
+                    // Theme wallpaper if available
+                    if themeManager.currentTheme.hasWallpaper,
+                       !themeManager.currentTheme.backgroundImageName.isEmpty {
+                        Image(themeManager.currentTheme.backgroundImageName)
+                            .resizable()
+                            .scaledToFill()
+                            .opacity(0.3)
+                    }
                 }
+                .edgesIgnoringSafeArea(.all)
+            )
+            
+            // Buyer Popup - Overlay on top
+            if let product = selectedProductForOrder {
+                BuyerPopupView(
+                    product: product,
+                    viewModel: viewModel,
+                    buyerName: $buyerName,
+                    orderQuantity: $orderQuantity,
+                    phoneNumber: $buyerPhone,
+                    customerNotes: $buyerNotes,
+                    orderSource: $orderSource,
+                    onCancel: {
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
+                    },
+                    onAdd: {
+                        let platform = viewModel.selectedPlatform ?? .all
+                        let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
+                        viewModel.createOrder(
+                            product: product,
+                            buyerName: finalName,
+                            phoneNumber: buyerPhone,
+                            address: "",
+                            customerNotes: buyerNotes.isEmpty ? nil : buyerNotes,
+                            orderSource: orderSource,
+                            platform: platform,
+                            quantity: orderQuantity
+                        )
+                        authManager.incrementOrderCount()
+                        #if os(iOS)
+                        AppReviewHelper.notifyOrderCountReached(viewModel.orders.count)
+                        #endif
+                        withAnimation(.easeOut(duration: 0.2)) {
+                            selectedProductForOrder = nil
+                        }
+                        buyerName = ""
+                        orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
+                    }
+                )
+                .transition(.opacity)
             }
         }
         .onAppear {
@@ -152,200 +208,157 @@ struct MainAppView: View {
                 }
             }
             #endif
+            viewModel.authManager = authManager
+            viewModel.loadData() // Load this user's data (per-user keys)
+            tryLoadSampleDataForReviewAccount()
+        }
+        .onChange(of: authManager.currentUser?.id) { _, _ in
+            viewModel.authManager = authManager
+            viewModel.loadData()
+            tryLoadSampleDataForReviewAccount()
         }
         .alert(limitAlertTitle, isPresented: $showLimitAlert) {
-            Button(limitAlertButtonText) {
-                // Show subscription
-            }
+            Button(limitAlertButtonText) { showSubscription = true }
             Button("Later", role: .cancel) {}
         } message: {
             Text(limitAlertMessage)
+        }
+        .fullScreenCover(isPresented: $showSubscription) {
+            SubscriptionView(authManager: authManager)
+        }
+        .sheet(isPresented: $viewModel.showingExportSheet) {
+            if let url = viewModel.csvURL {
+                if let user = authManager.currentUser, !user.isPro && !user.canExport {
+                    VStack(spacing: 20) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        Text("Export Limit Reached")
+                            .font(.title2.bold())
+                        Text("You've used all 10 free exports. Upgrade to Pro for unlimited exports.")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.gray)
+                        Button("Upgrade to Pro") {
+                            viewModel.showingExportSheet = false
+                            showSubscription = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                } else {
+                    ShareSheet(items: [url])
+                        .onAppear {
+                            authManager.incrementExportCount()
+                            #if os(iOS)
+                            AppReviewHelper.notifyExportCompleted()
+                            #endif
+                        }
+                }
+            }
+        }
+        .sheet(isPresented: $showAnalytics) {
+            NavigationStack {
+                AnalyticsView(viewModel: viewModel, localization: localization)
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 }
 
 // MARK: - Fixed Header Component
 struct FixedHeaderView: View {
-    @ObservedObject var authManager: AuthManager
     @ObservedObject var viewModel: SalesViewModel
+    @ObservedObject var authManager: AuthManager
     @ObservedObject var themeManager: ThemeManager
     @ObservedObject var localization: LocalizationManager
+    @Binding var showAnalytics: Bool
+    @Binding var showSubscription: Bool
     @State private var showSettings = false
-    @State private var showSubscription = false
+    @State private var showNeedProAlert = false
     
-    private var isPro: Bool {
-        authManager.currentUser?.isPro ?? false
-    }
+    private var theme: AppTheme { themeManager.currentTheme }
     
     var body: some View {
-        HStack(spacing: 10) {
-            // LEFT: Logo and App Info
+        HStack(spacing: 12) {
+            // LEFT: Logo and App Info — fixed size, stays on left
             HStack(spacing: 10) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 11)
                         .fill(
                             LinearGradient(
-                                colors: [Color(hex: "#00ff88"), Color(hex: "#00cc6a")],
+                                colors: [theme.accentColor, theme.accentColor.opacity(0.8)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .frame(width: 44, height: 44)
-                        .shadow(color: Color(hex: "#00ff88").opacity(0.4), radius: 7, x: 0, y: 3)
+                        .shadow(color: theme.accentColor.opacity(0.4), radius: 7, x: 0, y: 3)
                     
-                    // Try to use app_logo asset, fallback to "L" if not available
-                    if UIImage(named: "app_logo") != nil {
-                        Image("app_logo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 32, height: 32)
-                    } else {
-                        Text("L")
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
-                    }
+                    Image("app_logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 36, height: 36)
                 }
                 
                 VStack(alignment: .leading, spacing: 1) {
                     Text("LiveLedger")
                         .font(.system(size: 19, weight: .bold))
-                        .foregroundColor(.white)
-                        .lineLimit(1)  // CRITICAL: Prevents wrapping to second line
-                        .minimumScaleFactor(0.7)  // CRITICAL: Shrinks text instead of wrapping
-                    
+                        .foregroundColor(theme.textPrimary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
                     Text("My Store")
                         .font(.system(size: 12))
-                        .foregroundColor(Color(hex: "#888888"))
+                        .foregroundColor(theme.textMuted)
                         .lineLimit(1)
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
             
-            Spacer()
+            Spacer(minLength: 8)
             
-            // CENTER: Timer with Controls
-            HStack(spacing: 8) {
-                Text(viewModel.formattedSessionTime)
-                    .font(.system(size: 16, weight: .semibold))
-                    .foregroundColor(.white)
-                    .monospacedDigit()
-                    .frame(minWidth: 80)
-                
-                Button(action: {
-                    if !viewModel.isTimerRunning {
-                        viewModel.startTimer()
+            // RIGHT: Menu button — Analytics + Settings
+            Menu {
+                Button {
+                    if authManager.currentUser?.isPro == true {
+                        showAnalytics = true
+                    } else {
+                        showNeedProAlert = true
                     }
-                }) {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(viewModel.isTimerRunning ? Color(hex: "#444444") : Color(hex: "#00ff88"))
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.white.opacity(0.1)))
+                } label: {
+                    Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
                 }
-                .disabled(viewModel.isTimerRunning)
-                
-                Button(action: {
-                    if viewModel.isTimerRunning {
-                        viewModel.pauseTimer()
-                    }
-                }) {
-                    Image(systemName: "pause.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(viewModel.isTimerRunning ? Color(hex: "#ffd700") : Color(hex: "#444444"))
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.white.opacity(0.1)))
+                Button { showSettings = true } label: {
+                    Label(localization.localized(.settings), systemImage: "gearshape.fill")
                 }
-                .disabled(!viewModel.isTimerRunning)
-                
-                Button(action: {
-                    viewModel.resetTimer()
-                }) {
-                    Image(systemName: "stop.fill")
-                        .font(.system(size: 10))
-                        .foregroundColor(Color(hex: "#ff6b6b"))
-                        .frame(width: 24, height: 24)
-                        .background(Circle().fill(Color.white.opacity(0.1)))
-                }
+            } label: {
+                Image(systemName: "line.3.horizontal")
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundColor(theme.textPrimary)
+                    .frame(width: 34, height: 34)
+                    .background(theme.cardBackground)
+                    .cornerRadius(7)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.black.opacity(0.3))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(Color(hex: "#00ff88").opacity(0.2), lineWidth: 1)
-                    )
-            )
-            
-            Spacer()
-            
-            // RIGHT: Badges and Menu
-            HStack(spacing: 8) {
-                VStack(alignment: .trailing, spacing: 3) {
-                    // PRO/FREE Badge
-                    Text(isPro ? "PRO" : "FREE")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundColor(isPro ? Color(hex: "#ffd700") : Color(hex: "#888888"))
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 3)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .strokeBorder(isPro ? Color(hex: "#ffd700") : Color(hex: "#888888"), lineWidth: 1)
-                                .background(Color.white.opacity(0.1).cornerRadius(5))
-                        )
-                    
-                    // Auto-saving Badge
-                    HStack(spacing: 3) {
-                        Circle()
-                            .fill(Color(hex: "#00ff88"))
-                            .frame(width: 7, height: 7)
-                        
-                        Text("Auto-saving")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundColor(Color(hex: "#00ff88"))
-                    }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 3)
-                    .background(
-                        RoundedRectangle(cornerRadius: 5)
-                            .fill(Color.white.opacity(0.1))
-                    )
-                }
-                
-                // Menu Button
-                Button(action: {
-                    showSettings = true
-                }) {
-                    Image(systemName: "line.3.horizontal")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 34, height: 34)
-                        .background(Color.white.opacity(0.1))
-                        .cornerRadius(7)
-                }
-            }
+            .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, 15)
+        .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(
-            LinearGradient(
-                colors: [Color(hex: "#1a1a1a"), Color(hex: "#2a2a2a")],
-                startPoint: .leading,
-                endPoint: .trailing
-            )
-        )
+        .background(theme.gradientColors.first ?? Color.black)
         .overlay(
             Rectangle()
                 .frame(height: 2)
-                .foregroundColor(Color(hex: "#00ff88"))
-                .shadow(color: Color(hex: "#00ff88").opacity(0.3), radius: 9, x: 0, y: 3),
+                .foregroundColor(theme.accentColor)
+                .shadow(color: theme.accentColor.opacity(0.3), radius: 9, x: 0, y: 3),
             alignment: .bottom
         )
         .sheet(isPresented: $showSettings) {
-            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization)
+            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization, viewModel: viewModel)
         }
-        .sheet(isPresented: $showSubscription) {
-            SubscriptionView(authManager: authManager)
+        .alert("Pro Feature", isPresented: $showNeedProAlert) {
+            Button("Upgrade to Pro") { showSubscription = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Analytics and charts require Pro. Upgrade to access detailed insights.")
         }
     }
 }
@@ -354,8 +367,11 @@ struct FixedHeaderView: View {
 // MARK: - Stats and Actions Section
 struct StatsAndActionsSection: View {
     @ObservedObject var viewModel: SalesViewModel
+    @ObservedObject var themeManager: ThemeManager
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
+    
+    private var theme: AppTheme { themeManager.currentTheme }
     
     private var currencySymbol: String {
         authManager.currentUser?.currencySymbol ?? "$"
@@ -376,68 +392,70 @@ struct StatsAndActionsSection: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Stats Cards - 4 in a row
-            HStack(spacing: 11) {
+            HStack(spacing: 8) {
                 MainAppStatCard(
                     icon: "dollarsign.circle.fill",
                     value: "\(currencySymbol)\(String(format: "%.0f", viewModel.totalRevenue))",
                     label: localization.localized(.totalSales),
-                    color: Color(hex: "#00ff88")
+                    color: theme.accentColor,
+                    theme: theme
                 )
                 MainAppStatCard(
                     icon: "flame.fill",
                     value: topSellerName,
                     label: localization.localized(.topSeller),
-                    color: Color(hex: "#ff9500")
+                    color: theme.warningColor,
+                    theme: theme
                 )
                 MainAppStatCard(
                     icon: "cube.fill",
                     value: "\(totalStockLeft)",
                     label: localization.localized(.stockLeft),
-                    color: Color(hex: "#007aff")
+                    color: theme.secondaryColor,
+                    theme: theme
                 )
                 MainAppStatCard(
                     icon: "bag.fill",
                     value: "\(viewModel.orderCount)",
                     label: localization.localized(.totalOrders),
-                    color: Color(hex: "#00ff88")
+                    color: theme.accentColor,
+                    theme: theme
                 )
             }
             
-            // Action Buttons - 3 in a row
-            HStack(spacing: 11) {
+            HStack(spacing: 8) {
                 MainAppActionButton(
                     title: localization.localized(.clear),
                     icon: "trash.fill",
-                    color: Color(hex: "#ff6b6b"),
+                    color: theme.dangerColor,
                     viewModel: viewModel,
                     localization: localization
                 )
                 MainAppActionButton(
                     title: localization.localized(.export),
                     icon: "square.and.arrow.up.fill",
-                    color: Color(hex: "#4ecdc4"),
+                    color: theme.secondaryColor,
                     viewModel: viewModel,
                     localization: localization
                 )
                 MainAppActionButton(
                     title: localization.localized(.print),
                     icon: "printer.fill",
-                    color: Color(hex: "#4ecdc4"),
+                    color: theme.secondaryColor,
                     viewModel: viewModel,
                     authManager: authManager,
                     localization: localization
                 )
             }
-            .padding(.top, 11)
+            .padding(.top, 8)
         }
-        .padding(15)  // Reduced from 16px
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 11)  // Reduced from 12px
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 11)
+                .fill(theme.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 11)
-                        .strokeBorder(Color(hex: "#00ff88").opacity(0.2), lineWidth: 1)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
                 )
         )
     }
@@ -448,34 +466,35 @@ struct MainAppStatCard: View {
     let value: String
     let label: String
     let color: Color
+    let theme: AppTheme
     
     var body: some View {
-        VStack(spacing: 5) {  // Reduced from 6px
+        VStack(spacing: 3) {
             Image(systemName: icon)
-                .font(.system(size: 19))  // Reduced from 20px
+                .font(.system(size: 14))
                 .foregroundColor(color)
             
             Text(value)
-                .font(.system(size: 17, weight: .bold))  // Reduced from 18px
-                .foregroundColor(.white)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundColor(theme.textPrimary)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
             
             Text(label)
-                .font(.system(size: 9))  // Reduced from 10px
-                .foregroundColor(Color(hex: "#888888"))
+                .font(.system(size: 8))
+                .foregroundColor(theme.textMuted)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 9)  // Reduced from 10px
-        .padding(.horizontal, 5)  // Reduced from 6px
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .background(
-            RoundedRectangle(cornerRadius: 7)  // Reduced from 8px
-                .fill(Color.white.opacity(0.08))
+            RoundedRectangle(cornerRadius: 7)
+                .fill(theme.cardBackground.opacity(0.5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                        .strokeBorder(theme.cardBorder.opacity(0.3), lineWidth: 1)
                 )
         )
     }
@@ -529,6 +548,10 @@ struct MainAppActionButton: View {
     }
 }
 
+// Shared grid: Platform and Products match Stats (Total Sales, Top Seller, etc.) – same size and spacing
+private let sharedGridBoxHeight: CGFloat = 50
+private let sharedGridSpacing: CGFloat = 8
+
 // MARK: - Platform Section
 struct PlatformSection: View {
     @ObservedObject var viewModel: SalesViewModel
@@ -536,70 +559,131 @@ struct PlatformSection: View {
     @ObservedObject var localization: LocalizationManager
     @Binding var selectedPlatform: String
     @State private var showingAddPlatform = false
+    @State private var platformToDelete: Platform?
+    
+    private var theme: AppTheme { themeManager.currentTheme }
+    
+    private var defaultPlatforms: [Platform] { viewModel.platforms.filter { !$0.isCustom } }
+    private var customPlatforms: [Platform] { viewModel.platforms.filter { $0.isCustom } }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {  // Reduced from 12px
-            // Header
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(localization.localized(.platform))
-                    .font(.system(size: 15, weight: .bold))  // Reduced from 16px
-                    .foregroundColor(.white)
-                
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
                 Spacer()
-                
-                // Add Button
-                Button(action: {
-                    showingAddPlatform = true
-                }) {
+                Button(action: { showingAddPlatform = true }) {
                     Text("+ Add")
-                        .font(.system(size: 10, weight: .semibold))  // Reduced from 11px
+                        .font(.system(size: 10, weight: .semibold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 5)
-                        .background(
-                            RoundedRectangle(cornerRadius: 5)
-                                .fill(Color(hex: "#00ff88"))
-                        )
+                        .background(RoundedRectangle(cornerRadius: 5).fill(theme.accentColor))
                 }
             }
             
-            // Platform Buttons - 4 in a row
-            HStack(spacing: 7) {  // Reduced from 8px
-                PlatformButton(
-                    icon: "square.grid.2x2",
-                    title: localization.localized(.all),
-                    isSelected: selectedPlatform == "All" || viewModel.selectedPlatform == nil,
-                    iconColor: .white
-                ) {
-                    selectedPlatform = "All"
-                    viewModel.selectedPlatform = nil
-                }
-                
-                ForEach(viewModel.platforms.prefix(3)) { platform in
-                    PlatformButton(
-                        icon: platform.icon,
-                        title: platform.name,
-                        isSelected: selectedPlatform == platform.name || viewModel.selectedPlatform?.id == platform.id,
-                        iconColor: platform.swiftUIColor  // CRITICAL: Always uses full color, never grayed
-                    ) {
-                        selectedPlatform = platform.name
-                        viewModel.selectedPlatform = platform
+            GeometryReader { geo in
+                let boxWidth = max(60, (geo.size.width - sharedGridSpacing * 3) / 4)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: sharedGridSpacing) {
+                        platformBox(icon: "square.grid.2x2", title: localization.localized(.all),
+                                   isSelected: selectedPlatform == "All" || viewModel.selectedPlatform == nil,
+                                   iconColor: theme.textPrimary, width: boxWidth, onDelete: nil) {
+                            selectedPlatform = "All"
+                            viewModel.selectedPlatform = nil
+                        }
+                        ForEach(defaultPlatforms) { platform in
+                            platformBox(icon: platform.icon, title: platform.name,
+                                       isSelected: selectedPlatform == platform.name || viewModel.selectedPlatform?.id == platform.id,
+                                       iconColor: platform.swiftUIColor, width: boxWidth, onDelete: nil) {
+                                selectedPlatform = platform.name
+                                viewModel.selectedPlatform = platform
+                            }
+                        }
+                        ForEach(customPlatforms) { platform in
+                            platformBox(icon: platform.icon, title: platform.name,
+                                       isSelected: selectedPlatform == platform.name || viewModel.selectedPlatform?.id == platform.id,
+                                       iconColor: platform.swiftUIColor, width: boxWidth, onDelete: { platformToDelete = platform }) {
+                                selectedPlatform = platform.name
+                                viewModel.selectedPlatform = platform
+                            }
+                        }
                     }
                 }
             }
+            .frame(height: sharedGridBoxHeight + 4)
+            
+            // 3-dot scroll hint below – always visible when custom platforms exist
+            if !customPlatforms.isEmpty {
+                HStack(spacing: 4) {
+                    Spacer()
+                    ForEach(0..<3, id: \.self) { _ in
+                        Circle()
+                            .fill(theme.textMuted.opacity(0.6))
+                            .frame(width: 4, height: 4)
+                    }
+                    Spacer()
+                }
+                .padding(.top, 2)
+            }
         }
-        .padding(15)  // Reduced from 16px
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 11)  // Reduced from 12px
-                .fill(Color.white.opacity(0.05))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 11)
-                        .strokeBorder(Color(hex: "#00ff88").opacity(0.2), lineWidth: 1)
-                )
+            RoundedRectangle(cornerRadius: 11)
+                .fill(theme.cardBackground)
+                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(theme.cardBorder, lineWidth: 1))
         )
         .sheet(isPresented: $showingAddPlatform) {
             AddPlatformSheetWrapper(viewModel: viewModel, localization: localization, themeManager: themeManager)
         }
+        .confirmationDialog("Delete Platform?", isPresented: Binding(
+            get: { platformToDelete != nil },
+            set: { if !$0 { platformToDelete = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let p = platformToDelete { viewModel.deletePlatform(p) }
+                platformToDelete = nil
+            }
+            Button("Cancel", role: .cancel) { platformToDelete = nil }
+        } message: {
+            Text("Remove \"\(platformToDelete?.name ?? "")\" from your platforms?")
+        }
+    }
+    
+    private func platformBox(icon: String, title: String, isSelected: Bool, iconColor: Color, width: CGFloat, onDelete: (() -> Void)?, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(spacing: 2) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(iconColor)
+                Text(title)
+                    .font(.system(size: 8, weight: .medium))
+                    .foregroundColor(isSelected ? theme.textPrimary : theme.textMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+            }
+            .frame(width: width, height: sharedGridBoxHeight)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(isSelected ? theme.cardBackground : Color.clear)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 7)
+                            .strokeBorder(isSelected ? theme.accentColor : theme.cardBorder.opacity(0.3), lineWidth: 1)
+                    )
+            )
+            .overlay(alignment: .topTrailing) {
+                if onDelete != nil {
+                    Button { onDelete?() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundStyle(theme.textMuted)
+                    }
+                    .padding(4)
+                }
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -608,30 +692,31 @@ struct PlatformButton: View {
     let title: String
     let isSelected: Bool
     var iconColor: Color = .white
+    let theme: AppTheme
     let action: () -> Void
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 5) {  // Reduced from 6px
+            VStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 19))  // Reduced from 20px
-                    .foregroundColor(iconColor)  // CRITICAL: Always uses full color, never grayed
+                    .font(.system(size: 19))
+                    .foregroundColor(iconColor)
                 
                 Text(title)
-                    .font(.system(size: 9, weight: .medium))  // Reduced from 10px
-                    .foregroundColor(isSelected ? .white : Color(hex: "#666666"))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(isSelected ? theme.textPrimary : theme.textMuted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.6)
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 65)  // Reduced from 70px
+            .frame(height: 65)
             .background(
-                RoundedRectangle(cornerRadius: 7)  // Reduced from 8px
-                    .fill(isSelected ? Color.white.opacity(0.15) : Color.clear)
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(isSelected ? theme.cardBackground : Color.clear)
                     .overlay(
                         RoundedRectangle(cornerRadius: 7)
                             .strokeBorder(
-                                isSelected ? Color(hex: "#00ff88") : Color.white.opacity(0.1),
+                                isSelected ? theme.accentColor : theme.cardBorder.opacity(0.3),
                                 lineWidth: 1
                             )
                     )
@@ -647,28 +732,41 @@ struct ProductsSection: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
     var onProductSelected: (Product) -> Void
+    var onUpgrade: (() -> Void)? = nil
     @State private var showingAddProduct = false
     @State private var editingProduct: Product?
     @State private var newProductToAdd: Product?
     @State private var showMaxProductsAlert = false
     
+    private var theme: AppTheme { themeManager.currentTheme }
+    
     private var activeProductCount: Int {
         viewModel.products.filter { !$0.isEmpty }.count
     }
     
+    /// Non-empty products only (max 12), for grid display.
+    private var displayProducts: [Product] {
+        Array(viewModel.products.filter { !$0.isEmpty }.prefix(12))
+    }
+    
+    /// Always at least 1 empty slot to prompt adding a product. Fill first row when < 4 products.
+    private var placeholderCount: Int {
+        let count = displayProducts.count
+        return count < 4 ? (4 - count) : 1
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 11) {  // Reduced from 12px
-            // Header
+        VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("\(localization.localized(.myProducts)) (\(activeProductCount)/12)")
-                    .font(.system(size: 15, weight: .bold))  // Reduced from 16px
-                    .foregroundColor(.white)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
                 
                 Spacer()
                 
                 Text(localization.localized(.tapSellHoldEdit))
-                    .font(.system(size: 9))  // Reduced from 10px
-                    .foregroundColor(Color(hex: "#888888"))
+                    .font(.system(size: 9))
+                    .foregroundColor(theme.textMuted)
                 
                 Button(action: {
                     if activeProductCount >= 12 {
@@ -678,39 +776,48 @@ struct ProductsSection: View {
                     }
                 }) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 19))  // Reduced from 20px
-                        .foregroundColor(Color(hex: "#00ff88"))
+                        .font(.system(size: 19))
+                        .foregroundColor(theme.accentColor)
                 }
             }
             
-            // Products Grid - 4 in a row
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 7), count: 4), spacing: 7) {  // Reduced from 8px
-                ForEach(viewModel.products.prefix(12)) { product in
-                    if product.isEmpty {
-                        ProductPlaceholder {
+            // Products Grid - 4 per row, same spacing as Stats and Platform
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: sharedGridSpacing),
+                GridItem(.flexible(), spacing: sharedGridSpacing),
+                GridItem(.flexible(), spacing: sharedGridSpacing),
+                GridItem(.flexible(), spacing: sharedGridSpacing)
+            ], spacing: sharedGridSpacing) {
+                ForEach(displayProducts) { product in
+                    ProductCard(
+                        product: product,
+                        theme: theme,
+                        isPro: authManager.currentUser?.isPro ?? false,
+                        onTap: {
+                            guard product.stock > 0 else { return }
+                            onProductSelected(product)
+                        },
+                        onHold: { editingProduct = product }
+                    )
+                }
+                ForEach(0..<placeholderCount, id: \.self) { _ in
+                    ProductPlaceholder(theme: theme) {
+                        if activeProductCount >= 12 {
+                            showMaxProductsAlert = true
+                        } else {
                             newProductToAdd = Product(name: "", price: 0, stock: 0)
                         }
-                    } else {
-                        ProductCard(
-                            product: product,
-                            onTap: {
-                                onProductSelected(product)
-                            },
-                            onHold: {
-                                editingProduct = product
-                            }
-                        )
                     }
                 }
             }
         }
-        .padding(15)  // Reduced from 16px
+        .padding(12)
         .background(
-            RoundedRectangle(cornerRadius: 11)  // Reduced from 12px
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 11)
+                .fill(theme.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 11)
-                        .strokeBorder(Color(hex: "#00ff88").opacity(0.2), lineWidth: 1)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
                 )
         )
         .sheet(item: $editingProduct) { product in
@@ -718,18 +825,24 @@ struct ProductsSection: View {
                 product: product,
                 onSave: { updated in
                     viewModel.updateProduct(updated)
+                    viewModel.saveData()
                     editingProduct = nil
                 },
                 onDelete: {
                     if let index = viewModel.products.firstIndex(where: { $0.id == product.id }) {
-                        viewModel.products.remove(at: index)
+                        var updated = viewModel.products
+                        updated.remove(at: index)
+                        viewModel.products = updated
+                        viewModel.saveData()
                     }
                     editingProduct = nil
                 },
                 onCancel: {
                     editingProduct = nil
                 },
-                isPro: authManager.currentUser?.isPro ?? false
+                isPro: authManager.currentUser?.isPro ?? false,
+                onUpgrade: onUpgrade,
+                authManager: authManager
             )
         }
         .sheet(item: $newProductToAdd) { product in
@@ -741,6 +854,7 @@ struct ProductsSection: View {
                     } else {
                         viewModel.products.append(savedProduct)
                     }
+                    viewModel.saveData()
                     newProductToAdd = nil
                 },
                 onDelete: {
@@ -749,7 +863,9 @@ struct ProductsSection: View {
                 onCancel: {
                     newProductToAdd = nil
                 },
-                isPro: authManager.currentUser?.isPro ?? false
+                isPro: authManager.currentUser?.isPro ?? false,
+                onUpgrade: onUpgrade,
+                authManager: authManager
             )
         }
         .alert("Maximum Products Reached", isPresented: $showMaxProductsAlert) {
@@ -761,30 +877,33 @@ struct ProductsSection: View {
 }
 
 struct ProductPlaceholder: View {
+    let theme: AppTheme
     let onAdd: () -> Void
     
     var body: some View {
         Button(action: onAdd) {
-            VStack(spacing: 7) {  // Reduced from 8px
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 23))  // Reduced from 24px
-                    .foregroundColor(Color(hex: "#666666"))
+            ZStack {
+                Rectangle()
+                    .fill(theme.cardBackground.opacity(0.5))
+                    .frame(height: sharedGridBoxHeight)
                 
-                Text("Hold to\nadd product")
-                    .font(.system(size: 8))  // Reduced from 9px
-                    .foregroundColor(Color(hex: "#666666"))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
+                VStack(spacing: 4) {
+                    Image(systemName: "plus.circle")
+                        .font(.system(size: 18))
+                        .foregroundColor(theme.textMuted)
+                    
+                    Text("Hold to add\nproduct")
+                        .font(.caption2)
+                        .foregroundColor(theme.textMuted)
+                        .multilineTextAlignment(.center)
+                }
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 85)  // Reduced from 90px
-            .background(
-                RoundedRectangle(cornerRadius: 7)  // Reduced from 8px
-                    .fill(Color.white.opacity(0.05))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 7)
-                            .strokeBorder(Color.white.opacity(0.2), lineWidth: 1)
-                    )
+            .frame(height: sharedGridBoxHeight)
+            .cornerRadius(10)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(style: StrokeStyle(lineWidth: 1, dash: [4]))
+                    .foregroundColor(theme.accentColor)
             )
         }
     }
@@ -792,42 +911,80 @@ struct ProductPlaceholder: View {
 
 struct ProductCard: View {
     let product: Product
+    let theme: AppTheme
+    let isPro: Bool
     let onTap: () -> Void
     let onHold: () -> Void
     
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(product.name.isEmpty ? "Product" : product.name)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                
-                Text("$\(String(format: "%.2f", product.price))")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundColor(Color(hex: "#00ff88"))
-                
-                HStack(spacing: 4) {
-                    Image(systemName: "cube.fill")
-                        .font(.system(size: 8))
-                    Text("\(product.stock)")
-                        .font(.system(size: 9))
+            ZStack {
+                if isPro, let imageData = product.imageData, let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: sharedGridBoxHeight)
+                        .clipped()
+                } else {
+                    Rectangle()
+                        .fill(theme.cardBackground.opacity(0.6))
+                        .frame(height: sharedGridBoxHeight)
+                        .overlay(
+                            Image(systemName: "photo")
+                                .font(.system(size: 24))
+                                .foregroundColor(theme.textMuted.opacity(0.5))
+                        )
                 }
-                .foregroundColor(Color(hex: "#888888"))
+                
+                // Theme-based gradient overlay for text readability (no black)
+                LinearGradient(
+                    colors: [Color.clear, (theme.gradientColors.last ?? theme.accentColor).opacity(0.88)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                
+                VStack {
+                    Spacer()
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(product.name.isEmpty ? "Product" : product.name)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .shadow(radius: 1)
+                        
+                        HStack {
+                            Text("$\(String(format: "%.2f", product.finalPrice))")
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(product.stock == 0 ? .gray : .white)
+                            
+                            Spacer()
+                            
+                            HStack(spacing: 2) {
+                                Text("Stock:")
+                                    .font(.caption2)
+                                    .foregroundColor(product.stock == 0 ? .gray : .white.opacity(0.95))
+                                Text("\(product.stock)")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(product.stockColor)
+                            }
+                        }
+                    }
+                    .padding(4)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(7)  // Reduced from 8px
-            .frame(height: 85)  // Reduced from 90px
-            .background(
-                RoundedRectangle(cornerRadius: 7)  // Reduced from 8px
-                    .fill(Color.white.opacity(0.08))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 7)
-                            .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
-                    )
+            .frame(height: sharedGridBoxHeight)
+            .cornerRadius(10)
+            .clipped()
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(product.stock == 0 && !product.isEmpty ? theme.textMuted : theme.accentColor, lineWidth: 1)
             )
+            .opacity(product.stock == 0 && !product.isEmpty ? 0.6 : 1.0)
         }
+        .buttonStyle(PlainButtonStyle())
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.5)
                 .onEnded { _ in onHold() }
@@ -843,6 +1000,11 @@ struct OrdersFlexibleSection: View {
     @ObservedObject var authManager: AuthManager
     @Binding var selectedPlatform: String
     @Binding var selectedStatus: String
+    @State private var orderToDelete: Order?
+    @State private var showSwipeDeleteConfirmation = false
+    @State private var editingOrder: Order?
+    
+    private var theme: AppTheme { themeManager.currentTheme }
     
     private var filteredOrders: [Order] {
         var orders = viewModel.orders
@@ -867,12 +1029,12 @@ struct OrdersFlexibleSection: View {
             // Header
             HStack {
                 Text(localization.localized(.orders))
-                    .font(.system(size: 15, weight: .bold))  // Reduced from 16px
-                    .foregroundColor(.white)
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(theme.textPrimary)
                 
                 Spacer()
                 
-                HStack(spacing: 7) {  // Reduced from 8px
+                HStack(spacing: 7) {
                     Menu {
                         Button {
                             selectedPlatform = "All"
@@ -891,16 +1053,16 @@ struct OrdersFlexibleSection: View {
                     } label: {
                         HStack(spacing: 3) {
                             Text(selectedPlatform == "All" ? localization.localized(.all) : selectedPlatform)
-                                .font(.system(size: 10))  // Reduced from 11px
+                                .font(.system(size: 10))
                             Image(systemName: "chevron.down")
-                                .font(.system(size: 7))  // Reduced from 8px
+                                .font(.system(size: 7))
                         }
-                        .foregroundColor(Color(hex: "#888888"))
+                        .foregroundColor(theme.textMuted)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(
                             RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white.opacity(0.1))
+                                .fill(theme.cardBackground.opacity(0.5))
                         )
                     }
                     
@@ -915,62 +1077,104 @@ struct OrdersFlexibleSection: View {
                             Image(systemName: "chevron.down")
                                 .font(.system(size: 7))
                         }
-                        .foregroundColor(Color(hex: "#888888"))
+                        .foregroundColor(theme.textMuted)
                         .padding(.horizontal, 9)
                         .padding(.vertical, 5)
                         .background(
                             RoundedRectangle(cornerRadius: 5)
-                                .fill(Color.white.opacity(0.1))
+                                .fill(theme.cardBackground.opacity(0.5))
                         )
                     }
                 }
             }
-            .padding(15)  // Reduced from 16px
+            .padding(15)
             
             // Divider
             Rectangle()
-                .fill(Color.white.opacity(0.1))
+                .fill(theme.cardBorder.opacity(0.3))
                 .frame(height: 1)
             
             // Content - FILLS ALL AVAILABLE SPACE TO BOTTOM
             if filteredOrders.isEmpty {
-                // Empty State - Fills remaining space with centered content
-                VStack(spacing: 15) {  // Reduced from 16px
-                    Spacer()  // Centers content vertically
-                    
+                // Empty State - helpful copy
+                VStack(spacing: 15) {
+                    Spacer()
+                    Text("🛍️")
+                        .font(.system(size: 44))
                     Image(systemName: "basket.fill")
-                        .font(.system(size: 48))  // Reduced from 50px
-                        .foregroundColor(Color(hex: "#444444"))
-                    
+                        .font(.system(size: 42))
+                        .foregroundColor(theme.textMuted.opacity(0.5))
                     Text(localization.localized(.noOrders))
-                        .font(.system(size: 15, weight: .medium))  // Reduced from 16px
-                        .foregroundColor(Color(hex: "#888888"))
-                    
-                    Text("Tap a product to add orders")
-                        .font(.system(size: 12))  // Reduced from 13px
-                        .foregroundColor(Color(hex: "#666666"))
-                    
-                    Spacer()  // Centers content vertically
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundColor(theme.textMuted)
+                    Text("Tap a product below to add your first order!")
+                        .font(.system(size: 13))
+                        .foregroundColor(theme.textMuted.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                    Text("Or tap [+] to add a product first.")
+                        .font(.system(size: 12))
+                        .foregroundColor(theme.textMuted.opacity(0.7))
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)  // CRITICAL: Fills all space
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 7) {  // Reduced from 8px
-                        ForEach(filteredOrders) { order in
-                            OrderRowView(order: order, theme: themeManager.currentTheme, localization: localization)
+                List {
+                    ForEach(filteredOrders) { order in
+                        OrderRowView(
+                            order: order,
+                            theme: theme,
+                            localization: localization,
+                            productImageData: (authManager.currentUser?.isPro == true) ? viewModel.products.first(where: { $0.id == order.productId })?.imageData : nil,
+                            onEdit: { editingOrder = order }
+                        )
+                        .listRowInsets(EdgeInsets(top: 1, leading: 10, bottom: 1, trailing: 10))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                orderToDelete = order
+                                showSwipeDeleteConfirmation = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
-                    .padding(15)  // Reduced from 16px
                 }
-                .frame(maxHeight: .infinity)  // CRITICAL: Fills all space
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .frame(maxHeight: .infinity)
             }
         }
+        .confirmationDialog("Delete this order?", isPresented: $showSwipeDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let order = orderToDelete {
+                    HapticManager.warning()
+                    viewModel.deleteOrder(order)
+                }
+                orderToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                orderToDelete = nil
+            }
+        } message: {
+            Text("This cannot be undone.")
+        }
+        .sheet(item: $editingOrder) { order in
+            EditOrderSheet(
+                order: order,
+                platforms: viewModel.platforms,
+                onSave: { viewModel.updateOrder($0); editingOrder = nil },
+                onCancel: { editingOrder = nil }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
         .background(
-            RoundedRectangle(cornerRadius: 11)  // Reduced from 12px
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 11)
+                .fill(theme.cardBackground)
                 .overlay(
                     RoundedRectangle(cornerRadius: 11)
-                        .strokeBorder(Color(hex: "#00ff88").opacity(0.2), lineWidth: 1)
+                        .strokeBorder(theme.cardBorder, lineWidth: 1)
                 )
         )
     }
@@ -981,58 +1185,76 @@ struct OrderRowView: View {
     let order: Order
     let theme: AppTheme
     @ObservedObject var localization: LocalizationManager
+    var productImageData: Data?
+    var onEdit: (() -> Void)? = nil
+    
+    private let thumbSize: CGFloat = 28
     
     var body: some View {
-        HStack(spacing: 12) {
-            // Platform color indicator
-            RoundedRectangle(cornerRadius: 2)
+        HStack(alignment: .center, spacing: 6) {
+            Rectangle()
                 .fill(order.platform.swiftUIColor)
-                .frame(width: 4, height: 40)
+                .frame(width: 2)
             
-            VStack(alignment: .leading, spacing: 4) {
+            if let data = productImageData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: thumbSize, height: thumbSize)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .clipped()
+            } else {
+                Color.clear
+                    .frame(width: thumbSize, height: thumbSize)
+            }
+            
+            VStack(alignment: .leading, spacing: 1) {
                 Text(order.buyerName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(.white)
-                
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(theme.textPrimary)
+                    .lineLimit(1)
                 Text(order.productName)
-                    .font(.system(size: 12))
-                    .foregroundColor(Color(hex: "#888888"))
-                
-                HStack(spacing: 8) {
-                    Text("\(order.quantity) units")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#666666"))
-                    
+                    .font(.system(size: 10))
+                    .foregroundColor(theme.textSecondary)
+                    .lineLimit(1)
+                HStack(spacing: 2) {
+                    Text("\(order.quantity) u")
                     Text("•")
-                        .foregroundColor(Color(hex: "#666666"))
-                    
-                    Text("$\(order.pricePerUnit, specifier: "%.2f")/unit")
-                        .font(.system(size: 11))
-                        .foregroundColor(Color(hex: "#666666"))
+                    Text("$\(order.pricePerUnit, specifier: "%.1f")")
                 }
+                .font(.system(size: 9))
+                .foregroundColor(theme.textMuted)
             }
             
             Spacer()
             
-            VStack(alignment: .trailing, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 1) {
                 Text("$\(order.totalPrice, specifier: "%.2f")")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color(hex: "#00ff88"))
-                
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(theme.accentColor)
                 Text(order.timestamp, style: .time)
-                    .font(.system(size: 10))
-                    .foregroundColor(Color(hex: "#666666"))
+                    .font(.system(size: 8))
+                    .foregroundColor(theme.textMuted)
             }
         }
-        .padding(11)  // Reduced from 12px
+        .padding(.vertical, 3)
+        .padding(.horizontal, 4)
         .background(
-            RoundedRectangle(cornerRadius: 7)  // Reduced from 8px
-                .fill(Color.white.opacity(0.05))
+            RoundedRectangle(cornerRadius: 7)
+                .fill(theme.cardBackground.opacity(0.5))
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
-                        .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                        .strokeBorder(theme.cardBorder.opacity(0.3), lineWidth: 1)
                 )
         )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            onEdit?()
+        }
+        .onLongPressGesture(minimumDuration: 0.5) {
+            HapticManager.lightImpact()
+            onEdit?()
+        }
     }
 }
 

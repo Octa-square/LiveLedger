@@ -420,21 +420,28 @@ extension View {
 
 // MARK: - Theme Manager
 class ThemeManager: ObservableObject {
+    private let themeKey: String
+
     @Published var currentTheme: AppTheme {
         didSet {
             if let encoded = try? JSONEncoder().encode(currentTheme) {
-                UserDefaults.standard.set(encoded, forKey: "app_theme")
+                UserDefaults.standard.set(encoded, forKey: themeKey)
             }
         }
     }
-    
-    init() {
-        // Load saved theme or default to Emerald Green
-        if let data = UserDefaults.standard.data(forKey: "app_theme"),
+
+    /// Per-user theme key so each user's theme is tied to their profile/email.
+    private static func themeKey(for userId: String) -> String {
+        userId.isEmpty ? "app_theme" : "app_theme_\(userId)"
+    }
+
+    init(userId: String = "") {
+        themeKey = Self.themeKey(for: userId)
+        if let data = UserDefaults.standard.data(forKey: themeKey),
            let theme = try? JSONDecoder().decode(AppTheme.self, from: data) {
             currentTheme = theme
         } else {
-            currentTheme = .emeraldGreen // Default theme
+            currentTheme = .emeraldGreen // Default theme (green)
         }
     }
 }
@@ -445,9 +452,25 @@ struct SettingsView: View {
     @ObservedObject var themeManager: ThemeManager
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
+    var viewModel: SalesViewModel? = nil
+    @StateObject private var storeKit = StoreKitManager.shared
     @Environment(\.dismiss) var dismiss
     @State private var showFeedback = false
     @State private var showSubscription = false
+    @State private var isRestoringPurchases = false
+    @State private var showRestorePurchasesConfirm = false
+    @State private var showRestoreSuccess = false
+    @State private var showRestoreNoPurchases = false
+    @State private var showRestoreError = false
+    @State private var showWhyPro = false
+    @State private var showBackupShareSheet = false
+    @State private var backupFileURL: URL?
+    @State private var showRestoreImporter = false
+    @State private var showRestoreConfirm = false
+    @State private var pendingRestoreData: Data?
+    @State private var showDeleteFirstConfirm = false
+    @State private var showDeleteTypeConfirm = false
+    @State private var deleteConfirmText = ""
     @State private var showDeleteConfirm = false
     @State private var showTutorial = false
     @State private var showLanguagePicker = false
@@ -460,416 +483,493 @@ struct SettingsView: View {
     @State private var editedCompanyName = ""
     @State private var editedUserName = ""
     
-    var body: some View {
-        NavigationStack {
-            List {
-                // Profile Section
-                // Apple reviewers using review@liveledger.app will see "Subscription Expired" status here
-                if let user = authManager.currentUser {
-                    Section {
-                        HStack(spacing: 12) {
-                            // Account Icon
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 40))
-                                .foregroundColor(.blue)
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(user.companyName)
-                                    .font(.headline)
-                                Text(user.name)
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text(user.email)
-                                    .font(.caption)
-                                    .foregroundColor(.gray)
-                                
-                                // Subscription status display - handles Pro, Expired, and Free
-                                HStack(spacing: 4) {
-                                    if user.isPro {
-                                        Label("PRO", systemImage: "crown.fill")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.orange)
-                                    } else if user.isLapsedSubscriber {
-                                        // EXPIRED SUBSCRIPTION - Apple reviewers will see this
-                                        Label("EXPIRED", systemImage: "exclamationmark.triangle.fill")
-                                            .font(.system(size: 10, weight: .bold))
-                                            .foregroundColor(.red)
-                                    } else {
-                                        Text("Free Plan")
-                                            .font(.system(size: 10))
-                                            .foregroundColor(.gray)
-                                    }
-                                }
-                            }
-                            
-                            Spacer()
-                            
-                            Button {
-                                editedCompanyName = user.companyName
-                                editedUserName = user.name
-                                showEditProfile = true
-                            } label: {
-                                Image(systemName: "pencil.circle.fill")
-                                    .font(.system(size: 22))
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                        
-                        // EXPIRED SUBSCRIPTION NOTICE
-                        // Apple reviewers using review@liveledger.app will see this prominent banner
-                        if user.isLapsedSubscriber {
-                            VStack(alignment: .leading, spacing: 8) {
-                                HStack {
-                                    Image(systemName: "exclamationmark.triangle.fill")
-                                        .foregroundColor(.orange)
-                                    Text("Your Pro subscription expired")
-                                        .font(.subheadline.bold())
-                                        .foregroundColor(.orange)
-                                }
-                                
-                                if let expiredDate = user.formattedExpirationDate {
-                                    Text("Expired on \(expiredDate)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Text("Resubscribe to continue using unlimited orders, exports, and all Pro features.")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                
-                                Button {
-                                    showSubscription = true
-                                } label: {
-                                    HStack {
-                                        Image(systemName: "crown.fill")
-                                        Text("Resubscribe to Pro")
-                                            .fontWeight(.semibold)
-                                    }
-                                    .foregroundColor(.white)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(
-                                        LinearGradient(colors: [.orange, .red],
-                                                      startPoint: .leading, endPoint: .trailing)
-                                    )
-                                    .cornerRadius(8)
-                                }
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        
-                        // Regular upgrade button for users who never had Pro
-                        if !user.isPro && !user.isLapsedSubscriber {
-                            Button {
-                                showSubscription = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "crown.fill")
-                                        .foregroundColor(.orange)
-                                    Text("Upgrade to Pro")
-                                        .foregroundColor(.orange)
-                                    Spacer()
-                                    Text("$19.99/mo")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                    } header: {
-                        Text(localization.localized(.profile))
-                    }
-                }
-                
-                // Language Section (Themes moved to Display Settings only)
-                Section {
-                    Button {
-                        showLanguagePicker = true
-                    } label: {
-                        HStack {
-                            Label(localization.localized(.language), systemImage: "globe")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text("\(localization.currentLanguage.flag) \(localization.currentLanguage.displayName)")
+    private func performBackup(viewModel: SalesViewModel) {
+        let backup = DataManager.buildBackup(from: viewModel)
+        guard let data = try? JSONEncoder().encode(backup) else { return }
+        let filename = DataManager.defaultBackupFilename()
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(filename)
+        do {
+            try data.write(to: fileURL)
+            backupFileURL = fileURL
+            showBackupShareSheet = true
+        } catch {
+            #if os(iOS)
+            HapticManager.error()
+            #endif
+        }
+    }
+
+    private func profileSection(user: AppUser) -> some View {
+        Section {
+            HStack(spacing: 12) {
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.system(size: 40))
+                    .foregroundColor(.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(user.companyName)
+                        .font(.headline)
+                    Text(user.name)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text(user.email)
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    HStack(spacing: 4) {
+                        if user.isPro {
+                            Label("PRO", systemImage: "crown.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.orange)
+                        } else if user.isLapsedSubscriber {
+                            Label("EXPIRED", systemImage: "exclamationmark.triangle.fill")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(.red)
+                        } else {
+                            Text("Free Plan")
+                                .font(.system(size: 10))
                                 .foregroundColor(.gray)
                         }
                     }
-                } header: {
-                    Text(localization.localized(.language))
                 }
-                
-                // Sound Settings Section
-                Section {
-                    Button {
-                        showSoundSettings = true
-                    } label: {
-                        HStack {
-                            Label(localization.localized(.soundSettings), systemImage: "speaker.wave.2.fill")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                } header: {
-                    Text(localization.localized(.soundSettings))
-                } footer: {
-                    Text("Configure timer start and order added sounds")
+                Spacer()
+                Button {
+                    editedCompanyName = user.companyName
+                    editedUserName = user.name
+                    showEditProfile = true
+                } label: {
+                    Image(systemName: "pencil.circle.fill")
+                        .font(.system(size: 22))
+                        .foregroundColor(.blue)
                 }
-                
-                // Display Settings Section
-                Section {
-                    Button {
-                        showDisplaySettings = true
-                    } label: {
-                        HStack {
-                            Label(localization.localized(.displaySettings), systemImage: "sun.max.fill")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                } header: {
-                    Text(localization.localized(.displaySettings))
-                } footer: {
-                    Text("Theme and overlay settings")
-                }
-                
-                // Tutorial Section (Sales Analytics removed - access via main Menu only)
-                Section {
-                    Button {
-                        showTutorial = true
-                    } label: {
-                        Label(localization.localized(.tutorial), systemImage: "questionmark.circle.fill")
-                            .foregroundColor(.primary)
-                    }
-                } header: {
-                    Text(localization.localized(.tutorial))
-                }
-                
-                // Support Section
-                Section {
-                    Button {
-                        showFeedback = true
-                    } label: {
-                        Label(localization.localized(.sendFeedback), systemImage: "envelope.fill")
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Link(destination: URL(string: "https://example.com/privacy")!) {
-                        Label(localization.localized(.privacyPolicy), systemImage: "hand.raised.fill")
-                            .foregroundColor(.primary)
-                    }
-                    
-                    Link(destination: URL(string: "https://example.com/terms")!) {
-                        Label(localization.localized(.termsOfService), systemImage: "doc.text.fill")
-                            .foregroundColor(.primary)
-                    }
-                } header: {
-                    Text(localization.localized(.support))
-                }
-                
-                // Having Issues Section
-                Section {
-                    Button {
-                        // Open WhatsApp with pre-filled message
-                        let phoneNumber = "13477855007" // LiveLedger WhatsApp Support: 347-785-5007
-                        let message = "Hi, I need help with LiveLedger app"
-                        let urlString = "https://wa.me/\(phoneNumber)?text=\(message.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
-                        if let url = URL(string: urlString) {
-                            UIApplication.shared.open(url)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "message.fill")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18))
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(localization.localized(.liveSupport))
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(.primary)
-                                Text(localization.localized(.chatOnWhatsApp))
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.gray)
-                            }
-                            
-                            Spacer()
-                            
-                            // WhatsApp icon
-                            ZStack {
-                                Circle()
-                                    .fill(Color.green)
-                                    .frame(width: 28, height: 28)
-                                Image(systemName: "phone.fill")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                    
-                    Button {
-                        // Send email for support to admin@octasquare.com
-                        if let url = URL(string: "mailto:admin@octasquare.com?subject=LiveLedger%20Support%20Request") {
-                            UIApplication.shared.open(url)
-                        }
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "envelope.badge.fill")
-                                .foregroundColor(.blue)
-                                .font(.system(size: 18))
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(localization.localized(.emailSupport))
-                                    .font(.system(size: 15, weight: .medium))
-                                    .foregroundColor(.primary)
-                                Text(localization.localized(.sendUsEmail))
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.gray)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                } header: {
+            }
+            .padding(.vertical, 4)
+            if user.isLapsedSubscriber {
+                expiredSubscriptionBanner
+            }
+            if !user.isPro && !user.isLapsedSubscriber {
+                Button {
+                    showSubscription = true
+                } label: {
                     HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
+                        Image(systemName: "crown.fill")
                             .foregroundColor(.orange)
-                        Text(localization.localized(.havingIssues))
-                    }
-                } footer: {
-                    Text(localization.localized(.supportResponseTime))
-                }
-                
-                // About Section
-                Section {
-                    // App Name
-                    HStack {
-                        Image(systemName: "app.fill")
-                            .foregroundColor(.green)
-                        Text("LiveLedger")
-                            .font(.system(size: 15, weight: .semibold))
+                        Text("Upgrade to Pro")
+                            .foregroundColor(.orange)
                         Spacer()
-                    }
-                    
-                    // Version
-                    HStack {
-                        Text(localization.localized(.version))
-                        Spacer()
-                        Text("1.3.0")
+                        Text("$19.99/mo")
+                            .font(.caption)
                             .foregroundColor(.gray)
                     }
-                    
-                    // Description
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Description")
-                            .font(.system(size: 13))
-                            .foregroundColor(.secondary)
-                        Text("Real-time sales tracking for live stream sellers. Track orders, manage inventory, and grow your business across TikTok, Instagram, and Facebook.")
+                }
+            }
+        } header: {
+            Text(localization.localized(.profile))
+        }
+    }
+    
+    private var expiredSubscriptionBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text("Your Pro subscription expired")
+                    .font(.subheadline.bold())
+                    .foregroundColor(.orange)
+            }
+            if let user = authManager.currentUser, let expiredDate = user.formattedExpirationDate {
+                Text("Expired on \(expiredDate)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Text("Resubscribe to continue using unlimited orders, exports, and all Pro features.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Button {
+                showSubscription = true
+            } label: {
+                HStack {
+                    Image(systemName: "crown.fill")
+                    Text("Resubscribe to Pro")
+                        .fontWeight(.semibold)
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(
+                    LinearGradient(colors: [.orange, .red],
+                                  startPoint: .leading, endPoint: .trailing)
+                )
+                .cornerRadius(8)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private var subscriptionSectionContent: some View {
+        Section {
+            Button {
+                showSubscription = true
+            } label: {
+                Label("Subscription", systemImage: "crown.fill")
+                    .foregroundColor(.primary)
+            }
+            Button {
+                showRestorePurchasesConfirm = true
+            } label: {
+                HStack {
+                    Label("Restore Purchases", systemImage: "arrow.clockwise")
+                        .foregroundColor(.primary)
+                    if isRestoringPurchases {
+                        Spacer()
+                        ProgressView()
+                            .scaleEffect(0.9)
+                    }
+                }
+            }
+            .disabled(isRestoringPurchases)
+            Button {
+                showWhyPro = true
+            } label: {
+                Label("Why Pro?", systemImage: "questionmark.circle")
+                    .foregroundColor(.primary)
+            }
+        } header: {
+            Text("Subscription")
+        } footer: {
+            Text("Restore if you reinstalled the app. Why Pro? shows what you get with a Pro subscription.")
+        }
+    }
+    
+    @ViewBuilder
+    private var dataAndPrivacyContent: some View {
+        if viewModel != nil {
+            Section {
+                Button {
+                    guard let vm = viewModel else { return }
+                    performBackup(viewModel: vm)
+                } label: {
+                    Label("Backup to Files", systemImage: "folder.badge.plus")
+                        .foregroundColor(.primary)
+                }
+                Button {
+                    showRestoreImporter = true
+                } label: {
+                    Label("Restore from Backup", systemImage: "folder.badge.arrow.down")
+                        .foregroundColor(.primary)
+                }
+            } header: {
+                Text("Your Data")
+            } footer: {
+                Text("Backup saves all orders, products, and settings to a JSON file. Restore replaces current data.")
+            }
+            Section {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("• All data stored locally")
+                    Text("• No data sent to servers")
+                    Text("• You own your data")
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+            } header: {
+                Text("Privacy")
+            }
+            Section {
+                Button(role: .destructive) {
+                    showDeleteFirstConfirm = true
+                } label: {
+                    Label("Delete My Data", systemImage: "trash")
+                }
+            } header: {
+                Text("Delete Data")
+            } footer: {
+                Text("Permanently deletes all orders, products, and settings. You will be signed out. This cannot be undone.")
+            }
+        }
+    }
+    
+    private var languageSoundDisplayTutorialContent: some View {
+        Group {
+            Section {
+                Button {
+                    showLanguagePicker = true
+                } label: {
+                    HStack {
+                        Label(localization.localized(.language), systemImage: "globe")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("\(localization.currentLanguage.flag) \(localization.currentLanguage.displayName)")
+                            .foregroundColor(.gray)
+                    }
+                }
+            } header: {
+                Text(localization.localized(.language))
+            }
+            Section {
+                Button {
+                    showSoundSettings = true
+                } label: {
+                    HStack {
+                        Label(localization.localized(.soundSettings), systemImage: "speaker.wave.2.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                }
+            } header: {
+                Text(localization.localized(.soundSettings))
+            } footer: {
+                Text("Configure order added sound")
+            }
+            Section {
+                Button {
+                    showDisplaySettings = true
+                } label: {
+                    HStack {
+                        Label(localization.localized(.displaySettings), systemImage: "sun.max.fill")
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.gray)
+                    }
+                }
+            } header: {
+                Text(localization.localized(.displaySettings))
+            } footer: {
+                Text("Theme and overlay settings")
+            }
+            Section {
+                Button {
+                    showTutorial = true
+                } label: {
+                    Label(localization.localized(.tutorial), systemImage: "questionmark.circle.fill")
+                        .foregroundColor(.primary)
+                }
+            } header: {
+                Text(localization.localized(.tutorial))
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var supportThroughDebugContent: some View {
+        Section {
+            Button {
+                showFeedback = true
+            } label: {
+                Label(localization.localized(.sendFeedback), systemImage: "envelope.fill")
+                    .foregroundColor(.primary)
+            }
+            Link(destination: URL(string: "https://octa-square.github.io/LiveLedger/privacy-policy.html")!) {
+                Label(localization.localized(.privacyPolicy), systemImage: "hand.raised.fill")
+                    .foregroundColor(.primary)
+            }
+            Link(destination: URL(string: "https://octa-square.github.io/LiveLedger/terms-of-service.html")!) {
+                Label(localization.localized(.termsOfService), systemImage: "doc.text.fill")
+                    .foregroundColor(.primary)
+            }
+        } header: {
+            Text(localization.localized(.support))
+        }
+        Section {
+            Button {
+                let phoneNumber = "13477855007"
+                let message = "Hi, I need help with LiveLedger app"
+                let urlString = "https://wa.me/\(phoneNumber)?text=\(message.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? "")"
+                if let url = URL(string: urlString) {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "message.fill")
+                        .foregroundColor(.green)
+                        .font(.system(size: 18))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.localized(.liveSupport))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.primary)
+                        Text(localization.localized(.chatOnWhatsApp))
                             .font(.system(size: 12))
                             .foregroundColor(.gray)
                     }
-                    .padding(.vertical, 4)
-                    
-                    // Developer
-                    HStack {
-                        Text("Developer")
-                        Spacer()
-                        Text("Octasquare")
+                    Spacer()
+                    ZStack {
+                        Circle()
+                            .fill(Color.green)
+                            .frame(width: 28, height: 28)
+                        Image(systemName: "phone.fill")
+                            .font(.system(size: 12))
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            Button {
+                if let url = URL(string: "mailto:admin@octasquare.com?subject=LiveLedger%20Support%20Request") {
+                    UIApplication.shared.open(url)
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "envelope.badge.fill")
+                        .foregroundColor(.blue)
+                        .font(.system(size: 18))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(localization.localized(.emailSupport))
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundColor(.primary)
+                        Text(localization.localized(.sendUsEmail))
+                            .font(.system(size: 12))
                             .foregroundColor(.gray)
                     }
-                    
-                    // Terms & Privacy
-                    NavigationLink {
-                        TermsPrivacyView()
-                    } label: {
-                        Label("Terms & Privacy", systemImage: "doc.text.fill")
-                    }
-                    
-                } header: {
-                    Text(localization.localized(.about))
                 }
+                .padding(.vertical, 4)
+            }
+        } header: {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text(localization.localized(.havingIssues))
+            }
+        } footer: {
+            Text(localization.localized(.supportResponseTime))
+        }
+        Section {
+            HStack {
+                Image(systemName: "app.fill")
+                    .foregroundColor(.green)
+                Text("LiveLedger")
+                    .font(.system(size: 15, weight: .semibold))
+                Spacer()
+            }
+            HStack {
+                Text(localization.localized(.version))
+                Spacer()
+                Text("1.3.0")
+                    .foregroundColor(.gray)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Description")
+                    .font(.system(size: 13))
+                    .foregroundColor(.secondary)
+                Text("Real-time sales tracking for live stream sellers. Track orders, manage inventory, and grow your business across TikTok, Instagram, and Facebook.")
+                    .font(.system(size: 12))
+                    .foregroundColor(.gray)
+            }
+            .padding(.vertical, 4)
+            HStack {
+                Text("Developer")
+                Spacer()
+                Text("Octasquare")
+                    .foregroundColor(.gray)
+            }
+            NavigationLink {
+                TermsPrivacyView()
+            } label: {
+                Label("Terms & Privacy", systemImage: "doc.text.fill")
+            }
+        } header: {
+            Text(localization.localized(.about))
+        }
+        Section {
+            Button {
+                showProfileSettings = true
+            } label: {
+                HStack {
+                    Label(localization.localized(.profile), systemImage: "person.circle.fill")
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text(authManager.currentUser?.name ?? "")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+            }
+            Button {
+                showStoreSettings = true
+            } label: {
+                HStack {
+                    Label(localization.localized(.myStore), systemImage: "building.2.fill")
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Text(authManager.currentUser?.companyName ?? "")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+            }
+        } header: {
+            Text(localization.localized(.profileSettings))
+        }
+        Section {
+            Button {
+                showNetworkTest = true
+            } label: {
+                HStack {
+                    Label("Network", systemImage: "network")
+                        .foregroundColor(.primary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.gray)
+                }
+            }
+        } header: {
+            Text("Connection")
+        } footer: {
+            Text("Test your network connection before selling")
+        }
+        Section {
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label(localization.localized(.deleteAccount), systemImage: "trash.fill")
+                    .foregroundColor(.red)
+            }
+            Button {
+                isLoggedIn = false
+                authManager.signOut()
+                dismiss()
+            } label: {
+                Label(localization.localized(.signOut), systemImage: "rectangle.portrait.and.arrow.right")
+                    .foregroundColor(.orange)
+            }
+        } header: {
+            Text(localization.localized(.profile))
+        }
+        if (authManager.currentUser?.email ?? "").lowercased() == "applereview@liveledger.com" {
+            Section("Debug - Test Account Only") {
+                Button("Reset Sample Data Flag") {
+                    UserDefaults.standard.removeObject(forKey: "sample_data_loaded_for_review_account")
+                }
+                Button("Force Load Sample Data Now") {
+                    viewModel?.populateDemoData(
+                        email: "applereview@liveledger.com",
+                        isPro: authManager.currentUser?.isPro ?? false
+                    )
+                }
+            }
+        }
+    }
+    
+    var body: some View {
+        NavigationStack {
+            List {
+                if let user = authManager.currentUser {
+                    profileSection(user: user)
+                }
+                subscriptionSectionContent
                 
-                // Profile Section
-                Section {
-                    Button {
-                        showProfileSettings = true
-                    } label: {
-                        HStack {
-                            Label(localization.localized(.profile), systemImage: "person.circle.fill")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text(authManager.currentUser?.name ?? "")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                    
-                    Button {
-                        showStoreSettings = true
-                    } label: {
-                        HStack {
-                            Label(localization.localized(.myStore), systemImage: "building.2.fill")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text(authManager.currentUser?.companyName ?? "")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                } header: {
-                    Text(localization.localized(.profileSettings))
-                }
+                dataAndPrivacyContent
                 
-                // Network Section
-                Section {
-                    Button {
-                        showNetworkTest = true
-                    } label: {
-                        HStack {
-                            Label("Network", systemImage: "network")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundColor(.gray)
-                        }
-                    }
-                } header: {
-                    Text("Connection")
-                } footer: {
-                    Text("Test your network before going live")
-                }
+                languageSoundDisplayTutorialContent
                 
-                // Account Actions
-                Section {
-                    Button(role: .destructive) {
-                        showDeleteConfirm = true
-                    } label: {
-                        Label(localization.localized(.deleteAccount), systemImage: "trash.fill")
-                            .foregroundColor(.red)
-                    }
-                    
-                    Button {
-                        isLoggedIn = false
-                        authManager.signOut()
-                        dismiss()
-                    } label: {
-                        Label(localization.localized(.signOut), systemImage: "rectangle.portrait.and.arrow.right")
-                            .foregroundColor(.orange)
-                    }
-                } header: {
-                    Text(localization.localized(.profile))
-                }
+                supportThroughDebugContent
             }
             .navigationTitle(localization.localized(.settings))
             .navigationBarTitleDisplayMode(.inline)
@@ -879,20 +979,69 @@ struct SettingsView: View {
                 }
             }
             .sheet(isPresented: $showFeedback) {
-                FeedbackView()
+                FeedbackView(localization: localization)
             }
-            .sheet(isPresented: $showSubscription) {
+            .fullScreenCover(isPresented: $showSubscription) {
                 SubscriptionView(authManager: authManager)
             }
-            .alert("Delete Account?", isPresented: $showDeleteConfirm) {
-                Button("Delete", role: .destructive) {
+            .sheet(isPresented: $showWhyPro) {
+                WhyProSheet(onUpgrade: {
+                    showWhyPro = false
+                    showSubscription = true
+                }, onDismiss: { showWhyPro = false })
+            }
+            .confirmationDialog("Restore Purchases", isPresented: $showRestorePurchasesConfirm, titleVisibility: .visible) {
+                Button("Cancel", role: .cancel) {}
+                Button("OK") {
+                    Task {
+                        isRestoringPurchases = true
+                        let result = await storeKit.restorePurchases()
+                        isRestoringPurchases = false
+                        #if os(iOS)
+                        switch result {
+                        case .success:
+                            HapticManager.success()
+                            authManager.upgradeToPro()
+                            showRestoreSuccess = true
+                        case .noPurchases:
+                            HapticManager.selection()
+                            showRestoreNoPurchases = true
+                        case .cancelled:
+                            break
+                        case .failed:
+                            HapticManager.error()
+                            showRestoreError = true
+                        }
+                        #endif
+                    }
+                }
+            } message: {
+                Text("Restore your Pro subscription from your Apple ID? You may be asked to sign in.")
+            }
+            .alert("Success", isPresented: $showRestoreSuccess) {
+                Button("OK") {}
+            } message: {
+                Text("Your Pro subscription has been restored!")
+            }
+            .alert("No Purchases Found", isPresented: $showRestoreNoPurchases) {
+                Button("OK") {}
+            } message: {
+                Text("We couldn't find any previous purchases for this Apple ID.")
+            }
+            .alert("Restore Failed", isPresented: $showRestoreError) {
+                Button("OK") {}
+            } message: {
+                Text(storeKit.errorMessage ?? "Please try again or contact support.")
+            }
+            .alert(localization.localized(.deleteAccountQuestion), isPresented: $showDeleteConfirm) {
+                Button(localization.localized(.delete), role: .destructive) {
                     isLoggedIn = false
                     authManager.deleteAccount()
                     dismiss()
                 }
-                Button("Cancel", role: .cancel) {}
+                Button(localization.localized(.cancel), role: .cancel) {}
             } message: {
-                Text("This will permanently delete your account and all data. This cannot be undone.")
+                Text(localization.localized(.deleteAccountMessage))
             }
             .sheet(isPresented: $showLanguagePicker) {
                 LanguagePickerView(localization: localization)
@@ -923,7 +1072,74 @@ struct SettingsView: View {
                 )
             }
             .fullScreenCover(isPresented: $showTutorial) {
-                TutorialWrapperView(localization: localization, isPresented: $showTutorial)
+                TutorialWrapperView(authManager: authManager, localization: localization, isPresented: $showTutorial)
+            }
+            .sheet(isPresented: $showBackupShareSheet, onDismiss: {
+                if let url = backupFileURL {
+                    try? FileManager.default.removeItem(at: url)
+                }
+                backupFileURL = nil
+            }) {
+                if let url = backupFileURL {
+                    ShareSheet(items: [url])
+                }
+            }
+            .fileImporter(isPresented: $showRestoreImporter, allowedContentTypes: [.json], allowsMultipleSelection: false) { result in
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    guard url.startAccessingSecurityScopedResource() else { return }
+                    defer { url.stopAccessingSecurityScopedResource() }
+                    if let data = try? Data(contentsOf: url) {
+                        pendingRestoreData = data
+                        showRestoreConfirm = true
+                    }
+                case .failure: break
+                }
+                showRestoreImporter = false
+            }
+            .alert("Restore from Backup?", isPresented: $showRestoreConfirm) {
+                Button("Cancel", role: .cancel) { pendingRestoreData = nil }
+                Button("Restore", role: .destructive) {
+                    guard let data = pendingRestoreData,
+                          let backup = DataManager.restoreFromJSON(data),
+                          let vm = viewModel else { pendingRestoreData = nil; return }
+                    vm.loadFromBackup(backup)
+                    pendingRestoreData = nil
+                    #if os(iOS)
+                    HapticManager.success()
+                    #endif
+                }
+            } message: {
+                Text("This will replace all current data. Continue?")
+            }
+            .alert("Delete All Data?", isPresented: $showDeleteFirstConfirm) {
+                Button("Cancel", role: .cancel) {}
+                Button("Delete Everything", role: .destructive) {
+                    showDeleteFirstConfirm = false
+                    showDeleteTypeConfirm = true
+                }
+            } message: {
+                Text("This will permanently delete:\n• All orders\n• All products\n• All settings\n\nThis CANNOT be undone.")
+            }
+            .sheet(isPresented: $showDeleteTypeConfirm) {
+                DeleteDataConfirmSheet(
+                    deleteConfirmText: $deleteConfirmText,
+                    onConfirm: {
+                        guard deleteConfirmText.trimmingCharacters(in: .whitespaces).uppercased() == "DELETE" else { return }
+                        viewModel?.resetToEmptyState()
+                        DataManager.deleteAllUserData()
+                        UserDefaults.standard.set(false, forKey: "isLoggedIn")
+                        authManager.signOutAfterDeleteAllData()
+                        showDeleteTypeConfirm = false
+                        deleteConfirmText = ""
+                        dismiss()
+                    },
+                    onCancel: {
+                        showDeleteTypeConfirm = false
+                        deleteConfirmText = ""
+                    }
+                )
             }
         }
     }
@@ -940,18 +1156,159 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - Delete Data Confirm Sheet (type DELETE)
+struct DeleteDataConfirmSheet: View {
+    @Binding var deleteConfirmText: String
+    var onConfirm: () -> Void
+    var onCancel: () -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    private var canConfirm: Bool {
+        deleteConfirmText.trimmingCharacters(in: .whitespaces).uppercased() == "DELETE"
+    }
+    
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 20) {
+                Text("Type DELETE to confirm")
+                    .font(.headline)
+                TextField("DELETE", text: $deleteConfirmText)
+                    .textFieldStyle(.roundedBorder)
+                    .autocapitalization(.allCharacters)
+                    .padding(.horizontal)
+                Button(role: .destructive) {
+                    if canConfirm {
+                        onConfirm()
+                        dismiss()
+                    }
+                } label: {
+                    Text("Delete Everything")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                }
+                .disabled(!canConfirm)
+                .padding(.horizontal)
+            }
+            .padding(.top, 24)
+            .navigationTitle("Confirm Delete")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        onCancel()
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Why Pro Sheet (benefits and upgrade CTA)
+struct WhyProSheet: View {
+    var onUpgrade: () -> Void
+    var onDismiss: () -> Void
+    @Environment(\.dismiss) var dismiss
+    
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    HStack(spacing: 8) {
+                        Text("💎")
+                        Text("Why Upgrade to Pro?")
+                            .font(.title2.bold())
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Scale Your Business")
+                            .font(.headline)
+                        Label("Unlimited orders (Free: limited to 20)", systemImage: "bag.fill")
+                            .font(.subheadline)
+                        Label("Unlimited exports (Free: limited to 10)", systemImage: "square.and.arrow.up")
+                            .font(.subheadline)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Professional Tools")
+                            .font(.headline)
+                        Label("Product images", systemImage: "photo")
+                            .font(.subheadline)
+                        Label("Barcode scanning", systemImage: "barcode.viewfinder")
+                            .font(.subheadline)
+                        Label("Priority support", systemImage: "headphones")
+                            .font(.subheadline)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                    
+                    Text("Perfect for serious sellers who need professional tools.")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    
+                    Button {
+                        dismiss()
+                        onUpgrade()
+                    } label: {
+                        HStack {
+                            Image(systemName: "crown.fill")
+                            Text("Upgrade to Pro - $19.99/mo")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            LinearGradient(colors: [.orange, .yellow],
+                                          startPoint: .leading, endPoint: .trailing)
+                        )
+                        .cornerRadius(12)
+                    }
+                    .padding(.top, 8)
+                }
+                .padding()
+            }
+            .navigationTitle("Why Pro?")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                        onDismiss()
+                    }
+                }
+            }
+        }
+    }
+}
+
 // MARK: - Feedback View
 struct FeedbackView: View {
+    @ObservedObject var localization: LocalizationManager
     @Environment(\.dismiss) var dismiss
     @State private var feedbackText = ""
     @State private var feedbackType = "Suggestion"
-    let feedbackTypes = ["Suggestion", "Bug Report", "Question", "Other"]
+    
+    var feedbackTypes: [String] {
+        [
+            localization.localized(.suggestion),
+            localization.localized(.bugReport),
+            localization.localized(.question),
+            localization.localized(.other)
+        ]
+    }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section("Type") {
-                    Picker("Feedback Type", selection: $feedbackType) {
+                Section(localization.localized(.type)) {
+                    Picker(localization.localized(.feedbackType), selection: $feedbackType) {
                         ForEach(feedbackTypes, id: \.self) { type in
                             Text(type).tag(type)
                         }
@@ -959,7 +1316,7 @@ struct FeedbackView: View {
                     .pickerStyle(.segmented)
                 }
                 
-                Section("Message") {
+                Section(localization.localized(.message)) {
                     TextEditor(text: $feedbackText)
                         .frame(minHeight: 150)
                 }
@@ -970,7 +1327,7 @@ struct FeedbackView: View {
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Send Feedback")
+                            Text(localization.localized(.sendFeedback))
                                 .fontWeight(.semibold)
                             Spacer()
                         }
@@ -978,11 +1335,11 @@ struct FeedbackView: View {
                     .disabled(feedbackText.isEmpty)
                 }
             }
-            .navigationTitle("Send Feedback")
+            .navigationTitle(localization.localized(.sendFeedbackTitle))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button(localization.localized(.cancel)) { dismiss() }
                 }
             }
         }
@@ -1031,12 +1388,13 @@ struct ImagePicker: UIViewControllerRepresentable {
 
 // MARK: - Tutorial Wrapper for Settings
 struct TutorialWrapperView: View {
+    @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
     @Binding var isPresented: Bool
     @State private var dummy = false
     
     var body: some View {
-        OnboardingView(localization: localization, hasCompletedOnboarding: $dummy, isReTutorial: true)
+        OnboardingView(authManager: authManager, localization: localization, hasCompletedOnboarding: $dummy, isReTutorial: true)
             .onChange(of: dummy) { _, newValue in
                 if newValue {
                     isPresented = false
@@ -1080,11 +1438,11 @@ struct LanguagePickerView: View {
                     }
                 }
             }
-            .navigationTitle("Select Language")
+            .navigationTitle(localization.localized(.selectLanguage))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button(localization.localized(.done)) { dismiss() }
                 }
             }
         }
@@ -1094,6 +1452,7 @@ struct LanguagePickerView: View {
 
 // MARK: - Edit Profile View
 struct EditProfileView: View {
+    @ObservedObject var localization = LocalizationManager.shared
     @Environment(\.dismiss) var dismiss
     @Binding var companyName: String
     @Binding var userName: String
@@ -1103,31 +1462,31 @@ struct EditProfileView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Company Name", text: $companyName)
+                    TextField(localization.localized(.companyName), text: $companyName)
                         .textContentType(.organizationName)
                 } header: {
-                    Text("Company")
+                    Text(localization.localized(.company))
                 } footer: {
                     Text("This appears at the top of your dashboard")
                 }
                 
                 Section {
-                    TextField("Your Name", text: $userName)
+                    TextField(localization.localized(.yourName), text: $userName)
                         .textContentType(.name)
                 } header: {
-                    Text("Your Name")
+                    Text(localization.localized(.yourName))
                 }
             }
-            .navigationTitle("Edit Profile")
+            .navigationTitle(localization.localized(.edit))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button(localization.localized(.cancel)) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(localization.localized(.save)) {
                         onSave()
                         dismiss()
                     }
@@ -1142,12 +1501,14 @@ struct EditProfileView: View {
 
 // MARK: - Terms & Privacy View
 struct TermsPrivacyView: View {
+    @ObservedObject var localization = LocalizationManager.shared
+    
     var body: some View {
         List {
             Section {
                 Link(destination: URL(string: "https://octa-square.github.io/LiveLedger/terms-of-service.html")!) {
                     HStack {
-                        Label("Terms of Service", systemImage: "doc.text.fill")
+                        Label(localization.localized(.termsOfService), systemImage: "doc.text.fill")
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
                             .font(.caption)
@@ -1157,7 +1518,7 @@ struct TermsPrivacyView: View {
                 
                 Link(destination: URL(string: "https://octa-square.github.io/LiveLedger/privacy-policy.html")!) {
                     HStack {
-                        Label("Privacy Policy", systemImage: "hand.raised.fill")
+                        Label(localization.localized(.privacyPolicy), systemImage: "hand.raised.fill")
                         Spacer()
                         Image(systemName: "arrow.up.right.square")
                             .font(.caption)
@@ -1168,27 +1529,27 @@ struct TermsPrivacyView: View {
             
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Data Collection")
+                    Text(localization.localized(.dataCollection))
                         .font(.subheadline.weight(.semibold))
-                    Text("LiveLedger stores all your data locally on your device. We do not collect, transmit, or store your sales data on any external servers.")
+                    Text(localization.localized(.dataCollectionMessage))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 4)
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Third-Party Services")
+                    Text(localization.localized(.thirdPartyServices))
                         .font(.subheadline.weight(.semibold))
-                    Text("We use Apple's StoreKit for in-app purchases. No personal data is shared with third parties.")
+                    Text(localization.localized(.thirdPartyMessage))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
                 .padding(.vertical, 4)
             } header: {
-                Text("Privacy Summary")
+                Text(localization.localized(.privacySummary))
             }
         }
-        .navigationTitle("Terms & Privacy")
+        .navigationTitle(localization.localized(.termsAndPrivacy))
         .navigationBarTitleDisplayMode(.inline)
     }
 }

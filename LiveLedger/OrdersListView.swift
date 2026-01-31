@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct OrdersListView: View {
     @ObservedObject var viewModel: SalesViewModel
@@ -14,6 +15,8 @@ struct OrdersListView: View {
     @ObservedObject var authManager: AuthManager
     @State private var editingOrder: Order?
     @State private var editingNameOrderId: UUID?
+    @State private var orderToDelete: Order?
+    @State private var showSwipeDeleteConfirmation = false
     
     private var theme: AppTheme { themeManager.currentTheme }
     private var isPro: Bool { authManager.currentUser?.isPro ?? false }
@@ -42,6 +45,58 @@ struct OrdersListView: View {
                 Spacer()
                 
                 // Filters - RIGHT EDGE ALIGNMENT (VISIBLE FOR ALL USERS)
+                // Payment Filter - All / Unpaid / Paid
+                HStack(spacing: 4) {
+                    Menu {
+                        Button { viewModel.filterPayment = .all } label: {
+                            Text(localization.localized(.all)).font(.system(size: 12))
+                        }
+                        Button { viewModel.filterPayment = .unpaid } label: {
+                            Label(localization.localized(.unpaid), systemImage: "circle").font(.system(size: 12))
+                        }
+                        Button { viewModel.filterPayment = .paid } label: {
+                            Label(localization.localized(.paid), systemImage: "checkmark.circle.fill").font(.system(size: 12))
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(viewModel.filterPayment == .all ? localization.localized(.all) : viewModel.filterPayment == .unpaid ? localization.localized(.unpaid) : localization.localized(.paid))
+                            Image(systemName: "chevron.down").font(.system(size: 7))
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.textPrimary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(theme.cardBackgroundWithOpacity(0.4))
+                .cornerRadius(6)
+                
+                // Order Source Filter
+                HStack(spacing: 4) {
+                    Menu {
+                        Button { viewModel.filterOrderSource = nil } label: {
+                            Text(localization.localized(.allSources)).font(.system(size: 12))
+                        }
+                        Divider()
+                        ForEach(OrderSource.allCases, id: \.self) { source in
+                            Button { viewModel.filterOrderSource = source } label: {
+                                Text(source.rawValue).font(.system(size: 12))
+                            }
+                        }
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text(viewModel.filterOrderSource?.shortLabel ?? localization.localized(.orderSource))
+                            Image(systemName: "chevron.down").font(.system(size: 7))
+                        }
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(theme.textPrimary)
+                    }
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(theme.cardBackgroundWithOpacity(0.4))
+                .cornerRadius(6)
+                
                 // Platform Filter - "All ▼"
                 HStack(spacing: 4) {
                     Menu {
@@ -106,63 +161,97 @@ struct OrdersListView: View {
             }
             
             if viewModel.filteredOrders.isEmpty {
-                // Empty state - fills remaining space
-                VStack {
+                // Empty state - helpful copy
+                VStack(spacing: 12) {
                     Spacer()
-                    Image(systemName: "bag")
-                        .font(.system(size: 32))
-                        .foregroundColor(theme.textMuted.opacity(0.4))
+                    Text("🛍️")
+                        .font(.system(size: 48))
                     if viewModel.orders.isEmpty {
                         Text(localization.localized(.noOrders))
-                            .font(.system(size: 15))
-                            .foregroundColor(theme.textMuted.opacity(0.6))
-                        Text("Tap a product to add orders")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(theme.textPrimary)
+                        Text("Tap a product below to add your first order!")
+                            .font(.system(size: 13))
+                            .foregroundColor(theme.textMuted)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        Text("Or tap [+] to add a product first.")
                             .font(.system(size: 12))
-                            .foregroundColor(theme.textMuted.opacity(0.4))
+                            .foregroundColor(theme.textMuted.opacity(0.8))
                     } else {
                         Text(localization.localized(.noOrders))
-                            .font(.system(size: 15))
-                            .foregroundColor(theme.textMuted.opacity(0.6))
-                        Text("Try adjusting platform or discount filter")
-                            .font(.system(size: 12))
-                            .foregroundColor(theme.textMuted.opacity(0.4))
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(theme.textPrimary)
+                        Text("Try adjusting platform or payment filter.")
+                            .font(.system(size: 13))
+                            .foregroundColor(theme.textMuted)
                     }
                     Spacer()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                // Orders list - compact with visible scroll indicator
-                ScrollView(.vertical, showsIndicators: true) {
-                    LazyVStack(spacing: 2) {
-                        ForEach(viewModel.filteredOrders) { order in
-                            CompactOrderRow(
-                                order: order,
-                                theme: theme,
-                                isEditingName: editingNameOrderId == order.id,
-                                onNameTap: {
-                                    editingNameOrderId = order.id
-                                },
-                                onNameChange: { newName in
-                                    var updated = order
-                                    updated.buyerName = newName
-                                    viewModel.updateOrder(updated)
-                                },
-                                onNameDone: {
-                                    editingNameOrderId = nil
-                                },
-                                onQuantityChange: { viewModel.updateOrderQuantity(order, newQuantity: $0) },
-                                onFulfilledTap: { viewModel.toggleFulfilled(order) },
-                                onEdit: { editingOrder = order },
-                                onDelete: { viewModel.deleteOrder(order) }
-                            )
+                // Orders list with swipe to delete
+                List {
+                    ForEach(viewModel.filteredOrders) { order in
+                        CompactOrderRow(
+                            order: order,
+                            theme: theme,
+                            productImageData: isPro ? viewModel.products.first(where: { $0.id == order.productId })?.imageData : nil,
+                            isEditingName: editingNameOrderId == order.id,
+                            onNameTap: {
+                                editingNameOrderId = order.id
+                            },
+                            onNameChange: { newName in
+                                var updated = order
+                                updated.buyerName = newName
+                                viewModel.updateOrder(updated)
+                            },
+                            onNameDone: {
+                                editingNameOrderId = nil
+                            },
+                            onQuantityChange: { viewModel.updateOrderQuantity(order, newQuantity: $0) },
+                            onFulfilledTap: { viewModel.toggleFulfilled(order) },
+                            onEdit: { editingOrder = order },
+                            onDelete: {
+                                HapticManager.warning()
+                                viewModel.deleteOrder(order)
+                            }
+                        )
+                        .listRowInsets(EdgeInsets(top: 2, leading: 6, bottom: 2, trailing: 6))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(theme.cardBackground.opacity(0.4))
+                        )
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                orderToDelete = order
+                                showSwipeDeleteConfirmation = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
                         }
                     }
-                    .padding(.vertical, 2)
                 }
-                .scrollIndicators(.visible)
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
             }
         }
         .padding(10)
+        .confirmationDialog("Delete this order?", isPresented: $showSwipeDeleteConfirmation, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let order = orderToDelete {
+                    HapticManager.warning()
+                    viewModel.deleteOrder(order)
+                }
+                orderToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                orderToDelete = nil
+            }
+        } message: {
+            Text("This cannot be undone.")
+        }
         .sheet(item: $editingOrder) { order in
             EditOrderSheet(
                 order: order,
@@ -180,6 +269,7 @@ struct OrdersListView: View {
 struct CompactOrderRow: View {
     let order: Order
     let theme: AppTheme
+    var productImageData: Data?
     let isEditingName: Bool
     let onNameTap: () -> Void
     let onNameChange: (String) -> Void
@@ -191,10 +281,21 @@ struct CompactOrderRow: View {
     
     @State private var showDelete = false
     @State private var tempName: String = ""
+    @State private var isEditingQuantity = false
+    @State private var tempQuantity: String = ""
     @FocusState private var nameFieldFocused: Bool
+    @FocusState private var quantityFieldFocused: Bool
     
     var body: some View {
         HStack(spacing: 4) {
+            // Product thumbnail when available
+            if let data = productImageData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 24, height: 24)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
             // Platform color bar (thin vertical)
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(order.platform.swiftUIColor)
@@ -237,7 +338,7 @@ struct CompactOrderRow: View {
                 .frame(width: 45, alignment: .leading)
             }
             
-            // Qty controls - minimal
+            // Qty - tap to type or use +/-
             HStack(spacing: 2) {
                 Button { if order.quantity > 1 { onQuantityChange(order.quantity - 1) } } label: {
                     Image(systemName: "minus.circle.fill")
@@ -245,10 +346,31 @@ struct CompactOrderRow: View {
                         .foregroundColor(order.quantity > 1 ? theme.textSecondary : theme.textMuted.opacity(0.3))
                 }
                 
-                Text("\(order.quantity)")
-                    .font(.system(size: 11, weight: .bold, design: .rounded))
-                    .foregroundColor(theme.textPrimary)
-                    .frame(width: 14)
+                if isEditingQuantity {
+                    TextField("Qty", text: $tempQuantity)
+                        .font(.system(size: 11, weight: .bold, design: .rounded))
+                        .foregroundColor(theme.textPrimary)
+                        .keyboardType(.numberPad)
+                        .frame(width: 24)
+                        .focused($quantityFieldFocused)
+                        .onChange(of: quantityFieldFocused) { _, focused in
+                            if !focused {
+                                if let n = Int(tempQuantity), n >= 1, n <= 99 { onQuantityChange(n) }
+                                isEditingQuantity = false
+                            }
+                        }
+                        .onAppear {
+                            tempQuantity = "\(order.quantity)"
+                            quantityFieldFocused = true
+                        }
+                } else {
+                    Button(action: { isEditingQuantity = true }) {
+                        Text("\(order.quantity)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(theme.textPrimary)
+                            .frame(width: 14)
+                    }
+                }
                 
                 Button { onQuantityChange(order.quantity + 1) } label: {
                     Image(systemName: "plus.circle.fill")
@@ -258,6 +380,21 @@ struct CompactOrderRow: View {
             }
             
             Spacer()
+            
+            // Payment badge (Unpaid / Paid)
+            Text(order.paymentStatus == .paid ? LocalizationManager.shared.localized(.paid) : LocalizationManager.shared.localized(.unpaid))
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundColor(order.paymentStatus == .paid ? theme.successColor : theme.dangerColor)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
+                .background((order.paymentStatus == .paid ? theme.successColor : theme.dangerColor).opacity(0.2))
+                .cornerRadius(4)
+            
+            // Order source badge
+            Text(order.orderSource.shortLabel)
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(theme.textSecondary)
+                .lineLimit(1)
             
             // Price
             Text("$\(order.totalPrice, specifier: "%.0f")")
@@ -286,9 +423,14 @@ struct CompactOrderRow: View {
             RoundedRectangle(cornerRadius: 6)
                 .fill(theme.cardBackground.opacity(0.4))
         )
-        .confirmationDialog("Delete?", isPresented: $showDelete) {
-            Button("Delete", role: .destructive) { withAnimation { onDelete() } }
+        .confirmationDialog("Delete this order?", isPresented: $showDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                HapticManager.warning()
+                withAnimation { onDelete() }
+            }
             Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone.")
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(order.productName), \(order.buyerName), quantity \(order.quantity), $\(Int(order.totalPrice)), \(order.platform.name) platform\(order.isFulfilled ? ", fulfilled" : "")")
@@ -302,6 +444,7 @@ struct EditOrderSheet: View {
     let onSave: (Order) -> Void
     let onCancel: () -> Void
     @State private var showReceipt = false
+    @State private var quantityInput: String = "1"
     
     var body: some View {
         NavigationStack {
@@ -318,26 +461,52 @@ struct EditOrderSheet: View {
                     HStack {
                         Image(systemName: "person.fill").foregroundColor(.gray).frame(width: 20)
                         TextField("Name", text: $order.buyerName)
-                        Image(systemName: "pencil").foregroundColor(.blue).font(.system(size: 12))
                     }
                     HStack {
                         Image(systemName: "phone.fill").foregroundColor(.gray).frame(width: 20)
-                        TextField("Phone", text: $order.phoneNumber).keyboardType(.phonePad)
-                        Image(systemName: "pencil").foregroundColor(.blue).font(.system(size: 12))
+                        TextField(LocalizationManager.shared.localized(.phoneOptional), text: $order.phoneNumber).keyboardType(.phonePad)
                     }
                     HStack {
                         Image(systemName: "location.fill").foregroundColor(.gray).frame(width: 20)
                         TextField("Address", text: $order.address)
-                        Image(systemName: "pencil").foregroundColor(.blue).font(.system(size: 12))
+                    }
+                    HStack(alignment: .top) {
+                        Image(systemName: "note.text").foregroundColor(.gray).frame(width: 20)
+                        TextField(LocalizationManager.shared.localized(.notesOptional), text: Binding(
+                            get: { order.customerNotes ?? "" },
+                            set: { order.customerNotes = $0.isEmpty ? nil : $0 }
+                        ), axis: .vertical)
+                            .lineLimit(3...6)
                     }
                 }
                 
                 Section("Order") {
+                    Picker(LocalizationManager.shared.localized(.orderSource), selection: Binding(
+                        get: { order.orderSource },
+                        set: { order.orderSource = $0 }
+                    )) {
+                        ForEach(OrderSource.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    }
                     Picker("Platform", selection: $order.platform) {
                         ForEach(platforms) { Label($0.name, systemImage: $0.icon).tag($0) }
                     }
-                    Stepper("Qty: \(order.quantity)", value: $order.quantity, in: 1...99)
-                    Picker("Status", selection: $order.paymentStatus) {
+                    HStack {
+                        Text("Qty")
+                        Spacer()
+                        TextField("Quantity", text: $quantityInput)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 60)
+                            .onChange(of: quantityInput) { _, s in
+                                let n = Int(s) ?? order.quantity
+                                order.quantity = min(max(n, 1), 99)
+                                if "\(order.quantity)" != s { quantityInput = "\(order.quantity)" }
+                            }
+                        Stepper("", value: $order.quantity, in: 1...99)
+                            .onChange(of: order.quantity) { _, v in quantityInput = "\(v)" }
+                    }
+                    .onAppear { quantityInput = "\(order.quantity)" }
+                    Picker("Payment", selection: $order.paymentStatus) {
                         ForEach(PaymentStatus.allCases, id: \.self) { Label($0.rawValue, systemImage: $0.icon).tag($0) }
                     }
                 }
@@ -491,31 +660,6 @@ struct POSReceiptView: View {
                         Text("Thank you for your purchase!")
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundColor(.gray)
-                        
-                        // Barcode - show actual product barcode if available
-                        if order.hasBarcode {
-                            VStack(spacing: 4) {
-                                // Visual barcode representation
-                                HStack(spacing: 1) {
-                                    ForEach(Array(order.productBarcode.enumerated()), id: \.offset) { index, char in
-                                        Rectangle()
-                                            .fill(Color.black)
-                                            .frame(width: char.isNumber ? 2 : 1, height: 40)
-                                    }
-                                }
-                                .padding(.top, 8)
-                                
-                                Text(order.productBarcode)
-                                    .font(.system(size: 10, design: .monospaced))
-                                    .foregroundColor(.black)
-                            }
-                        } else {
-                            // Fallback to order ID barcode
-                            Text("||||||||||||||||||||||||")
-                                .font(.system(size: 20, design: .monospaced))
-                                .foregroundColor(.black)
-                                .padding(.top, 8)
-                        }
                         
                         Text("Order #\(order.id.uuidString.prefix(8).uppercased())")
                             .font(.system(size: 8, design: .monospaced))
@@ -696,9 +840,6 @@ struct POSReceiptView: View {
         \(order.quantity) x $\(String(format: "%.2f", order.pricePerUnit))
         """
         
-        if order.hasBarcode {
-            receipt += "\nBarcode: \(order.productBarcode)"
-        }
         
         receipt += """
         

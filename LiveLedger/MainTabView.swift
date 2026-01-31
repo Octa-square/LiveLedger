@@ -17,8 +17,15 @@ struct MainTabView: View {
     @ObservedObject var authManager: AuthManager
     @ObservedObject var localization: LocalizationManager
     @StateObject private var viewModel = SalesViewModel()
-    @StateObject private var themeManager = ThemeManager()
-    
+    @StateObject private var themeManager: ThemeManager
+
+    init(authManager: AuthManager, localization: LocalizationManager) {
+        self.authManager = authManager
+        self.localization = localization
+        _viewModel = StateObject(wrappedValue: SalesViewModel())
+        _themeManager = StateObject(wrappedValue: ThemeManager(userId: authManager.currentUser?.id ?? ""))
+    }
+
     var body: some View {
         HomeScreenView(
             viewModel: viewModel,
@@ -27,6 +34,7 @@ struct MainTabView: View {
             localization: localization
         )
         .onAppear {
+            print("[SampleData] MainTabView appeared")
             #if os(iOS)
             if UIDevice.current.userInterfaceIdiom == .pad {
                 if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene {
@@ -34,6 +42,18 @@ struct MainTabView: View {
                 }
             }
             #endif
+            viewModel.authManager = authManager
+            viewModel.loadData() // Load this user's data (per-user keys)
+            if let email = authManager.currentUser?.email {
+                if email.lowercased() == "applereview@liveledger.com" {
+                    let hasProducts = !viewModel.products.isEmpty && !viewModel.products.allSatisfy { $0.isEmpty }
+                    if !hasProducts {
+                        viewModel.populateDemoData(email: email, isPro: authManager.currentUser?.isPro ?? false)
+                    }
+                } else {
+                    viewModel.clearSampleDataForNonReviewUser(currentEmail: email)
+                }
+            }
         }
     }
 }
@@ -63,6 +83,9 @@ struct HomeScreenView: View {
     @State private var selectedProductForOrder: Product?
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
+    @State private var buyerPhone: String = ""
+    @State private var buyerNotes: String = ""
+    @State private var orderSource: OrderSource = .liveStream
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -180,7 +203,8 @@ struct HomeScreenView: View {
                                     buyerName = ""
                                     orderQuantity = 1
                                     withAnimation(.easeIn(duration: 0.2)) { selectedProductForOrder = product }
-                                }
+                                },
+                                onUpgrade: { showSubscription = true }
                             )
                         }
                         .frame(width: safeWidth, height: productsHeight)
@@ -208,34 +232,45 @@ struct HomeScreenView: View {
             if let product = selectedProductForOrder {
                 BuyerPopupView(
                     product: product,
+                    viewModel: viewModel,
                     buyerName: $buyerName,
                     orderQuantity: $orderQuantity,
+                    phoneNumber: $buyerPhone,
+                    customerNotes: $buyerNotes,
+                    orderSource: $orderSource,
                     onCancel: {
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     },
                     onAdd: {
-                        // Create the order
                         let platform = viewModel.selectedPlatform ?? .all
                         let finalName = buyerName.isEmpty ? "SN-\(viewModel.orders.count + 1)" : buyerName
                         viewModel.createOrder(
                             product: product,
                             buyerName: finalName,
-                            phoneNumber: "",
+                            phoneNumber: buyerPhone,
                             address: "",
+                            customerNotes: buyerNotes.isEmpty ? nil : buyerNotes,
+                            orderSource: orderSource,
                             platform: platform,
                             quantity: orderQuantity
                         )
                         authManager.incrementOrderCount()
-                        // Dismiss popup
+                        #if os(iOS)
+                        AppReviewHelper.notifyOrderCountReached(viewModel.orders.count)
+                        #endif
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     }
                 )
                 .transition(.opacity)
@@ -243,15 +278,47 @@ struct HomeScreenView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showSettings) {
-            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization)
+            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization, viewModel: viewModel)
         }
-        .sheet(isPresented: $showSubscription) {
+        .fullScreenCover(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
+        }
+        .sheet(isPresented: $viewModel.showingExportSheet) {
+            if let url = viewModel.csvURL {
+                if let user = authManager.currentUser, !user.isPro && !user.canExport {
+                    VStack(spacing: 20) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        Text("Export Limit Reached")
+                            .font(.title2.bold())
+                        Text("You've used all 10 free exports. Upgrade to Pro for unlimited exports.")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.gray)
+                        Button("Upgrade to Pro") {
+                            viewModel.showingExportSheet = false
+                            showSubscription = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                } else {
+                    ShareSheet(items: [url])
+                        .onAppear {
+                            authManager.incrementExportCount()
+                            #if os(iOS)
+                            AppReviewHelper.notifyExportCompleted()
+                            #endif
+                        }
+                }
+            }
         }
         .sheet(isPresented: $showAnalytics) {
             NavigationStack {
                 AnalyticsView(viewModel: viewModel, localization: localization)
             }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .alert(limitAlertTitle, isPresented: $showLimitAlert) {
             Button(limitAlertButtonText) { showSubscription = true }
@@ -287,6 +354,9 @@ struct iPadHomeScreenView: View {
     @State private var selectedProductForOrder: Product?
     @State private var buyerName: String = ""
     @State private var orderQuantity: Int = 1
+    @State private var buyerPhone: String = ""
+    @State private var buyerNotes: String = ""
+    @State private var orderSource: OrderSource = .liveStream
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -400,7 +470,8 @@ struct iPadHomeScreenView: View {
                                             withAnimation(.easeIn(duration: 0.2)) {
                                                 selectedProductForOrder = product
                                             }
-                                        }
+                                        },
+                                        onUpgrade: { showSubscription = true }
                                     )
                                 }
                             }
@@ -479,7 +550,8 @@ struct iPadHomeScreenView: View {
                                         withAnimation(.easeIn(duration: 0.2)) {
                                             selectedProductForOrder = product
                                         }
-                                    }
+                                    },
+                                    onUpgrade: { showSubscription = true }
                                 )
                             }
                             .frame(width: safeWidth, height: productsHeight)
@@ -507,14 +579,20 @@ struct iPadHomeScreenView: View {
             if let product = selectedProductForOrder {
                 BuyerPopupView(
                     product: product,
+                    viewModel: viewModel,
                     buyerName: $buyerName,
                     orderQuantity: $orderQuantity,
+                    phoneNumber: $buyerPhone,
+                    customerNotes: $buyerNotes,
+                    orderSource: $orderSource,
                     onCancel: {
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     },
                     onAdd: {
                         let platform = viewModel.selectedPlatform ?? .all
@@ -522,17 +600,24 @@ struct iPadHomeScreenView: View {
                         viewModel.createOrder(
                             product: product,
                             buyerName: finalName,
-                            phoneNumber: "",
+                            phoneNumber: buyerPhone,
                             address: "",
+                            customerNotes: buyerNotes.isEmpty ? nil : buyerNotes,
+                            orderSource: orderSource,
                             platform: platform,
                             quantity: orderQuantity
                         )
                         authManager.incrementOrderCount()
+                        #if os(iOS)
+                        AppReviewHelper.notifyOrderCountReached(viewModel.orders.count)
+                        #endif
                         withAnimation(.easeOut(duration: 0.2)) {
                             selectedProductForOrder = nil
                         }
                         buyerName = ""
                         orderQuantity = 1
+                        buyerPhone = ""
+                        buyerNotes = ""
                     }
                 )
                 .transition(.opacity)
@@ -540,15 +625,47 @@ struct iPadHomeScreenView: View {
         }
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showSettings) {
-            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization)
+            SettingsView(themeManager: themeManager, authManager: authManager, localization: localization, viewModel: viewModel)
         }
-        .sheet(isPresented: $showSubscription) {
+        .fullScreenCover(isPresented: $showSubscription) {
             SubscriptionView(authManager: authManager)
+        }
+        .sheet(isPresented: $viewModel.showingExportSheet) {
+            if let url = viewModel.csvURL {
+                if let user = authManager.currentUser, !user.isPro && !user.canExport {
+                    VStack(spacing: 20) {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.orange)
+                        Text("Export Limit Reached")
+                            .font(.title2.bold())
+                        Text("You've used all 10 free exports. Upgrade to Pro for unlimited exports.")
+                            .multilineTextAlignment(.center)
+                            .foregroundColor(.gray)
+                        Button("Upgrade to Pro") {
+                            viewModel.showingExportSheet = false
+                            showSubscription = true
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding()
+                } else {
+                    ShareSheet(items: [url])
+                        .onAppear {
+                            authManager.incrementExportCount()
+                            #if os(iOS)
+                            AppReviewHelper.notifyExportCompleted()
+                            #endif
+                        }
+                }
+            }
         }
         .sheet(isPresented: $showAnalytics) {
             NavigationStack {
                 AnalyticsView(viewModel: viewModel, localization: localization)
             }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .alert(limitAlertTitle, isPresented: $showLimitAlert) {
             Button(limitAlertButtonText) { showSubscription = true }

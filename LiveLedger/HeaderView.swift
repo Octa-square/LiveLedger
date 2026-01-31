@@ -25,6 +25,8 @@ struct HeaderView: View {
     @State private var showExportOptions = false
     @State private var showClearOptions = false
     @State private var showAnalytics = false
+    @State private var showNeedProAlert = false
+    @State private var showExportLimitAlert = false
     
     private var theme: AppTheme { themeManager.currentTheme }
     
@@ -100,7 +102,18 @@ struct HeaderView: View {
                 }
             }
             Menu {
-                Button { showAnalytics = true } label: {
+                Button {
+                    showSubscription = true
+                } label: {
+                    Label(authManager.currentUser?.isPro == true ? "Manage Subscription" : "Subscription", systemImage: "crown.fill")
+                }
+                Button {
+                    if authManager.currentUser?.isPro == true {
+                        showAnalytics = true
+                    } else {
+                        showNeedProAlert = true
+                    }
+                } label: {
                     Label(localization.localized(.analytics), systemImage: "chart.bar.fill")
                 }
                 Button { showSettings = true } label: {
@@ -133,7 +146,13 @@ struct HeaderView: View {
         HStack(spacing: 0) {
             ActionButton(title: localization.localized(.clear), icon: "trash", color: theme.dangerColor, theme: theme) { showClearOptions = true }
             Spacer()
-            ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) { showExportOptions = true }
+            ActionButton(title: localization.localized(.export), icon: "square.and.arrow.up", color: theme.accentColor, theme: theme) {
+                if let user = authManager.currentUser, !user.isPro, !user.canExport {
+                    showExportLimitAlert = true
+                } else {
+                    showExportOptions = true
+                }
+            }
             Spacer()
             ActionButton(title: localization.localized(.print), icon: "printer.fill", color: theme.secondaryColor, theme: theme) { showPrintOptions = true }
         }
@@ -172,6 +191,20 @@ struct HeaderView: View {
             NavigationStack {
                 AnalyticsView(viewModel: viewModel, localization: localization)
             }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
+        .alert("Pro Feature", isPresented: $showNeedProAlert) {
+            Button("Upgrade to Pro") { showSubscription = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Analytics requires Pro. Upgrade to access detailed insights.")
+        }
+        .alert("Export Limit Reached", isPresented: $showExportLimitAlert) {
+            Button("Upgrade to Pro") { showSubscription = true }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You've used all 10 free exports. Upgrade to Pro for unlimited exports.")
         }
     }
 }
@@ -358,6 +391,14 @@ struct ClearOptionRow: View {
     }
 }
 
+// Export UI state for loading/success/error
+enum ExportState: Equatable {
+    case idle
+    case loading
+    case success
+    case error(String)
+}
+
 // Export Options View - select platforms to export
 struct ExportOptionsView: View {
     @ObservedObject var viewModel: SalesViewModel
@@ -366,6 +407,8 @@ struct ExportOptionsView: View {
     
     @State private var selectedPlatforms: Set<UUID> = []
     @State private var selectAll = true
+    @State private var exportState: ExportState = .idle
+    @State private var showExportErrorAlert = false
     
     var body: some View {
         NavigationStack {
@@ -463,8 +506,13 @@ struct ExportOptionsView: View {
                 
                 // Export button
                 Button {
-                    exportSelectedPlatforms()
-                    dismiss()
+                    exportState = .loading
+                    Task {
+                        try? await Task.sleep(nanoseconds: 100_000_000)
+                        await MainActor.run {
+                            performExport()
+                        }
+                    }
                 } label: {
                     HStack {
                         Image(systemName: "square.and.arrow.up")
@@ -474,12 +522,38 @@ struct ExportOptionsView: View {
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(ordersForSelectedPlatforms.isEmpty ? Color.gray : Color.blue)
+                    .background(ordersForSelectedPlatforms.isEmpty || exportState == .loading ? Color.gray : Color.blue)
                     .cornerRadius(12)
                 }
-                .disabled(ordersForSelectedPlatforms.isEmpty)
+                .disabled(ordersForSelectedPlatforms.isEmpty || exportState == .loading)
             }
             .padding()
+            .overlay {
+                if exportState == .loading {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(.white)
+                        Text("Exporting...")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                }
+                if case .success = exportState {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.green)
+                        Text("Exported!")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                }
+            }
             .navigationTitle("Export Orders")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -488,33 +562,27 @@ struct ExportOptionsView: View {
                 }
             }
             .onAppear {
-                // Start with all selected
                 selectedPlatforms = Set(platforms.map { $0.id })
+            }
+            .alert("Export failed", isPresented: $showExportErrorAlert) {
+                Button("OK") {
+                    exportState = .idle
+                }
+            } message: {
+                Text("Please try again.")
             }
         }
     }
     
-    // Get orders for selected platforms
-    var ordersForSelectedPlatforms: [Order] {
-        if selectAll {
-            return viewModel.orders
-        }
-        return viewModel.orders.filter { selectedPlatforms.contains($0.platform.id) }
-    }
-    
-    // Export function
-    func exportSelectedPlatforms() {
+    private func performExport() {
         let ordersToExport = ordersForSelectedPlatforms
         var csv = "Order ID,Product,Buyer,Phone,Address,Platform,Quantity,Unit Price,Total,Payment Status,Timestamp\n"
-        
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
-        
         for order in ordersToExport {
-            let buyerDisplay = order.buyerName.hasPrefix("SN-") 
+            let buyerDisplay = order.buyerName.hasPrefix("SN-")
                 ? String(order.buyerName.dropFirst(3))
                 : order.buyerName
-            
             let row = [
                 order.id.uuidString,
                 order.productName.replacingOccurrences(of: ",", with: ";"),
@@ -530,25 +598,39 @@ struct ExportOptionsView: View {
             ].joined(separator: ",")
             csv += row + "\n"
         }
-        
-        // Generate filename with platform info
         let platformNames = selectAll ? "All" : selectedPlatforms.compactMap { id in
             platforms.first { $0.id == id }?.name
         }.joined(separator: "_")
-        
         let fileDateFormatter = DateFormatter()
         fileDateFormatter.dateFormat = "yyyy-MM-dd_HHmmss"
         let filename = "LiveLedger_\(platformNames)_\(fileDateFormatter.string(from: Date())).csv"
-        
         let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        
         do {
             try csv.write(to: tempURL, atomically: true, encoding: .utf8)
             viewModel.csvURL = tempURL
-            viewModel.showingExportSheet = true
+            exportState = .success
+            #if os(iOS)
+            HapticManager.success()
+            #endif
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                viewModel.showingExportSheet = true
+                dismiss()
+            }
         } catch {
-            print("Failed to export CSV: \(error)")
+            exportState = .error(error.localizedDescription)
+            #if os(iOS)
+            HapticManager.error()
+            #endif
+            showExportErrorAlert = true
         }
+    }
+    
+    // Get orders for selected platforms
+    var ordersForSelectedPlatforms: [Order] {
+        if selectAll {
+            return viewModel.orders
+        }
+        return viewModel.orders.filter { selectedPlatforms.contains($0.platform.id) }
     }
 }
 
@@ -852,6 +934,8 @@ struct PrintOptionsView: View {
 struct AllReceiptsView: View {
     let orders: [Order]
     @Environment(\.dismiss) var dismiss
+    @State private var isPreparingPrint = false
+    @State private var showPrintErrorAlert = false
     
     var body: some View {
         NavigationStack {
@@ -872,22 +956,55 @@ struct AllReceiptsView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        printAllReceiptsAsImage()
+                        isPreparingPrint = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 100_000_000)
+                            await MainActor.run {
+                                printAllReceiptsAsImage()
+                            }
+                        }
                     } label: {
                         Label("Print", systemImage: "printer.fill")
                     }
+                    .disabled(isPreparingPrint)
                 }
+            }
+            .overlay {
+                if isPreparingPrint {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(.white)
+                        Text("Preparing to print...")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .alert("Print failed", isPresented: $showPrintErrorAlert) {
+                Button("OK") { isPreparingPrint = false }
+            } message: {
+                Text("Please try again.")
             }
         }
     }
     
     @MainActor
     private func printAllReceiptsAsImage() {
+        defer { isPreparingPrint = false }
         let content = allReceiptsContentView
         let renderer = ImageRenderer(content: content)
         renderer.scale = 3.0
         
-        guard let uiImage = renderer.uiImage else { return }
+        guard let uiImage = renderer.uiImage else {
+            #if os(iOS)
+            HapticManager.error()
+            #endif
+            showPrintErrorAlert = true
+            return
+        }
         
         let printController = UIPrintInteractionController.shared
         let printInfo = UIPrintInfo(dictionary: nil)
@@ -897,6 +1014,9 @@ struct AllReceiptsView: View {
         printController.printInfo = printInfo
         printController.printingItem = uiImage
         printController.present(animated: true)
+        #if os(iOS)
+        HapticManager.success()
+        #endif
     }
     
     private var allReceiptsContentView: some View {
@@ -1025,6 +1145,8 @@ struct DailyOrderReportView: View {
     let currencySymbol: String
     let companyName: String
     @Environment(\.dismiss) var dismiss
+    @State private var isPreparingPrint = false
+    @State private var showPrintErrorAlert = false
     
     private let dateFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -1143,22 +1265,55 @@ struct DailyOrderReportView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        printReportAsImage()
+                        isPreparingPrint = true
+                        Task {
+                            try? await Task.sleep(nanoseconds: 100_000_000)
+                            await MainActor.run {
+                                printReportAsImage()
+                            }
+                        }
                     } label: {
                         Label("Print", systemImage: "printer.fill")
                     }
+                    .disabled(isPreparingPrint)
                 }
+            }
+            .overlay {
+                if isPreparingPrint {
+                    Color.black.opacity(0.35)
+                        .ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .scaleEffect(1.2)
+                            .tint(.white)
+                        Text("Preparing to print...")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+            .alert("Print failed", isPresented: $showPrintErrorAlert) {
+                Button("OK") { isPreparingPrint = false }
+            } message: {
+                Text("Please try again.")
             }
         }
     }
     
     @MainActor
     private func printReportAsImage() {
+        defer { isPreparingPrint = false }
         let content = reportContentView
         let renderer = ImageRenderer(content: content)
         renderer.scale = 3.0
         
-        guard let uiImage = renderer.uiImage else { return }
+        guard let uiImage = renderer.uiImage else {
+            #if os(iOS)
+            HapticManager.error()
+            #endif
+            showPrintErrorAlert = true
+            return
+        }
         
         let printController = UIPrintInteractionController.shared
         let printInfo = UIPrintInfo(dictionary: nil)
@@ -1168,6 +1323,9 @@ struct DailyOrderReportView: View {
         printController.printInfo = printInfo
         printController.printingItem = uiImage
         printController.present(animated: true)
+        #if os(iOS)
+        HapticManager.success()
+        #endif
     }
     
     private var reportContentView: some View {
@@ -1256,10 +1414,6 @@ struct DailyOrderReportView: View {
             var orderText = """
             #\(index + 1) \(order.productName)
             """
-            
-            if order.hasBarcode {
-                orderText += "\nBarcode: \(order.productBarcode)"
-            }
             
             // Convert "SN-1" to "#1" for print
             let buyerDisplay = order.buyerName.hasPrefix("SN-") ? "#" + String(order.buyerName.dropFirst(3)) : order.buyerName

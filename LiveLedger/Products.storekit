@@ -76,19 +76,19 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "189.99",
+          "displayPrice" : "179.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "6478523642",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited orders, exports & premium features. Save 20%!",
+              "description" : "Unlimited orders, exports & premium features. Best Value - Save $60!",
               "displayName" : "Pro Yearly",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.octasquare.liveledger.pro.yearly",
+          "productID" : "com.octasquare.LiveLedger.yearly.subscription",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Pro Yearly Subscription",
           "subscriptionGroupID" : "21416580",
@@ -113,7 +113,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.octasquare.liveledger.pro.monthly",
+          "productID" : "com.octasquare.LiveLedger.monthly.subscription",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Pro Monthly Subscription",
           "subscriptionGroupID" : "21416580",

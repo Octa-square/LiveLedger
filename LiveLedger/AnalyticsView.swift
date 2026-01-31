@@ -10,11 +10,14 @@ import SwiftUI
 struct AnalyticsView: View {
     @ObservedObject var viewModel: SalesViewModel
     @ObservedObject var localization: LocalizationManager
+    @Environment(\.dismiss) private var dismiss
     @State private var selectedPeriod: TimePeriod = .today
     @State private var comparePlatform1: String = ""
     @State private var comparePlatform2: String = ""
     @State private var compareProduct1: String = ""
     @State private var compareProduct2: String = ""
+    @State private var analyticsExportURL: URL?
+    @State private var showAnalyticsShareSheet = false
     
     // Green grid container styling (same as Home page)
     private let containerCornerRadius: CGFloat = 12
@@ -37,14 +40,68 @@ struct AnalyticsView: View {
         }
     }
     
+    // MARK: - CSV Export Builders
+    private var summaryStatsCSV: String {
+        "Metric,Value\n\"\(localization.localized(.revenue))\",\"$\(String(format: "%.2f", totalRevenue))\"\n\"\(localization.localized(.orders))\",\(totalOrders)\n\"\(localization.localized(.avgOrder))\",\"$\(String(format: "%.2f", avgOrderValue))\"\n\"\(localization.localized(.itemsSold))\",\(totalItemsSold)"
+    }
+    private var salesPerformanceCSV: String {
+        let rows = dailyChartData.map { "\"\($0.label)\",\($0.value)" }.joined(separator: "\n")
+        return "Period,Sales\n\(rows)"
+    }
+    private var platformBreakdownCSV: String {
+        let rows = platformData.map { "\"\($0.platform)\",\(String(format: "%.2f", $0.revenue)),\(String(format: "%.1f", $0.percentage))" }.joined(separator: "\n")
+        return "Platform,Revenue,Percentage\n\(rows)"
+    }
+    private var topProductsCSV: String {
+        let rows = topSellingProducts.enumerated().map { i, p in "\(i+1),\"\(p.name)\",\(p.unitsSold),\(String(format: "%.2f", p.revenue))" }.joined(separator: "\n")
+        return "Rank,Product,Units Sold,Revenue\n\(rows)"
+    }
+    private var platformComparisonCSV: String {
+        guard !comparePlatform1.isEmpty, !comparePlatform2.isEmpty else { return "" }
+        let s1 = (orders: viewModel.orders.filter { $0.platform.name == comparePlatform1 }, name: comparePlatform1)
+        let s2 = (orders: viewModel.orders.filter { $0.platform.name == comparePlatform2 }, name: comparePlatform2)
+        let r1 = s1.orders.reduce(0) { $0 + $1.totalPrice }; let c1 = s1.orders.count; let a1 = c1 > 0 ? r1/Double(c1) : 0.0
+        let r2 = s2.orders.reduce(0) { $0 + $1.totalPrice }; let c2 = s2.orders.count; let a2 = c2 > 0 ? r2/Double(c2) : 0.0
+        return "Platform,Revenue,Orders,Avg Order\n\"\(s1.name)\",\(String(format: "%.2f", r1)),\(c1),\(String(format: "%.2f", a1))\n\"\(s2.name)\",\(String(format: "%.2f", r2)),\(c2),\(String(format: "%.2f", a2))"
+    }
+    private var productComparisonCSV: String {
+        guard !compareProduct1.isEmpty, !compareProduct2.isEmpty else { return "" }
+        let s1 = viewModel.orders.filter { $0.productName == compareProduct1 }; let r1 = s1.reduce(0) { $0 + $1.totalPrice }; let u1 = s1.reduce(0) { $0 + $1.quantity }
+        let s2 = viewModel.orders.filter { $0.productName == compareProduct2 }; let r2 = s2.reduce(0) { $0 + $1.totalPrice }; let u2 = s2.reduce(0) { $0 + $1.quantity }
+        return "Product,Revenue,Units Sold\n\"\(compareProduct1)\",\(String(format: "%.2f", r1)),\(u1)\n\"\(compareProduct2)\",\(String(format: "%.2f", r2)),\(u2)"
+    }
+
+    // MARK: - Export Helper
+    private func exportAnalytics(csv: String, filename: String) {
+        guard let data = csv.data(using: .utf8) else { return }
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(filename)
+        do {
+            try data.write(to: fileURL)
+            analyticsExportURL = fileURL
+            showAnalyticsShareSheet = true
+        } catch { }
+    }
+
     // MARK: - Grid Container (Same as Home Page)
-    private func gridContainer<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func gridContainer<Content: View>(title: String, exportCSV: String? = nil, exportFilename: String? = nil, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Title with green accent
-            Text(title)
-                .font(.system(size: 16, weight: .bold))
-                .foregroundColor(containerBorderColor)
-            
+            HStack {
+                Text(title)
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(containerBorderColor)
+                Spacer()
+                if let csv = exportCSV, let filename = exportFilename {
+                    Button {
+                        exportAnalytics(csv: csv, filename: filename)
+                    } label: {
+                        Image(systemName: "square.and.arrow.up")
+                            .font(.system(size: 14))
+                            .foregroundColor(containerBorderColor)
+                    }
+                }
+            }
+
             content()
         }
         .padding(16)
@@ -59,6 +116,10 @@ struct AnalyticsView: View {
         .padding(.horizontal, horizontalMargin)
     }
     
+    private var dateStamp: String {
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd_HHmm"; return f.string(from: Date())
+    }
+
     // MARK: - Dynamic Data Computed Properties
     
     var filteredOrders: [Order] {
@@ -204,7 +265,7 @@ struct AnalyticsView: View {
                 .padding(.horizontal, horizontalMargin)
                 
                 // CONTAINER 1: Summary Stats (green border)
-                gridContainer(title: "📊 \(localization.localized(.salesAnalytics))") {
+                gridContainer(title: "📊 \(localization.localized(.salesAnalytics))", exportCSV: summaryStatsCSV, exportFilename: "LiveLedger_Summary_\(selectedPeriod.rawValue)_\(dateStamp).csv") {
                     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                         StatBox(title: localization.localized(.revenue), value: "$\(String(format: "%.2f", totalRevenue))", color: .green)
                         StatBox(title: localization.localized(.orders), value: "\(totalOrders)", color: .blue)
@@ -214,7 +275,7 @@ struct AnalyticsView: View {
                 }
                 
                 // CONTAINER 2: Bar Chart - Sales Performance (green border)
-                gridContainer(title: "📈 Sales Performance") {
+                gridContainer(title: "📈 Sales Performance", exportCSV: salesPerformanceCSV, exportFilename: "LiveLedger_SalesPerformance_\(selectedPeriod.rawValue)_\(dateStamp).csv") {
                     if dailyChartData.isEmpty || dailyChartData.allSatisfy({ $0.value == 0 }) {
                         EmptyDataView(message: "No sales data for this period")
                     } else {
@@ -224,7 +285,7 @@ struct AnalyticsView: View {
                 }
                 
                 // CONTAINER 3: Pie Chart - Platform Breakdown (green border)
-                gridContainer(title: "🥧 Sales by Platform") {
+                gridContainer(title: "🥧 Sales by Platform", exportCSV: platformBreakdownCSV, exportFilename: "LiveLedger_PlatformBreakdown_\(selectedPeriod.rawValue)_\(dateStamp).csv") {
                     if platformData.isEmpty {
                         EmptyDataView(message: "No platform data available")
                     } else {
@@ -260,7 +321,7 @@ struct AnalyticsView: View {
                 }
                 
                 // CONTAINER 4: Top Selling Products (green border)
-                gridContainer(title: "🏆 Top Selling Products") {
+                gridContainer(title: "🏆 Top Selling Products", exportCSV: topProductsCSV, exportFilename: "LiveLedger_TopProducts_\(selectedPeriod.rawValue)_\(dateStamp).csv") {
                     if topSellingProducts.isEmpty {
                         EmptyDataView(message: "No products sold yet")
                     } else {
@@ -273,7 +334,7 @@ struct AnalyticsView: View {
                 }
                 
                 // CONTAINER 5: Platform Comparison (green border)
-                gridContainer(title: "⚖️ Platform Comparison") {
+                gridContainer(title: "⚖️ Platform Comparison", exportCSV: platformComparisonCSV.isEmpty ? nil : platformComparisonCSV, exportFilename: platformComparisonCSV.isEmpty ? nil : "LiveLedger_PlatformCompare_\(dateStamp).csv") {
                     if availablePlatforms.count < 2 {
                         EmptyDataView(message: "Need 2+ platforms with sales to compare")
                     } else {
@@ -318,7 +379,7 @@ struct AnalyticsView: View {
                 }
                 
                 // CONTAINER 6: Product Comparison (green border)
-                gridContainer(title: "📦 Product Comparison") {
+                gridContainer(title: "📦 Product Comparison", exportCSV: productComparisonCSV.isEmpty ? nil : productComparisonCSV, exportFilename: productComparisonCSV.isEmpty ? nil : "LiveLedger_ProductCompare_\(dateStamp).csv") {
                     if availableProducts.count < 2 {
                         EmptyDataView(message: "Need 2+ products with sales to compare")
                     } else {
@@ -368,6 +429,23 @@ struct AnalyticsView: View {
         }
         .navigationTitle(localization.localized(.analytics))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Close") {
+                    dismiss()
+                }
+            }
+        }
+        .sheet(isPresented: $showAnalyticsShareSheet, onDismiss: {
+            if let url = analyticsExportURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            analyticsExportURL = nil
+        }) {
+            if let url = analyticsExportURL {
+                ShareSheet(items: [url])
+            }
+        }
         .onAppear {
             // Initialize comparison dropdowns
             if comparePlatform1.isEmpty, let first = availablePlatforms.first {
