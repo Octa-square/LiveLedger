@@ -203,7 +203,8 @@ struct PlanSelectionView: View {
     @State private var selectedPlan: PlanType? = nil  // No default – user must choose
     @State private var isPurchasing = false
     @State private var purchaseError: String? = nil
-    
+    @State private var showPurchaseConfirm = false
+
     enum PlanType {
         case basic, monthly, yearly
     }
@@ -322,10 +323,8 @@ struct PlanSelectionView: View {
                         if let plan = selectedPlan {
                             if plan == .basic {
                                 completePlanSelection()
-                            } else if plan == .monthly {
-                                Task { await purchasePro(monthly: true) }
-                            } else if plan == .yearly {
-                                Task { await purchasePro(monthly: false) }
+                            } else {
+                                showPurchaseConfirm = true
                             }
                         }
                     } label: {
@@ -379,7 +378,28 @@ struct PlanSelectionView: View {
             } message: {
                 Text(purchaseError ?? "")
             }
+            .confirmationDialog("Confirm Subscription", isPresented: $showPurchaseConfirm, titleVisibility: .visible) {
+                Button("Cancel", role: .cancel) {}
+                Button("Continue to Payment") {
+                    showPurchaseConfirm = false
+                    if selectedPlan == .monthly {
+                        Task { await purchasePro(monthly: true) }
+                    } else if selectedPlan == .yearly {
+                        Task { await purchasePro(monthly: false) }
+                    }
+                }
+            } message: {
+                Text(planPurchaseConfirmMessage)
+            }
         }
+    }
+
+    private var planPurchaseConfirmMessage: String {
+        let price = selectedPlan == .yearly
+            ? (storeKit.proYearlyProduct?.displayPrice ?? "$179.99")
+            : (storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")
+        let period = selectedPlan == .yearly ? "/year" : "/month"
+        return "You will be charged \(price)\(period) through your Apple ID. The next screen will let you confirm or cancel the purchase."
     }
     
     private var buttonTitle: String {

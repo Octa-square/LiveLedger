@@ -27,7 +27,8 @@ struct SubscriptionView: View {
     @State private var showRestoreSuccess = false
     @State private var showRestoreNoPurchases = false
     @State private var showRestoreError = false
-    
+    @State private var showPurchaseConfirm = false
+
     enum SubscriptionPlan {
         case free, monthly, yearly
     }
@@ -46,7 +47,15 @@ struct SubscriptionView: View {
         }
         return "Your Pro subscription is now active. Enjoy unlimited orders and all premium features!"
     }
-    
+
+    private var purchaseConfirmMessage: String {
+        let price = selectedPlan == .yearly
+            ? (storeKit.proYearlyProduct?.displayPrice ?? "$179.99")
+            : (storeKit.proMonthlyProduct?.displayPrice ?? "$19.99")
+        let period = selectedPlan == .yearly ? "/year" : "/month"
+        return "You will be charged \(price)\(period) through your Apple ID. The next screen will let you confirm or cancel the purchase."
+    }
+
     @ViewBuilder private var headerSection: some View {
         VStack(spacing: 8) {
             Image(systemName: "crown.fill")
@@ -124,7 +133,7 @@ struct SubscriptionView: View {
         if selectedPlan != .free && authManager.currentUser?.isPro != true {
             VStack(spacing: 12) {
                 Button {
-                    Task { await purchaseSubscription() }
+                    showPurchaseConfirm = true
                 } label: {
                     HStack {
                         if isPurchasing {
@@ -315,6 +324,15 @@ struct SubscriptionView: View {
                 Button("OK") { dismiss() }
             } message: {
                 Text(successAlertMessage)
+            }
+            .confirmationDialog("Confirm Subscription", isPresented: $showPurchaseConfirm, titleVisibility: .visible) {
+                Button("Cancel", role: .cancel) {}
+                Button("Continue to Payment") {
+                    showPurchaseConfirm = false
+                    Task { await purchaseSubscription() }
+                }
+            } message: {
+                Text(purchaseConfirmMessage)
             }
             .confirmationDialog("Restore Purchases", isPresented: $showRestoreConfirm, titleVisibility: .visible) {
                 Button("Cancel", role: .cancel) {}
